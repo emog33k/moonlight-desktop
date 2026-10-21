@@ -104,6 +104,7 @@ private slots:
     void pingsKeepSessionAlive();
     void reconnectThenDropStillLocks();
     void displayListAfterHelloAndOnChange();
+    void cursorAndSunshineAfterHello();
 };
 
 class TestAgentClient : public QObject
@@ -123,6 +124,7 @@ private slots:
     void filesOfferedFromLaptopReachThePc();
     void clipboardSyncOffSendsNothing();
     void pcDisplaysShownInMenu();
+    void pcCursorReachesClient();
 };
 
 class TestSessionMenuHost : public QObject
@@ -248,4 +250,32 @@ private slots:
     void malformedRejected();
     void initialOutOfRangeUnknown();
     void initialFromConfig();
+};
+
+class TestCursorShape : public QObject
+{
+    Q_OBJECT
+private slots:
+    void roundTrip();
+    void badSizesRejected();
+    void hotspotOutsideRejected();
+    void capturesSystemArrow();
+    void invertingCursorVisible();
+    void watcherReportsChangesOnly();
+};
+
+class TestCursorSync : public QObject
+{
+    Q_OBJECT
+private slots:
+    void init();
+    void cleanup();
+    void activeHidesSunshineCursorOnce();
+    void rememberedAcrossStreams();
+    void sunshineRestartStartsShown();
+    void gameModeShowsSunshineCursor();
+    void agentLostShowsSunshineCursor();
+    void settingOffNeverToggles();
+    void unknownSunshineNoToggle();
+    void pcCursorForwardedWhileActive();
 };

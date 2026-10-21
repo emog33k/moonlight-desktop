@@ -167,13 +167,16 @@ void SdlInputHandler::performAction(LocalRdp::StreamAction action, int param)
 
         m_Prefs->absoluteMouseMode = m_AbsoluteMouseMode;
         m_Prefs->saveInputPrefs();
+        if (m_OnMouseModeChanged) {
+            m_OnMouseModeChanged();
+        }
         break;
     }
 
     case StreamAction::ToggleLocalCursor:
         if (!SDL_GetRelativeMouseMode()) {
             m_MouseCursorCapturedVisibilityState = !m_MouseCursorCapturedVisibilityState;
-            SDL_ShowCursor(m_MouseCursorCapturedVisibilityState);
+            SDL_ShowCursor(cursorVisibility());
 
             m_Prefs->showLocalCursor = m_MouseCursorCapturedVisibilityState == SDL_ENABLE;
             m_Prefs->saveInputPrefs();
@@ -269,6 +272,24 @@ LocalRdp::StreamState SdlInputHandler::queryState()
     state.fullscreen = m_Window != nullptr && (SDL_GetWindowFlags(m_Window) & SDL_WINDOW_FULLSCREEN) != 0;
     state.statsVisible = Session::get()->getOverlayManager().isOverlayEnabled(Overlay::OverlayDebug);
     return state;
+}
+
+int SdlInputHandler::cursorVisibility() const
+{
+    return m_CursorVisibilityOverride >= 0 ? m_CursorVisibilityOverride : m_MouseCursorCapturedVisibilityState;
+}
+
+void SdlInputHandler::setCursorVisibilityOverride(int state)
+{
+    if (state == m_CursorVisibilityOverride) {
+        return;
+    }
+    m_CursorVisibilityOverride = state;
+    // Apply right away while the pointer is captured over the video; otherwise
+    // the next capture or pointer move does it.
+    if (m_AbsoluteMouseMode && m_FakeMouseCaptureActive && m_MouseWasInVideoRegion) {
+        SDL_ShowCursor(cursorVisibility());
+    }
 }
 
 void SdlInputHandler::sendHostShortcut(short virtualKey)

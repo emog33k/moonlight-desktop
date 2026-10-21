@@ -3,7 +3,7 @@
 #   cd tests\localrdp && qmake && nmake release && release\localrdp_tests.exe
 QT += testlib qml network
 RESOURCES += data/testdata.qrc
-LIBS += crypt32.lib ole32.lib shell32.lib user32.lib psapi.lib
+LIBS += crypt32.lib ole32.lib shell32.lib user32.lib psapi.lib gdi32.lib
 QT -= gui
 CONFIG += console c++17 testcase
 CONFIG -= app_bundle
@@ -32,6 +32,11 @@ SOURCES += \
     tst_videoarea.cpp \
     tst_toolbarlayout.cpp \
     tst_hostdisplays.cpp \
+    tst_cursorshape.cpp \
+    tst_cursorsync.cpp \
+    ../../app/localrdp-shared/cursorshape.cpp \
+    ../../localrdp/agent/cursorwatch_win32.cpp \
+    ../../app/streaming/localrdp/cursorsync.cpp \
     ../../app/localrdp-shared/hostdisplays.cpp \
     ../../app/streaming/localrdp/toolbarlayout.cpp \
     ../../app/streaming/localrdp/videoarea.cpp \

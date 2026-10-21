@@ -18,3 +18,6 @@
 // Toolbar button; data1 = button index, data2 = 0 pressed, 1 pointer moved onto it
 // while a menu is open (switches the open dropdown, like a menu bar).
 #define SDL_CODE_LOCALRDP_TOOLBAR 111
+// Something about the agent changed (status, Sunshine instance, PC cursor); the
+// session reads the new state from AgentClient.
+#define SDL_CODE_LOCALRDP_AGENT_CHANGED 112

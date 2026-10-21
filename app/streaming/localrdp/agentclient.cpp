@@ -12,17 +12,25 @@ namespace LocalRdp {
 
 using namespace Proto;
 
+// What the worker reports back to AgentClient (called on the worker's thread).
+struct AgentClientEvents {
+    std::function<void(const DisplayList&)> displays;
+    std::function<void(const QString&)> sunshine;
+    std::function<void(const CursorState&)> cursor;
+    std::function<void()> statusChanged;
+};
+
 // Lives on AgentClient's thread; owns the socket.
 class AgentClientWorker : public QObject
 {
 public:
     AgentClientWorker(std::atomic<int>& status, Clip::ClipboardBridge* clipboard,
-                      std::function<void(const DisplayList&)> onDisplays,
+                      AgentClientEvents events,
                       QString host, QSslCertificate clientCert, QSslKey clientKey,
                       QSslCertificate pinnedServer, quint16 port, int retryMs, int pingMs, int pongTimeoutMs)
         : m_Status(status),
           m_Clipboard(clipboard),
-          m_OnDisplays(std::move(onDisplays)),
+          m_Events(std::move(events)),
           m_Host(std::move(host)),
           m_ClientCert(std::move(clientCert)),
           m_ClientKey(std::move(clientKey)),
@@ -87,7 +95,12 @@ public:
     }
 
 private:
-    void setStatus(AgentStatus status) { m_Status.store((int)status); }
+    void setStatus(AgentStatus status)
+    {
+        if (m_Status.exchange((int)status) != (int)status) {
+            m_Events.statusChanged();
+        }
+    }
 
     void connectOnce()
     {
@@ -146,6 +159,9 @@ private:
         switch (frame.type) {
         case MsgType::HelloAck:
             m_Ready = true;
+            if (auto ack = parseJsonPayload(frame.payload)) {
+                m_Events.sunshine(ack->value("sunshine").toString().left(64));
+            }
             setStatus(AgentStatus::Connected);
             sendLockOnDisconnect();
             m_PingTimer->start(m_PingMs);
@@ -162,8 +178,26 @@ private:
         case MsgType::DisplayList:
             if (m_Ready) {
                 if (auto list = decodeDisplayList(frame.payload)) {
-                    m_OnDisplays(*list);
+                    m_Events.displays(*list);
                 }
+            }
+            break;
+        case MsgType::CursorShape:
+            if (m_Ready) {
+                if (auto image = decodeCursorImage(frame.payload)) {
+                    CursorState cursor;
+                    cursor.kind = CursorKind::Shape;
+                    cursor.image = *image;
+                    m_Events.cursor(cursor);
+                }
+            }
+            break;
+        case MsgType::CursorHidden:
+        case MsgType::CursorDefault:
+            if (m_Ready) {
+                CursorState cursor;
+                cursor.kind = frame.type == MsgType::CursorHidden ? CursorKind::Hidden : CursorKind::Default;
+                m_Events.cursor(cursor);
             }
             break;
         default:
@@ -238,7 +272,7 @@ private:
 
     std::atomic<int>& m_Status;
     Clip::ClipboardBridge* m_Clipboard;
-    std::function<void(const DisplayList&)> m_OnDisplays;
+    AgentClientEvents m_Events;
     QString m_Host;
     QSslCertificate m_ClientCert;
     QSslKey m_ClientKey;
@@ -272,7 +306,8 @@ AgentClient::AgentClient(const QString& host, const QSslCertificate& clientCert,
         }
     }, useSystemClipboard));
 
-    auto onDisplays = [this](const DisplayList& list) {
+    AgentClientEvents events;
+    events.displays = [this](const DisplayList& list) {
         QVector<DisplayInfo> displays;
         for (const HostDisplay& d : list.displays) {
             displays << DisplayInfo{ d.name, d.width, d.height, d.primary };
@@ -281,7 +316,22 @@ AgentClient::AgentClient(const QString& host, const QSslCertificate& clientCert,
         m_Displays = displays;
         m_InitialDisplay = list.initial;
     };
-    m_Worker = new AgentClientWorker(m_Status, m_Clipboard.get(), onDisplays, host, clientCert, clientKey,
+    events.sunshine = [this](const QString& instance) {
+        {
+            std::lock_guard<std::mutex> lock(m_StateMutex);
+            m_SunshineInstance = instance;
+        }
+        notifyChange();
+    };
+    events.cursor = [this](const CursorState& cursor) {
+        {
+            std::lock_guard<std::mutex> lock(m_StateMutex);
+            m_Cursor = cursor;
+        }
+        notifyChange();
+    };
+    events.statusChanged = [this]() { notifyChange(); };
+    m_Worker = new AgentClientWorker(m_Status, m_Clipboard.get(), events, host, clientCert, clientKey,
                                      pinnedServer, port, retryMs, pingMs, pongTimeoutMs);
     m_SendTarget = m_Worker;
     m_Worker->moveToThread(&m_Thread);
@@ -297,6 +347,7 @@ AgentClient::~AgentClient()
         std::lock_guard<std::mutex> lock(m_SendMutex);
         m_SendTarget = nullptr;
     }
+    setChangeHandler({}); // nothing reaches the session while we go away
     QMetaObject::invokeMethod(m_Worker, [w = m_Worker]() { w->stop(); }, Qt::BlockingQueuedConnection);
     m_Thread.quit();
     // No long blocking work runs on this thread, so this returns quickly; a
@@ -341,6 +392,38 @@ int AgentClient::initialDisplay() const
 {
     std::lock_guard<std::mutex> lock(m_DisplaysMutex);
     return m_InitialDisplay;
+}
+
+QString AgentClient::sunshineInstance() const
+{
+    std::lock_guard<std::mutex> lock(m_StateMutex);
+    return m_SunshineInstance;
+}
+
+std::optional<CursorState> AgentClient::takeCursor()
+{
+    std::lock_guard<std::mutex> lock(m_StateMutex);
+    std::optional<CursorState> cursor = std::move(m_Cursor);
+    m_Cursor.reset();
+    return cursor;
+}
+
+void AgentClient::setChangeHandler(std::function<void()> handler)
+{
+    std::lock_guard<std::mutex> lock(m_StateMutex);
+    m_OnChange = std::move(handler);
+}
+
+void AgentClient::notifyChange()
+{
+    std::function<void()> handler;
+    {
+        std::lock_guard<std::mutex> lock(m_StateMutex);
+        handler = m_OnChange;
+    }
+    if (handler) {
+        handler();
+    }
 }
 
 }

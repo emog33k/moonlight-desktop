@@ -1,6 +1,7 @@
 #pragma once
 
 #include "streamactions.h"
+#include "localrdp-shared/cursorshape.h"
 #include "localrdp-shared/protocol.h"
 
 #include <QSslCertificate>
@@ -14,6 +15,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 
 namespace LocalRdp {
 
@@ -53,6 +55,14 @@ public:
     // The monitor Sunshine started the stream on (-1 if unknown).
     int initialDisplay() const;
 
+    // Identifies the running Sunshine (from the agent); empty until known.
+    QString sunshineInstance() const;
+    // The PC's latest cursor, if it changed since the last call.
+    std::optional<Proto::CursorState> takeCursor();
+    // Called on the agent thread whenever the status, Sunshine instance or PC
+    // cursor changes. Keep it short (post an event).
+    void setChangeHandler(std::function<void()> handler);
+
 private:
     std::atomic<int> m_Status;
     std::unique_ptr<Clip::ClipboardBridge> m_Clipboard;
@@ -63,6 +73,11 @@ private:
     mutable std::mutex m_DisplaysMutex;
     QVector<DisplayInfo> m_Displays;
     int m_InitialDisplay = -1;
+    mutable std::mutex m_StateMutex;
+    QString m_SunshineInstance;
+    std::optional<Proto::CursorState> m_Cursor;
+    std::function<void()> m_OnChange;
+    void notifyChange();
     AgentClientWorker* m_SendTarget = nullptr;
 };
 

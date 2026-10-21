@@ -2,6 +2,7 @@
 #include "agentserver.h"
 #include "localrdp-shared/peerconnection.h"
 #include "localrdp-shared/hostdisplays.h"
+#include "localrdp-shared/cursorshape.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -292,4 +293,64 @@ void TestAgentServer::displayListAfterHelloAndOnChange()
     // A monitor plugged in: sent again
     displays.displays << HostDisplay{ "\\.\DISPLAY2", 1280, 1024, false };
     QTRY_VERIFY_WITH_TIMEOUT(lastList() && lastList()->displays.size() == 2, 3000);
+}
+
+void TestAgentServer::cursorAndSunshineAfterHello()
+{
+    CursorState cursor;
+    cursor.kind = CursorKind::Shape;
+    cursor.key = 1;
+    cursor.image.width = cursor.image.height = 2;
+    cursor.image.bgra = QByteArray(16, '\x7f');
+
+    AgentConfig config;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.readCursor = [&cursor]() { return cursor; };
+    config.cursorPollMs = 20;
+    config.sunshineInstance = []() { return QString("4321"); };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+
+    QSslSocket* socket = connectPinned("127.0.0.1", server.port(), testCert("client1"), testKey("client1"), testCert("server"));
+    QSignalSpy encrypted(socket, &QSslSocket::encrypted);
+    QVERIFY(encrypted.wait(5000));
+    PeerConnection conn(socket);
+    QSignalSpy frames(&conn, &PeerConnection::frameReceived);
+    QTest::qWait(150);
+    QCOMPARE(frames.count(), 0); // nothing before Hello
+
+    conn.send(MsgType::Hello, jsonPayload(hello()));
+    QVERIFY(waitForType(frames, MsgType::CursorShape));
+    auto count = [&frames](MsgType type) {
+        int n = 0;
+        for (const auto& args : frames) {
+            n += args.at(0).value<Frame>().type == type;
+        }
+        return n;
+    };
+    for (const auto& args : frames) {
+        const Frame f = args.at(0).value<Frame>();
+        if (f.type == MsgType::HelloAck) {
+            QCOMPARE(parseJsonPayload(f.payload)->value("sunshine").toString(), QString("4321"));
+        }
+        if (f.type == MsgType::CursorShape) {
+            QVERIFY(decodeCursorImage(f.payload) && *decodeCursorImage(f.payload) == cursor.image);
+        }
+    }
+
+    // Unchanged: sent once only
+    QTest::qWait(200);
+    QCOMPARE(count(MsgType::CursorShape), 1);
+
+    cursor.kind = CursorKind::Hidden;
+    QVERIFY(waitForType(frames, MsgType::CursorHidden));
+    cursor.kind = CursorKind::Default;
+    QVERIFY(waitForType(frames, MsgType::CursorDefault));
+    cursor.kind = CursorKind::Shape;
+    cursor.key = 2;
+    QTRY_COMPARE_WITH_TIMEOUT(count(MsgType::CursorShape), 2, 3000);
 }

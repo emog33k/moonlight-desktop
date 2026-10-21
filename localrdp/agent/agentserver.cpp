@@ -55,6 +55,7 @@ AgentServer::AgentServer(AgentConfig config, QObject* parent)
     // A laptop that vanished (Wi-Fi gone, lid closed) never sends a FIN; its
     // pings stop instead. Treat that like a dropped connection.
     connect(&m_DisplayTimer, &QTimer::timeout, this, [this]() { sendDisplays(true); });
+    connect(&m_CursorTimer, &QTimer::timeout, this, [this]() { sendCursor(true); });
 
     m_IdleTimer.setSingleShot(true);
     connect(&m_IdleTimer, &QTimer::timeout, this, [this]() {
@@ -108,6 +109,7 @@ void AgentServer::onEncrypted(QSslSocket* socket)
         m_Session = nullptr;
         m_SessionReady = false;
         m_DisplayTimer.stop();
+        m_CursorTimer.stop();
         m_Clipboard->connectionDown();
         old->disconnect(this);
         old->deleteLater();
@@ -149,11 +151,16 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
         conn->send(MsgType::HelloAck, jsonPayload(QJsonObject{
             { "version", (int)kProtocolVersion },
             { "agent", "LocalRDP Agent" },
+            { "sunshine", m_Config.sunshineInstance ? m_Config.sunshineInstance() : QString() },
         }));
         if (conn == m_Session) {
             sendDisplays(false);
             if (m_Config.listDisplays) {
                 m_DisplayTimer.start(m_Config.displayPollMs);
+            }
+            sendCursor(false);
+            if (m_Config.readCursor) {
+                m_CursorTimer.start(m_Config.cursorPollMs);
             }
         }
         break;
@@ -197,6 +204,7 @@ void AgentServer::onSessionClosed(PeerConnection* conn)
     m_Session = nullptr;
     m_IdleTimer.stop();
     m_DisplayTimer.stop();
+    m_CursorTimer.stop();
     m_SessionReady = false;
     m_Clipboard->connectionDown();
     conn->deleteLater();
@@ -218,6 +226,31 @@ void AgentServer::sendDisplays(bool onlyIfChanged)
     }
     m_SentDisplays = payload;
     m_Session->send(MsgType::DisplayList, payload);
+}
+
+void AgentServer::sendCursor(bool onlyIfChanged)
+{
+    if (!m_Config.readCursor || !m_Session || !m_SessionReady) {
+        return;
+    }
+    const CursorState cursor = m_Config.readCursor();
+    if (onlyIfChanged && cursor.kind == m_SentCursorKind &&
+            (cursor.kind != CursorKind::Shape || cursor.key == m_SentCursorKey)) {
+        return;
+    }
+    m_SentCursorKind = cursor.kind;
+    m_SentCursorKey = cursor.key;
+    switch (cursor.kind) {
+    case CursorKind::Shape:
+        m_Session->send(MsgType::CursorShape, encodeCursorImage(cursor.image));
+        break;
+    case CursorKind::Hidden:
+        m_Session->send(MsgType::CursorHidden);
+        break;
+    case CursorKind::Default:
+        m_Session->send(MsgType::CursorDefault);
+        break;
+    }
 }
 
 void AgentServer::lockNow(const char* reason)

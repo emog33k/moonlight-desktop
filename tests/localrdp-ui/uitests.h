@@ -54,6 +54,14 @@ void sendMouse(HWND hwnd, UINT msg, QPoint screenPos);
 void saveScreenshot(const QRect& rect, const QString& name);
 }
 
+class TestSdlCursor : public QObject
+{
+    Q_OBJECT
+private slots:
+    void showsHidesAndRestores();
+    void manyShapesStayBounded();
+};
+
 class TestToolbar : public QObject
 {
     Q_OBJECT

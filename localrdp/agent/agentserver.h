@@ -1,6 +1,7 @@
 #pragma once
 
 #include "localrdp-shared/clip/clipboardbridge_win32.h"
+#include "localrdp-shared/cursorshape.h"
 #include "localrdp-shared/hostdisplays.h"
 #include "localrdp-shared/peerconnection.h"
 #include "localrdp-shared/protocol.h"
@@ -35,6 +36,13 @@ struct AgentConfig {
     // they change (checked every displayPollMs). Not set: never sent.
     std::function<Proto::DisplayList()> listDisplays;
     int displayPollMs = 3000;
+    // The PC's cursor, polled every cursorPollMs while a laptop is connected and
+    // sent when it changes. Not set: never sent.
+    std::function<Proto::CursorState()> readCursor;
+    int cursorPollMs = 33;
+    // Identifies the running Sunshine (its process id); empty if not running.
+    // Reported in HelloAck so the laptop knows when Sunshine restarted.
+    std::function<QString()> sunshineInstance;
 };
 
 // TLS server for the paired laptop. Only a client whose certificate is paired and
@@ -61,6 +69,7 @@ private:
     void onSessionClosed(PeerConnection* conn);
     void lockNow(const char* reason);
     void sendDisplays(bool onlyIfChanged);
+    void sendCursor(bool onlyIfChanged);
 
     AgentConfig m_Config;
     QSslServer* m_Server;
@@ -71,6 +80,9 @@ private:
     QTimer m_IdleTimer;      // restarted by every frame of the session
     QTimer m_DisplayTimer;
     QByteArray m_SentDisplays; // last DisplayList payload sent to this session
+    QTimer m_CursorTimer;
+    Proto::CursorKind m_SentCursorKind = Proto::CursorKind::Default;
+    quint64 m_SentCursorKey = 0;
     bool m_SessionReady = false; // Hello received
     std::unique_ptr<Clip::ClipboardBridge> m_Clipboard;
 };

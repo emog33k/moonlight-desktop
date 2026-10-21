@@ -15,6 +15,8 @@ LIBS += -L$$PWD/../../libs/windows/lib/x64 -lSDL2 gdiplus.lib user32.lib gdi32.l
 SOURCES += \
     main.cpp \
     tst_toolbar.cpp \
+    tst_sdlcursor.cpp \
+    $$APP/streaming/localrdp/sdlcursor.cpp \
     tst_streammenu.cpp \
     $$APP/streaming/localrdp/menulayout.cpp \
     $$APP/streaming/localrdp/streammenu_win32.cpp \

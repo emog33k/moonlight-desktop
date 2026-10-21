@@ -29,6 +29,10 @@ enum class MsgType : quint8 {
     ClipError = 23,
 
     DisplayList = 30,   // agent -> laptop, see hostdisplays.h
+
+    CursorShape = 40,   // agent -> laptop, see cursorshape.h
+    CursorHidden = 41,
+    CursorDefault = 42,
 };
 
 constexpr quint32 kProtocolVersion = 1;

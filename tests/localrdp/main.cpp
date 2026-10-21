@@ -101,6 +101,14 @@ int main(int argc, char* argv[])
         TestHostDisplays t;
         failures += runTest(&t);
     }
+    {
+        TestCursorShape t;
+        failures += runTest(&t);
+    }
+    {
+        TestCursorSync t;
+        failures += runTest(&t);
+    }
     std::printf("LOCALRDP TESTS: %s\n", failures == 0 ? "ALL PASSED" : "FAILED");
     return failures == 0 ? 0 : 1;
 }

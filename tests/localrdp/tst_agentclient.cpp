@@ -280,3 +280,53 @@ void TestAgentClient::pcDisplaysShownInMenu()
     QCOMPARE(host.queryState().currentDisplay, 0);
     QCOMPARE(input.params, QVector<int>({ 0 }));
 }
+
+void TestAgentClient::pcCursorReachesClient()
+{
+    Proto::CursorState cursor;
+    cursor.kind = Proto::CursorKind::Shape;
+    cursor.key = 7;
+    cursor.image.width = cursor.image.height = 3;
+    cursor.image.hotX = 1;
+    cursor.image.bgra = QByteArray(36, '\x10');
+
+    AgentConfig config;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.readCursor = [&cursor]() { return cursor; };
+    config.cursorPollMs = 20;
+    config.sunshineInstance = []() { return QString("999"); };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+
+    auto client = makeClient(server.port());
+    std::atomic<int> changes { 0 };
+    client->setChangeHandler([&changes]() { changes++; });
+    QTRY_COMPARE_WITH_TIMEOUT(client->status(), AgentStatus::Connected, 5000);
+    QCOMPARE(client->sunshineInstance(), QString("999"));
+
+    // (QTRY_* evaluates its expression once more at the end, so wait by hand)
+    auto waitCursor = [&client]() {
+        std::optional<Proto::CursorState> c;
+        QElapsedTimer t;
+        t.start();
+        while (!(c = client->takeCursor()) && t.elapsed() < 3000) {
+            QTest::qWait(20);
+        }
+        return c;
+    };
+    std::optional<Proto::CursorState> got = waitCursor();
+    QVERIFY(got);
+    QCOMPARE(got->kind, Proto::CursorKind::Shape);
+    QVERIFY(got->image == cursor.image);
+    QVERIFY(!client->takeCursor()); // taken: nothing new
+    QVERIFY(changes > 0);
+
+    cursor.kind = Proto::CursorKind::Hidden;
+    got = waitCursor();
+    QVERIFY(got);
+    QCOMPARE(got->kind, Proto::CursorKind::Hidden);
+}

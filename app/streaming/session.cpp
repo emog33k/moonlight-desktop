@@ -22,6 +22,8 @@
 #include "localrdp/sessionmenuhost.h"
 #include "localrdp/streammenucontroller.h"
 #include "localrdp/toolbarlayout.h"
+#include "localrdp/cursorsync.h"
+#include "localrdp/sdlcursor.h"
 #include "backend/identitymanager.h"
 #endif
 
@@ -589,6 +591,9 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_StreamMenu(nullptr),
       m_MenuHost(nullptr),
       m_AgentClient(nullptr),
+      m_CursorHost(nullptr),
+      m_CursorSync(nullptr),
+      m_AgentEventPending(false),
       m_MouseEmulationRefCount(0),
       m_FlushingWindowEventsRef(0),
       m_ShouldExit(false),
@@ -1740,6 +1745,23 @@ bool Session::startConnectionAsync()
     return true;
 }
 
+void Session::localRdpUpdateCursor()
+{
+#ifdef Q_OS_WIN32
+    if (m_CursorSync == nullptr || m_InputHandler == nullptr) {
+        return;
+    }
+    const bool connected = m_AgentClient != nullptr && m_AgentClient->status() == LocalRdp::AgentStatus::Connected;
+    if (m_AgentClient != nullptr) {
+        if (auto cursor = m_AgentClient->takeCursor()) {
+            m_CursorSync->setPcCursor(*cursor);
+        }
+    }
+    m_CursorSync->update(m_Preferences->localCursorShapes, m_InputHandler->queryState().absoluteMouse, connected,
+                         connected ? m_AgentClient->sunshineInstance() : QString());
+#endif
+}
+
 void Session::localRdpSendFiles(const QStringList& paths)
 {
 #ifdef Q_OS_WIN32
@@ -1973,6 +1995,26 @@ void Session::exec()
         });
     });
     m_StreamMenu = new LocalRdp::StreamMenuController(m_Window, m_MenuHost);
+
+    // AnyDesk-style cursor: the PC's cursor shape as the local cursor
+    m_CursorHost = new LocalRdp::SdlCursorHost(
+        [this]() { m_InputHandler->sendHostShortcut(0x4E /* N: Sunshine's cursor on/off */); },
+        [this](int visibility) { m_InputHandler->setCursorVisibilityOverride(visibility); });
+    m_CursorSync = new LocalRdp::CursorSync(m_CursorHost);
+    m_InputHandler->setMouseModeChangedHandler([this]() { localRdpUpdateCursor(); });
+    m_MenuHost->setCursorShapesChangedHandler([this](bool) { localRdpUpdateCursor(); });
+    m_AgentClient->setChangeHandler([this]() {
+        // Agent thread: hand over to the stream loop, at most one event queued
+        if (!m_AgentEventPending.exchange(true)) {
+            SDL_Event event = {};
+            event.type = SDL_USEREVENT;
+            event.user.code = SDL_CODE_LOCALRDP_AGENT_CHANGED;
+            if (SDL_PushEvent(&event) <= 0) {
+                m_AgentEventPending = false;
+            }
+        }
+    });
+    localRdpUpdateCursor();
 #endif
 
     QSvgRenderer svgIconRenderer(QString(":/res/moonlight.svg"));
@@ -2154,6 +2196,10 @@ void Session::exec()
                 delete text;
                 break;
             }
+            case SDL_CODE_LOCALRDP_AGENT_CHANGED:
+                m_AgentEventPending = false;
+                localRdpUpdateCursor();
+                break;
             case SDL_CODE_LOCALRDP_FILES_PICKED:
             {
                 QStringList* paths = (QStringList*)event.user.data1;
@@ -2465,9 +2511,16 @@ DispatchDeferredCleanup:
     StreamUtils::exitAsyncLoggingMode();
 
 #ifdef Q_OS_WIN32
-    // LocalRDP: remove the button/menu first so nothing is left on screen
+    // LocalRDP: remove the toolbar/menu first so nothing is left on screen
     delete m_StreamMenu;
     m_StreamMenu = nullptr;
+    if (m_AgentClient != nullptr) {
+        m_AgentClient->setChangeHandler({});
+    }
+    delete m_CursorSync;
+    m_CursorSync = nullptr;
+    delete m_CursorHost; // back to the normal cursor
+    m_CursorHost = nullptr;
     delete m_MenuHost;
     m_MenuHost = nullptr;
     if (m_AgentClient != nullptr) {

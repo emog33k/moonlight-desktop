@@ -3,6 +3,8 @@
 #include <QSemaphore>
 #include <QQuickWindow>
 
+#include <atomic>
+
 #include <Limelight.h>
 #include <opus_multistream.h>
 #include "settings/streamingpreferences.h"
@@ -89,7 +91,7 @@ public:
     }
 };
 
-namespace LocalRdp { class StreamMenuController; class SessionMenuHost; class AgentClient; }
+namespace LocalRdp { class StreamMenuController; class SessionMenuHost; class AgentClient; class CursorSync; class SdlCursorHost; }
 
 class Session : public QObject
 {
@@ -127,6 +129,8 @@ public:
 
     // LocalRDP: put files on the PC clipboard (menu, drag and drop) and say so
     void localRdpSendFiles(const QStringList& paths);
+    // AnyDesk-style cursor: applies the setting, mouse mode and agent state
+    void localRdpUpdateCursor();
 
     void setShouldExit(bool quitHostApp = false);
 
@@ -268,6 +272,9 @@ private:
     LocalRdp::StreamMenuController* m_StreamMenu; // Windows only; null elsewhere
     LocalRdp::SessionMenuHost* m_MenuHost;
     LocalRdp::AgentClient* m_AgentClient;
+    LocalRdp::SdlCursorHost* m_CursorHost;
+    LocalRdp::CursorSync* m_CursorSync;
+    std::atomic<bool> m_AgentEventPending;
     QStringList m_DroppedFiles; // collected between SDL_DROPBEGIN and SDL_DROPCOMPLETE
     int m_MouseEmulationRefCount;
     int m_FlushingWindowEventsRef;

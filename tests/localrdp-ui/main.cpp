@@ -165,6 +165,10 @@ int main(int argc, char* argv[])
 
     int failures = 0;
     {
+        TestSdlCursor t;
+        failures += runTest(&t);
+    }
+    {
         TestToolbar t;
         failures += runTest(&t);
     }

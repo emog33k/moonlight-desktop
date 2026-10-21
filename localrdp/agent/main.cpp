@@ -2,6 +2,7 @@
 // the paired Moonlight LocalRDP client (PC lock now; clipboard and files later).
 
 #include "agentserver.h"
+#include "cursorwatch_win32.h"
 #include "displays_win32.h"
 #include "localrdp-shared/trust.h"
 
@@ -18,6 +19,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <tlhelp32.h>
 
 using namespace LocalRdp;
 
@@ -38,6 +40,27 @@ static void writeLog(const QString& text)
     if (log.open(QIODevice::Append | QIODevice::Text)) {
         log.write((QDateTime::currentDateTime().toString(Qt::ISODate) + " " + text + "\n").toUtf8());
     }
+}
+
+// Process id(s) of the running Sunshine. A restarted Sunshine gets a new one
+// (and shows its cursor in the video again); the start time is not readable
+// for a normal user, the id is.
+static QString sunshineInstance()
+{
+    QStringList pids;
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return QString();
+    }
+    PROCESSENTRY32W entry = { sizeof(entry) };
+    for (BOOL ok = Process32FirstW(snapshot, &entry); ok; ok = Process32NextW(snapshot, &entry)) {
+        if (_wcsicmp(entry.szExeFile, L"sunshine.exe") == 0) {
+            pids << QString::number(entry.th32ProcessID);
+        }
+    }
+    CloseHandle(snapshot);
+    pids.sort();
+    return pids.join(',');
 }
 
 static QString programDataDir()
@@ -121,6 +144,9 @@ int main(int argc, char* argv[])
         return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
     };
     config.lockWorkstation = []() { LockWorkStation(); };
+    CursorWatcher cursorWatcher;
+    config.readCursor = [&cursorWatcher]() { return cursorWatcher.read(); };
+    config.sunshineInstance = &sunshineInstance;
     const QString confPath = QFileInfo(statePath).absolutePath() + "/sunshine.conf";
     config.listDisplays = [confPath]() {
         Proto::DisplayList list;

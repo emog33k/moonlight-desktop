@@ -9,6 +9,8 @@
 
 #include "SDL_compat.h"
 
+#include <functional>
+
 struct GamepadState {
     SDL_GameController* controller;
     SDL_JoystickID jsId;
@@ -164,6 +166,17 @@ public:
 
     LocalRdp::StreamState queryState() override;
 
+    // LocalRDP: presses and releases Ctrl+Alt+Shift+<vk> on the host (Sunshine's
+    // shortcuts: F1..F12 switch monitors, N toggles its cursor in the video).
+    void sendHostShortcut(short virtualKey);
+
+    // LocalRDP: the AnyDesk-style cursor decides whether the local cursor shows
+    // over the video (SDL_ENABLE/SDL_DISABLE); -1 = Moonlight's own setting.
+    void setCursorVisibilityOverride(int state);
+
+    // LocalRDP: called after switching between desktop and game mouse mode.
+    void setMouseModeChangedHandler(std::function<void()> handler) { m_OnMouseModeChanged = std::move(handler); }
+
     static
     QString getUnmappedGamepads();
 
@@ -201,8 +214,8 @@ private:
 
     void performSpecialKeyCombo(KeyCombo combo);
 
-    // Presses and releases Ctrl+Alt+Shift+<vk> on the host (for host-side shortcuts).
-    void sendHostShortcut(short virtualKey);
+    // Local cursor visibility over the video: the LocalRDP override, else Moonlight's setting
+    int cursorVisibility() const;
 
     static
     Uint32 longPressTimerCallback(Uint32 interval, void* param);
@@ -243,6 +256,8 @@ private:
     QStringList m_IgnoreDeviceGuids;
     StreamingPreferences::CaptureSysKeysMode m_CaptureSystemKeysMode;
     int m_MouseCursorCapturedVisibilityState;
+    int m_CursorVisibilityOverride = -1;
+    std::function<void()> m_OnMouseModeChanged;
 
     struct {
         KeyCombo keyCombo;
