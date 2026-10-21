@@ -60,3 +60,16 @@ private slots:
     void menuAboveBottomEdgeButton();
     void menuKeptInsideWorkArea();
 };
+
+class TestProtocol : public QObject
+{
+    Q_OBJECT
+private slots:
+    void roundTrip();
+    void emptyPayload();
+    void splitAcrossFeeds();
+    void twoFramesInOneFeed();
+    void oversizeFails();
+    void zeroLengthFails();
+    void badJsonRejected();
+};

@@ -17,6 +17,8 @@ SOURCES += \
     tst_streammenumodel.cpp \
     tst_buttonplacement.cpp \
     tst_menulayout.cpp \
+    tst_protocol.cpp \
+    ../../app/localrdp-shared/protocol.cpp \
     ../../app/streaming/localrdp/menulayout.cpp \
     ../../app/settings/streamingpreferences.cpp \
     ../../app/streaming/localrdp/streammenumodel.cpp \
