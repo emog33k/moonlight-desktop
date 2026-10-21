@@ -27,3 +27,21 @@ private slots:
     void everyActionAppearsOnce();
     void shortcutText();
 };
+
+class TestButtonPlacement : public QObject
+{
+    Q_OBJECT
+private slots:
+    void rightEdgeMiddle();
+    void leftEdgeTop();
+    void bottomEdgeEnd();
+    void topEdgeStart();
+    void fractionClamped();
+    void tinyWindow();
+    void snapRight();
+    void snapTop();
+    void snapRoundTrip();
+    void clickVsDrag();
+    void persistRoundTrip();
+    void corruptSettingsFallBack();
+};

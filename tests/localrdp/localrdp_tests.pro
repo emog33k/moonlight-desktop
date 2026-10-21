@@ -15,11 +15,14 @@ SOURCES += \
     wmstub.cpp \
     tst_streamingpreferences.cpp \
     tst_streammenumodel.cpp \
+    tst_buttonplacement.cpp \
     ../../app/settings/streamingpreferences.cpp \
-    ../../app/streaming/localrdp/streammenumodel.cpp
+    ../../app/streaming/localrdp/streammenumodel.cpp \
+    ../../app/streaming/localrdp/buttonplacement.cpp
 
 HEADERS += \
     tests.h \
     ../../app/settings/streamingpreferences.h \
     ../../app/streaming/localrdp/streamactions.h \
-    ../../app/streaming/localrdp/streammenumodel.h
+    ../../app/streaming/localrdp/streammenumodel.h \
+    ../../app/streaming/localrdp/buttonplacement.h

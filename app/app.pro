@@ -191,6 +191,7 @@ SOURCES += \
     streaming/input/keyboard.cpp \
     streaming/input/mouse.cpp \
     streaming/input/reltouch.cpp \
+    streaming/localrdp/buttonplacement.cpp \
     streaming/localrdp/streammenumodel.cpp \
     streaming/session.cpp \
     streaming/audio/audio.cpp \
@@ -229,6 +230,7 @@ HEADERS += \
     cli/startstream.h \
     settings/streamingpreferences.h \
     streaming/input/input.h \
+    streaming/localrdp/buttonplacement.h \
     streaming/localrdp/streamactions.h \
     streaming/localrdp/streammenumodel.h \
     streaming/session.h \
