@@ -96,3 +96,17 @@ private slots:
     void wrongServerCertRejected();
     void garbageFrameCloses();
 };
+
+class TestAgentServer : public QObject
+{
+    Q_OBJECT
+private slots:
+    void helloAck();
+    void unpairedClientDropped();
+    void lockNow();
+    void goodbyeLocksWhenEnabled();
+    void goodbyeNoLockWhenDisabled();
+    void dropLocksAfterGrace();
+    void reconnectWithinGraceCancelsLock();
+    void unpairWhileRunning();
+};

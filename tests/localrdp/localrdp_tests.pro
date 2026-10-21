@@ -10,7 +10,7 @@ CONFIG -= app_bundle
 TEMPLATE = app
 TARGET = localrdp_tests
 
-INCLUDEPATH += ../../app
+INCLUDEPATH += ../../app ../../localrdp/agent
 
 SOURCES += \
     main.cpp \
@@ -22,6 +22,8 @@ SOURCES += \
     tst_protocol.cpp \
     tst_trust.cpp \
     tst_peerconnection.cpp \
+    tst_agentserver.cpp \
+    ../../localrdp/agent/agentserver.cpp \
     ../../app/localrdp-shared/protocol.cpp \
     ../../app/localrdp-shared/trust.cpp \
     ../../app/localrdp-shared/peerconnection.cpp \
@@ -33,6 +35,7 @@ SOURCES += \
 HEADERS += \
     tests.h \
     ../../app/localrdp-shared/peerconnection.h \
+    ../../localrdp/agent/agentserver.h \
     ../../app/settings/streamingpreferences.h \
     ../../app/streaming/localrdp/streamactions.h \
     ../../app/streaming/localrdp/streammenumodel.h \
