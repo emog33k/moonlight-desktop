@@ -16,12 +16,22 @@ SOURCES += \
     agentserver.cpp \
     ../../app/localrdp-shared/protocol.cpp \
     ../../app/localrdp-shared/trust.cpp \
-    ../../app/localrdp-shared/peerconnection.cpp
+    ../../app/localrdp-shared/peerconnection.cpp \
+    ../../app/localrdp-shared/clip/clipboardbridge_win32.cpp \
+    ../../app/localrdp-shared/clip/clipexchange.cpp \
+    ../../app/localrdp-shared/clip/clipmessages.cpp \
+    ../../app/localrdp-shared/clip/clipreader_win32.cpp \
+    ../../app/localrdp-shared/clip/remotedataobject_win32.cpp
 
 HEADERS += \
+    ../../app/localrdp-shared/clip/clipboardbridge_win32.h \
+    ../../app/localrdp-shared/clip/clipexchange.h \
+    ../../app/localrdp-shared/clip/clipmessages.h \
+    ../../app/localrdp-shared/clip/clipreader_win32.h \
+    ../../app/localrdp-shared/clip/remotedataobject_win32.h \
     agentserver.h \
     ../../app/localrdp-shared/protocol.h \
     ../../app/localrdp-shared/trust.h \
     ../../app/localrdp-shared/peerconnection.h
 
-LIBS += crypt32.lib user32.lib
+LIBS += crypt32.lib user32.lib ole32.lib shell32.lib uuid.lib

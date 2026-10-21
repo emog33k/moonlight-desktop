@@ -34,7 +34,7 @@ void TestStreamMenuModel::headersInOrder()
             headers << item.label;
         }
     }
-    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Экран", "ПК" }));
+    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Экран", "ПК" }));
 }
 
 void TestStreamMenuModel::desktopModeChecked()
@@ -61,6 +61,7 @@ void TestStreamMenuModel::checksMirrorState()
         { &StreamState::fullscreen, StreamAction::ToggleFullscreen },
         { &StreamState::statsVisible, StreamAction::ToggleStats },
         { &StreamState::lockOnDisconnect, StreamAction::ToggleLockOnDisconnect },
+        { &StreamState::clipboardSync, StreamAction::ToggleClipboardSync },
     };
 
     for (const Case& c : cases) {
@@ -152,4 +153,19 @@ void TestStreamMenuModel::lockPcTexts()
     const QVector<MenuItem> items = buildStreamMenu(StreamState());
     QCOMPARE(findByAction(items, StreamAction::LockPc)->label, QString("Заблокировать ПК"));
     QCOMPARE(findByAction(items, StreamAction::ToggleLockOnDisconnect)->label, QString("Блокировать ПК при отключении"));
+}
+
+void TestStreamMenuModel::sendFilesNeedsAgentAndSync()
+{
+    StreamState state;
+    state.agentStatus = AgentStatus::Connected;
+    state.clipboardSync = true;
+    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::SendFilesToPc)->enabled, true);
+    state.clipboardSync = false;
+    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::SendFilesToPc)->enabled, false);
+    state.clipboardSync = true;
+    state.agentStatus = AgentStatus::NotFound;
+    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::SendFilesToPc)->enabled, false);
+    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::SendFilesToPc)->label, QString("Отправить файлы на ПК…"));
+    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::ToggleClipboardSync)->label, QString("Синхронизация буфера обмена"));
 }

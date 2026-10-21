@@ -8,6 +8,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QMutex>
 #include <QSslKey>
 #include <QStandardPaths>
 
@@ -22,6 +23,8 @@ static QString s_LogPath;
 
 static void writeLog(const QString& text)
 {
+    static QMutex mutex; // the clipboard thread logs too
+    QMutexLocker lock(&mutex);
     if (s_LogPath.isEmpty()) {
         return;
     }
@@ -103,6 +106,13 @@ int main(int argc, char* argv[])
         return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
     };
     config.lockWorkstation = []() { LockWorkStation(); };
+    config.onPeerOffer = [](const Clip::Offer& offer) {
+        writeLog(QString("laptop clipboard: %1%2%3%4 file(s)")
+                     .arg(offer.textBytes ? "text, " : "")
+                     .arg(offer.imageBytes ? "image, " : "")
+                     .arg(offer.pngBytes ? "png, " : "")
+                     .arg(offer.files.size()));
+    };
 
     AgentServer server(config);
     QObject::connect(&server, &AgentServer::message, &writeLog);

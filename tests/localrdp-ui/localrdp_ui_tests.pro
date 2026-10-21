@@ -19,6 +19,7 @@ SOURCES += \
     $$APP/streaming/localrdp/buttonplacement.cpp \
     $$APP/streaming/localrdp/menulayout.cpp \
     $$APP/streaming/localrdp/streammenu_win32.cpp \
+    $$APP/streaming/localrdp/toast_win32.cpp \
     $$APP/streaming/localrdp/streammenumodel.cpp \
     $$APP/streaming/localrdp/win32canvas.cpp \
     $$APP/streaming/localrdp/floatingbutton_win32.cpp \

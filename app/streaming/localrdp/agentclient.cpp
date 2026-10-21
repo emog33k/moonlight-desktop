@@ -1,4 +1,5 @@
 #include "agentclient.h"
+#include "localrdp-shared/clip/clipboardbridge_win32.h"
 #include "localrdp-shared/peerconnection.h"
 
 #include <QElapsedTimer>
@@ -14,9 +15,10 @@ using namespace Proto;
 class AgentClientWorker : public QObject
 {
 public:
-    AgentClientWorker(std::atomic<int>& status, QString host, QSslCertificate clientCert, QSslKey clientKey,
+    AgentClientWorker(std::atomic<int>& status, Clip::ClipboardBridge* clipboard, QString host, QSslCertificate clientCert, QSslKey clientKey,
                       QSslCertificate pinnedServer, quint16 port, int retryMs, int pingMs, int pongTimeoutMs)
         : m_Status(status),
+          m_Clipboard(clipboard),
           m_Host(std::move(host)),
           m_ClientCert(std::move(clientCert)),
           m_ClientKey(std::move(clientKey)),
@@ -46,6 +48,13 @@ public:
             m_RetryTimer->stop();
         }
         dropConnection();
+    }
+
+    void sendClip(MsgType type, const QByteArray& payload)
+    {
+        if (m_Conn && m_Ready) {
+            m_Conn->send(type, payload);
+        }
     }
 
     void lockNow()
@@ -130,11 +139,24 @@ private:
     void onFrame(const Frame& frame)
     {
         m_LastHeard.start();
-        if (frame.type == MsgType::HelloAck) {
+        switch (frame.type) {
+        case MsgType::HelloAck:
             m_Ready = true;
             setStatus(AgentStatus::Connected);
             sendLockOnDisconnect();
             m_PingTimer->start(m_PingMs);
+            m_Clipboard->connectionUp();
+            break;
+        case MsgType::ClipOffer:
+        case MsgType::ClipRequest:
+        case MsgType::ClipData:
+        case MsgType::ClipError:
+            if (m_Ready) {
+                m_Clipboard->onFrame(frame);
+            }
+            break;
+        default:
+            break;
         }
     }
 
@@ -160,6 +182,9 @@ private:
         // Closed right after TLS without a HelloAck: the agent refused our certificate
         // (laptop not paired with Sunshine, or unpaired since).
         setStatus(m_Ready ? AgentStatus::Connecting : AgentStatus::Rejected);
+        if (m_Ready) {
+            m_Clipboard->connectionDown();
+        }
         m_Ready = false;
         m_PingTimer->stop();
         if (m_Conn) {
@@ -183,6 +208,9 @@ private:
 
     void dropConnection()
     {
+        if (m_Ready) {
+            m_Clipboard->connectionDown();
+        }
         if (m_Conn) {
             m_Conn->disconnect(this);
             delete m_Conn;
@@ -198,6 +226,7 @@ private:
     }
 
     std::atomic<int>& m_Status;
+    Clip::ClipboardBridge* m_Clipboard;
     QString m_Host;
     QSslCertificate m_ClientCert;
     QSslKey m_ClientKey;
@@ -219,11 +248,21 @@ private:
 };
 
 AgentClient::AgentClient(const QString& host, const QSslCertificate& clientCert, const QSslKey& clientKey,
-                         const QSslCertificate& pinnedServer, quint16 port, int retryMs, int pingMs, int pongTimeoutMs)
+                         const QSslCertificate& pinnedServer, quint16 port, int retryMs, int pingMs, int pongTimeoutMs,
+                         bool useSystemClipboard)
     : m_Status((int)AgentStatus::Unknown)
 {
-    m_Worker = new AgentClientWorker(m_Status, host, clientCert, clientKey, pinnedServer, port, retryMs,
-                                     pingMs, pongTimeoutMs);
+    m_Clipboard.reset(new Clip::ClipboardBridge([this](MsgType type, QByteArray payload) {
+        std::lock_guard<std::mutex> lock(m_SendMutex);
+        if (m_SendTarget != nullptr) {
+            QMetaObject::invokeMethod(m_SendTarget, [w = m_SendTarget, type, payload]() { w->sendClip(type, payload); },
+                                      Qt::QueuedConnection);
+        }
+    }, useSystemClipboard));
+
+    m_Worker = new AgentClientWorker(m_Status, m_Clipboard.get(), host, clientCert, clientKey, pinnedServer, port,
+                                     retryMs, pingMs, pongTimeoutMs);
+    m_SendTarget = m_Worker;
     m_Worker->moveToThread(&m_Thread);
     QObject::connect(&m_Thread, &QThread::finished, m_Worker, &QObject::deleteLater);
     m_Thread.setObjectName("LocalRDP agent");
@@ -233,11 +272,16 @@ AgentClient::AgentClient(const QString& host, const QSslCertificate& clientCert,
 
 AgentClient::~AgentClient()
 {
+    {
+        std::lock_guard<std::mutex> lock(m_SendMutex);
+        m_SendTarget = nullptr;
+    }
     QMetaObject::invokeMethod(m_Worker, [w = m_Worker]() { w->stop(); }, Qt::BlockingQueuedConnection);
     m_Thread.quit();
     // No long blocking work runs on this thread, so this returns quickly; a
     // QThread destroyed while still running would abort the whole program.
     m_Thread.wait();
+    m_Clipboard.reset(); // after the worker: it no longer forwards frames
 }
 
 void AgentClient::lockNow()
@@ -254,6 +298,16 @@ void AgentClient::setLockOnDisconnect(bool enabled)
 void AgentClient::sayGoodbye()
 {
     QMetaObject::invokeMethod(m_Worker, [w = m_Worker]() { w->sayGoodbye(); }, Qt::BlockingQueuedConnection);
+}
+
+void AgentClient::setClipboardSync(bool enabled)
+{
+    m_Clipboard->setEnabled(enabled);
+}
+
+void AgentClient::offerFiles(const QStringList& paths)
+{
+    m_Clipboard->offerFiles(paths);
 }
 
 }

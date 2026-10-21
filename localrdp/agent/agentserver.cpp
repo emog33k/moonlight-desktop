@@ -37,6 +37,18 @@ AgentServer::AgentServer(AgentConfig config, QObject* parent)
         }
     });
 
+    // Clipboard sync with the laptop. Its threads hand frames back to ours.
+    m_Clipboard.reset(new Clip::ClipboardBridge([this](MsgType type, QByteArray payload) {
+        QMetaObject::invokeMethod(this, [this, type, payload]() {
+            if (m_Session && m_SessionReady) {
+                m_Session->send(type, payload);
+            }
+        }, Qt::QueuedConnection);
+    }, m_Config.useSystemClipboard));
+    if (m_Config.onPeerOffer) {
+        m_Clipboard->setPeerOfferObserver(m_Config.onPeerOffer);
+    }
+
     m_GraceTimer.setSingleShot(true);
     connect(&m_GraceTimer, &QTimer::timeout, this, [this]() { lockNow("no reconnect within grace period"); });
 
@@ -53,6 +65,7 @@ AgentServer::AgentServer(AgentConfig config, QObject* parent)
 
 AgentServer::~AgentServer()
 {
+    m_Clipboard.reset(); // stops its threads before we go away
     m_GraceTimer.stop();
     delete m_Session;
 }
@@ -91,6 +104,8 @@ void AgentServer::onEncrypted(QSslSocket* socket)
         // Replaced by the new connection, not a disconnect: no lock
         PeerConnection* old = m_Session;
         m_Session = nullptr;
+        m_SessionReady = false;
+        m_Clipboard->connectionDown();
         old->disconnect(this);
         old->deleteLater();
         emit message("previous session replaced");
@@ -119,6 +134,10 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
     case MsgType::Hello:
         // The laptop is really back: forget a pending lock from an earlier drop
         m_GraceTimer.stop();
+        if (conn == m_Session && !m_SessionReady) {
+            m_SessionReady = true;
+            m_Clipboard->connectionUp();
+        }
         if (auto o = parseJsonPayload(frame.payload)) {
             if (o->contains("lockOnDisconnect")) {
                 m_LockOnDisconnect = o->value("lockOnDisconnect").toBool();
@@ -147,6 +166,14 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
         }
         conn->close();
         break;
+    case MsgType::ClipOffer:
+    case MsgType::ClipRequest:
+    case MsgType::ClipData:
+    case MsgType::ClipError:
+        if (conn == m_Session && m_SessionReady) {
+            m_Clipboard->onFrame(frame);
+        }
+        break;
     default:
         // Unknown or not yet supported: ignore (newer client)
         break;
@@ -160,6 +187,8 @@ void AgentServer::onSessionClosed(PeerConnection* conn)
     }
     m_Session = nullptr;
     m_IdleTimer.stop();
+    m_SessionReady = false;
+    m_Clipboard->connectionDown();
     conn->deleteLater();
     emit message("session closed");
 

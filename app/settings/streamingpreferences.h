@@ -184,6 +184,8 @@ public:
     bool lockPointerToWindow;
     // LocalRDP: lock the PC when the stream ends (needs LocalRDP Agent on the PC)
     bool lockOnDisconnect;
+    // LocalRDP: clipboard/file sync with the PC (needs LocalRDP Agent)
+    bool clipboardSync;
     bool absoluteTouchMode;
     bool framePacing;
     bool connectionWarnings;

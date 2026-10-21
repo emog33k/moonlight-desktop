@@ -11,3 +11,5 @@
 #define SDL_CODE_STREAM_MENU_ACTION 107
 // The menu closed itself (click outside, capture lost).
 #define SDL_CODE_STREAM_MENU_DISMISSED 108
+// Files picked in "send files to PC"; data1 = new QStringList (receiver deletes).
+#define SDL_CODE_LOCALRDP_FILES_PICKED 109

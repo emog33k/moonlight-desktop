@@ -48,6 +48,9 @@ public:
     // "Send files to PC" and drag and drop: offer these as if they were copied.
     void offerFiles(const QStringList& paths);
 
+    // Called (on the clipboard thread) for every offer accepted from the peer: logs, tests.
+    void setPeerOfferObserver(std::function<void(const Offer&)> observer);
+
 private:
     void threadMain();
     void post(std::function<void()> work);
@@ -64,6 +67,7 @@ private:
     const bool m_UseSystemClipboard;
     std::atomic<bool> m_Enabled { true };
     std::atomic<bool> m_Connected { false };
+    std::function<void(const Offer&)> m_PeerOfferObserver; // set before use
 
     LocalClipSource m_Source;
     std::shared_ptr<RemoteFetcher> m_Fetcher;

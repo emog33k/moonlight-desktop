@@ -402,9 +402,16 @@ win32 {
     # LocalRDP: floating button and menu over the stream window (Win32 + GDI+),
     # and the connection to LocalRDP Agent on the PC
     SOURCES += \
+        localrdp-shared/clip/clipboardbridge_win32.cpp \
+        localrdp-shared/clip/clipexchange.cpp \
+        localrdp-shared/clip/clipmessages.cpp \
+        localrdp-shared/clip/clipreader_win32.cpp \
+        localrdp-shared/clip/remotedataobject_win32.cpp \
         localrdp-shared/peerconnection.cpp \
         localrdp-shared/protocol.cpp \
         localrdp-shared/trust.cpp \
+        streaming/localrdp/filepicker_win32.cpp \
+        streaming/localrdp/toast_win32.cpp \
         streaming/localrdp/agentclient.cpp \
         streaming/localrdp/sessionmenuhost.cpp \
         streaming/localrdp/floatingbutton_win32.cpp \
@@ -412,9 +419,16 @@ win32 {
         streaming/localrdp/streammenucontroller.cpp \
         streaming/localrdp/win32canvas.cpp
     HEADERS += \
+        localrdp-shared/clip/clipboardbridge_win32.h \
+        localrdp-shared/clip/clipexchange.h \
+        localrdp-shared/clip/clipmessages.h \
+        localrdp-shared/clip/clipreader_win32.h \
+        localrdp-shared/clip/remotedataobject_win32.h \
         localrdp-shared/peerconnection.h \
         localrdp-shared/protocol.h \
         localrdp-shared/trust.h \
+        streaming/localrdp/filepicker_win32.h \
+        streaming/localrdp/toast_win32.h \
         streaming/localrdp/agentclient.h \
         streaming/localrdp/sessionmenuhost.h \
         streaming/localrdp/streamevents.h \
@@ -422,7 +436,7 @@ win32 {
         streaming/localrdp/streammenu_win32.h \
         streaming/localrdp/streammenucontroller.h \
         streaming/localrdp/win32canvas.h
-    LIBS += gdiplus.lib crypt32.lib
+    LIBS += gdiplus.lib crypt32.lib ole32.lib shell32.lib uuid.lib
 }
 win32:!winrt {
     message(DXVA2 and D3D11VA renderers selected)

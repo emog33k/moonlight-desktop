@@ -20,6 +20,8 @@ enum class StreamAction {
     DisconnectAndExit,
     LockPc,
     ToggleLockOnDisconnect,
+    ToggleClipboardSync,
+    SendFilesToPc,
     Count // not an action: number of actions
 };
 
@@ -35,6 +37,7 @@ struct StreamState {
     bool statsVisible = false;
     AgentStatus agentStatus = AgentStatus::Unknown;
     bool lockOnDisconnect = false;
+    bool clipboardSync = true;
 };
 
 }

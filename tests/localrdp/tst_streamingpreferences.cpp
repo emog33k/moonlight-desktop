@@ -33,6 +33,7 @@ void TestStreamingPreferences::remoteDesktopDefaults()
     QCOMPARE(prefs->captureSysKeysMode, StreamingPreferences::CSK_ALWAYS);
     QCOMPARE(prefs->windowMode, StreamingPreferences::WM_WINDOWED);
     QCOMPARE(prefs->lockOnDisconnect, false);
+    QCOMPARE(prefs->clipboardSync, true);
 }
 
 void TestStreamingPreferences::newPreferencesRoundTrip()
@@ -62,6 +63,7 @@ void TestStreamingPreferences::saveInputPrefsOnlyWritesInputKeys()
     prefs->lockPointerToWindow = true;
     prefs->captureSysKeysMode = StreamingPreferences::CSK_OFF;
     prefs->lockOnDisconnect = true;
+    prefs->clipboardSync = false;
     prefs->width = 1234; // e.g. a one-off command line override; must not be persisted
     prefs->saveInputPrefs();
 
@@ -71,5 +73,6 @@ void TestStreamingPreferences::saveInputPrefsOnlyWritesInputKeys()
     QCOMPARE(prefs->lockPointerToWindow, true);
     QCOMPARE(prefs->captureSysKeysMode, StreamingPreferences::CSK_OFF);
     QCOMPARE(prefs->lockOnDisconnect, true);
+    QCOMPARE(prefs->clipboardSync, false);
     QCOMPARE(prefs->width, defaultWidth);
 }

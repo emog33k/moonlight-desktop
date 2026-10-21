@@ -4,6 +4,7 @@
 #include "streammenuhost.h"
 
 #include <QPoint>
+#include <QString>
 
 #include <functional>
 #include <memory>
@@ -17,6 +18,7 @@ namespace LocalRdp {
 class FloatingButtonWindow;
 class GdiplusSession;
 class StreamMenuWindow;
+class ToastWindow;
 
 // Owns the floating button and the menu for one stream window.
 // Lives on the session's SDL thread; create after the SDL window exists and
@@ -48,6 +50,9 @@ public:
     // overlay sits on top of the stream (keeps DWM independent flip possible).
     void setAutoHideButton(bool autoHide);
     void setCursorProviderForTests(std::function<QPoint()> provider);
+
+    // A short notice next to the button (e.g. after sending files to the PC).
+    void showToast(const QString& text, int durationMs = 4000);
     // Clicking the button brings the stream window to the front (on by default;
     // UI tests turn it off so they never take focus from the user).
     void setBringToFrontOnClick(bool enabled) { m_BringToFrontOnClick = enabled; }
@@ -64,6 +69,7 @@ private:
     std::unique_ptr<GdiplusSession> m_Gdiplus;
     std::unique_ptr<FloatingButtonWindow> m_Button;
     std::unique_ptr<StreamMenuWindow> m_Menu;
+    std::unique_ptr<ToastWindow> m_Toast;
     // We released the game-mode mouse capture to show the menu and owe it back.
     bool m_CaptureReleased = false;
     // We lifted "keep the cursor inside the window" while the menu is open.

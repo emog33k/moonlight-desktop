@@ -338,3 +338,15 @@ void TestStreamMenu::buttonAutoHidesInFullscreen()
     UiTest::pump(300);
     QVERIFY(IsWindowVisible(button));
 }
+
+void TestStreamMenu::toastShowsThenHides()
+{
+    m_Controller->showToast(QStringLiteral("Файлы в буфере ПК — нажмите Ctrl+V"), 400);
+    HWND toast = UiTest::findOwnedWindow(m_Owner, L"LocalRdpToast");
+    QVERIFY(toast != nullptr);
+    QVERIFY(IsWindowVisible(toast));
+    UiTest::pump(100);
+    UiTest::saveScreenshot(UiTest::windowScreenRect(toast).adjusted(-10, -10, 10, 10), "toast");
+    UiTest::pump(700);
+    QVERIFY(!IsWindowVisible(toast));
+}

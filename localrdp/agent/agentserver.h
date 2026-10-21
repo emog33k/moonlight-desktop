@@ -1,5 +1,6 @@
 #pragma once
 
+#include "localrdp-shared/clip/clipboardbridge_win32.h"
 #include "localrdp-shared/peerconnection.h"
 #include "localrdp-shared/protocol.h"
 
@@ -11,6 +12,7 @@
 #include <QTimer>
 
 #include <functional>
+#include <memory>
 
 class QSslServer;
 class QSslSocket;
@@ -26,6 +28,8 @@ struct AgentConfig {
     int idleTimeoutMs = 8000;   // no frame for this long = connection is dead (laptop pings every 2 s)
     quint16 port = Proto::kAgentPort;
     QHostAddress bindAddress = QHostAddress::Any;
+    bool useSystemClipboard = true;                  // false in tests
+    std::function<void(const Clip::Offer&)> onPeerOffer; // log/tests
 };
 
 // TLS server for the paired laptop. Only a client whose certificate is paired and
@@ -59,6 +63,8 @@ private:
     bool m_LockOnDisconnect = false;
     QTimer m_GraceTimer;
     QTimer m_IdleTimer;      // restarted by every frame of the session
+    bool m_SessionReady = false; // Hello received
+    std::unique_ptr<Clip::ClipboardBridge> m_Clipboard;
 };
 
 }

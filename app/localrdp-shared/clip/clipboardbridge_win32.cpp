@@ -140,9 +140,17 @@ void ClipboardBridge::announceLocalClipboard()
     sendSnapshot(s);
 }
 
+void ClipboardBridge::setPeerOfferObserver(std::function<void(const Offer&)> observer)
+{
+    post([this, observer]() { m_PeerOfferObserver = observer; });
+}
+
 void ClipboardBridge::acceptPeerOffer(const Offer& offer)
 {
     m_Fetcher->setOffer(offer);
+    if (m_PeerOfferObserver) {
+        m_PeerOfferObserver(offer);
+    }
     if (!m_UseSystemClipboard || offer.isEmpty()) {
         return;
     }

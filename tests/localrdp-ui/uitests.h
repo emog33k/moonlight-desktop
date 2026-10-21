@@ -100,6 +100,7 @@ private slots:
     void pointerLockSuspendedWhileOpen();
     void openingFromBackgroundActivatesStream();
     void buttonAutoHidesInFullscreen();
+    void toastShowsThenHides();
 
 private:
     HWND menuHwnd();

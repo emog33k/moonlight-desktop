@@ -17,6 +17,8 @@
 
 #ifdef Q_OS_WIN32
 #include "localrdp/agentclient.h"
+#include "localrdp/filepicker_win32.h"
+#include <SDL_syswm.h>
 #include "localrdp/sessionmenuhost.h"
 #include "localrdp/streammenucontroller.h"
 #include "backend/identitymanager.h"
@@ -1726,6 +1728,29 @@ bool Session::startConnectionAsync()
     return true;
 }
 
+void Session::localRdpSendFiles(const QStringList& paths)
+{
+#ifdef Q_OS_WIN32
+    if (paths.isEmpty() || m_StreamMenu == nullptr) {
+        return;
+    }
+    if (!m_Preferences->clipboardSync) {
+        m_StreamMenu->showToast(QStringLiteral("Синхронизация буфера выключена — включите её в меню"));
+    }
+    else if (m_AgentClient == nullptr || m_AgentClient->status() != LocalRdp::AgentStatus::Connected) {
+        m_StreamMenu->showToast(QStringLiteral("Агент на ПК не подключён — файлы не отправлены"));
+    }
+    else {
+        m_AgentClient->offerFiles(paths);
+        m_StreamMenu->showToast(paths.size() == 1
+                                    ? QStringLiteral("Файл в буфере ПК — нажмите Ctrl+V в нужной папке")
+                                    : QStringLiteral("Файлы (%1) в буфере ПК — нажмите Ctrl+V в нужной папке").arg(paths.size()));
+    }
+#else
+    Q_UNUSED(paths);
+#endif
+}
+
 void Session::flushWindowEvents()
 {
     // Pump events to ensure all pending OS events are posted
@@ -1856,6 +1881,13 @@ void Session::exec()
     std::string windowName = QString(m_Computer->name + " - Moonlight").toStdString();
 #endif
 
+#ifdef Q_OS_WIN32
+    // LocalRDP: accept files dragged onto the stream window (they go to the PC clipboard)
+    SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+    SDL_EventState(SDL_DROPBEGIN, SDL_ENABLE);
+    SDL_EventState(SDL_DROPCOMPLETE, SDL_ENABLE);
+#endif
+
     m_Window = SDL_CreateWindow(windowName.c_str(),
                                 x,
                                 y,
@@ -1898,8 +1930,24 @@ void Session::exec()
                                                   identity.localCertificate(), identity.privateKey(),
                                                   m_Computer->serverCert);
         m_AgentClient->setLockOnDisconnect(m_Preferences->lockOnDisconnect);
+        m_AgentClient->setClipboardSync(m_Preferences->clipboardSync);
     }
-    m_MenuHost = new LocalRdp::SessionMenuHost(m_InputHandler, m_Preferences, m_AgentClient);
+    m_MenuHost = new LocalRdp::SessionMenuHost(m_InputHandler, m_Preferences, m_AgentClient, [this]() {
+        SDL_SysWMinfo info;
+        SDL_VERSION(&info.version);
+        HWND owner = SDL_GetWindowWMInfo(m_Window, &info) ? info.info.win.window : nullptr;
+        LocalRdp::pickFilesAsync(owner, QStringLiteral("Отправить файлы на ПК"), [](QStringList paths) {
+            if (paths.isEmpty()) {
+                return;
+            }
+            // Back to the stream loop (we are on the dialog's thread here)
+            SDL_Event event = {};
+            event.type = SDL_USEREVENT;
+            event.user.code = SDL_CODE_LOCALRDP_FILES_PICKED;
+            event.user.data1 = new QStringList(paths);
+            SDL_PushEvent(&event);
+        });
+    });
     m_StreamMenu = new LocalRdp::StreamMenuController(m_Window, m_MenuHost);
 #endif
 
@@ -2070,6 +2118,13 @@ void Session::exec()
                 }
 #endif
                 break;
+            case SDL_CODE_LOCALRDP_FILES_PICKED:
+            {
+                QStringList* paths = (QStringList*)event.user.data1;
+                localRdpSendFiles(*paths);
+                delete paths;
+                break;
+            }
             default:
                 SDL_assert(false);
             }
@@ -2285,6 +2340,22 @@ void Session::exec()
             SDL_UnlockMutex(m_DecoderLock);
             break;
 
+#ifdef Q_OS_WIN32
+        // LocalRDP: files dragged onto the stream window go to the PC clipboard
+        case SDL_DROPBEGIN:
+            m_DroppedFiles.clear();
+            break;
+        case SDL_DROPFILE:
+            if (event.drop.file != nullptr) {
+                m_DroppedFiles << QString::fromUtf8(event.drop.file);
+                SDL_free(event.drop.file);
+            }
+            break;
+        case SDL_DROPCOMPLETE:
+            localRdpSendFiles(m_DroppedFiles);
+            m_DroppedFiles.clear();
+            break;
+#endif
         case SDL_KEYUP:
         case SDL_KEYDOWN:
             presence.runCallbacks();

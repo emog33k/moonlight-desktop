@@ -2,6 +2,8 @@
 
 #include "streammenuhost.h"
 
+#include <functional>
+
 class StreamingPreferences;
 
 namespace LocalRdp {
@@ -14,8 +16,10 @@ class AgentClient;
 class SessionMenuHost : public StreamMenuHost
 {
 public:
-    // agent may be null (no agent client for this stream).
-    SessionMenuHost(StreamMenuHost* input, StreamingPreferences* prefs, AgentClient* agent);
+    // agent may be null (no agent client for this stream). pickFilesToSend opens the
+    // "send files to PC" file dialog (provided by the session).
+    SessionMenuHost(StreamMenuHost* input, StreamingPreferences* prefs, AgentClient* agent,
+                    std::function<void()> pickFilesToSend = {});
 
     StreamState queryState() override;
     void performAction(StreamAction action) override;
@@ -27,6 +31,7 @@ private:
     StreamMenuHost* m_Input;
     StreamingPreferences* m_Prefs;
     AgentClient* m_Agent;
+    std::function<void()> m_PickFilesToSend;
 };
 
 }

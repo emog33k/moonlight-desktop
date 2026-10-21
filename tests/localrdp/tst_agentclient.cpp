@@ -3,6 +3,10 @@
 #include "streaming/localrdp/agentclient.h"
 
 #include <QElapsedTimer>
+#include <QFile>
+#include <QTemporaryDir>
+#include <atomic>
+#include <mutex>
 #include <QJsonObject>
 #include <QSslServer>
 #include <QTcpServer>
@@ -168,4 +172,63 @@ void TestAgentClient::liveSessionStaysConnected()
     QTest::qWait(1500);
     QCOMPARE(client.status(), AgentStatus::Connected);
     QCOMPARE(agent.locks, 0);
+}
+
+void TestAgentClient::filesOfferedFromLaptopReachThePc()
+{
+    std::mutex mutex;
+    QStringList offered;
+    AgentConfig config;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.useSystemClipboard = false;
+    config.onPeerOffer = [&](const Clip::Offer& o) {
+        std::lock_guard<std::mutex> lock(mutex);
+        for (const auto& f : o.files) offered << f.name;
+    };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+
+    QTemporaryDir dir;
+    QFile f(dir.filePath("Отчёт.docx"));
+    f.open(QIODevice::WriteOnly);
+    f.write("doc");
+    f.close();
+
+    AgentClient client("127.0.0.1", testCert("client1"), testKey("client1"), testCert("server"),
+                       server.port(), 200, 2000, 6000, /*useSystemClipboard*/ false);
+    QTRY_COMPARE_WITH_TIMEOUT(client.status(), AgentStatus::Connected, 5000);
+    client.offerFiles({ f.fileName() });
+    QTRY_VERIFY_WITH_TIMEOUT([&]() { std::lock_guard<std::mutex> lock(mutex); return offered.contains("Отчёт.docx"); }(), 5000);
+}
+
+void TestAgentClient::clipboardSyncOffSendsNothing()
+{
+    std::atomic<int> offers { 0 };
+    AgentConfig config;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.useSystemClipboard = false;
+    config.onPeerOffer = [&](const Clip::Offer&) { offers++; };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+
+    QTemporaryDir dir;
+    QFile f(dir.filePath("a.txt"));
+    f.open(QIODevice::WriteOnly);
+    f.close();
+
+    AgentClient client("127.0.0.1", testCert("client1"), testKey("client1"), testCert("server"),
+                       server.port(), 200, 2000, 6000, false);
+    client.setClipboardSync(false);
+    QTRY_COMPARE_WITH_TIMEOUT(client.status(), AgentStatus::Connected, 5000);
+    client.offerFiles({ f.fileName() });
+    QTest::qWait(500);
+    QCOMPARE(offers.load(), 0);
 }

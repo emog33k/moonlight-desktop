@@ -29,6 +29,7 @@ private slots:
     void agentStatusLine();
     void lockPcNeedsAgent();
     void lockPcTexts();
+    void sendFilesNeedsAgentAndSync();
 };
 
 class TestButtonPlacement : public QObject
@@ -133,6 +134,8 @@ private slots:
     void destructorReturnsFast();
     void deadServerDetected();
     void liveSessionStaysConnected();
+    void filesOfferedFromLaptopReachThePc();
+    void clipboardSyncOffSendsNothing();
 };
 
 class TestSessionMenuHost : public QObject
@@ -145,6 +148,8 @@ private slots:
     void inputActionsForwarded();
     void toggleLockOnDisconnectPersists();
     void lockPcWithoutAgentIsHarmless();
+    void toggleClipboardSyncPersists();
+    void sendFilesOpensPicker();
 };
 
 class TestClipMessages : public QObject

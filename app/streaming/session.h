@@ -125,6 +125,9 @@ public:
 
     void flushWindowEvents();
 
+    // LocalRDP: put files on the PC clipboard (menu, drag and drop) and say so
+    void localRdpSendFiles(const QStringList& paths);
+
     void setShouldExit(bool quitHostApp = false);
 
 signals:
@@ -265,6 +268,7 @@ private:
     LocalRdp::StreamMenuController* m_StreamMenu; // Windows only; null elsewhere
     LocalRdp::SessionMenuHost* m_MenuHost;
     LocalRdp::AgentClient* m_AgentClient;
+    QStringList m_DroppedFiles; // collected between SDL_DROPBEGIN and SDL_DROPCOMPLETE
     int m_MouseEmulationRefCount;
     int m_FlushingWindowEventsRef;
     QStringList m_LaunchWarnings;

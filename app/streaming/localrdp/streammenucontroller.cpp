@@ -2,6 +2,7 @@
 #include "floatingbutton_win32.h"
 #include "streammenu_win32.h"
 #include "streammenumodel.h"
+#include "toast_win32.h"
 #include "win32canvas.h"
 
 #include <SDL_syswm.h>
@@ -53,12 +54,14 @@ StreamMenuController::StreamMenuController(SDL_Window* window, StreamMenuHost* h
     m_Menu.reset(new StreamMenuWindow(m_Hwnd,
                                       [](StreamAction action) { postUserEvent(SDL_CODE_STREAM_MENU_ACTION, (int)action); },
                                       []() { postUserEvent(SDL_CODE_STREAM_MENU_DISMISSED); }));
+    m_Toast.reset(new ToastWindow(m_Hwnd));
 }
 
 StreamMenuController::~StreamMenuController()
 {
     // Windows must go before GDI+ shuts down. The stream is ending, so the
     // capture we may have released is not given back.
+    m_Toast.reset();
     m_Menu.reset();
     m_Button.reset();
     m_Gdiplus.reset();
@@ -202,6 +205,19 @@ bool StreamMenuController::handleKeyEvent(const SDL_KeyboardEvent& event)
         break;
     }
     return true;
+}
+
+void StreamMenuController::showToast(const QString& text, int durationMs)
+{
+    if (!m_Toast || !m_Button) {
+        return;
+    }
+    RECT rc;
+    GetClientRect(m_Hwnd, &rc);
+    POINT tl = { 0, 0 };
+    ClientToScreen(m_Hwnd, &tl);
+    const QRect area(tl.x, tl.y, rc.right - rc.left, rc.bottom - rc.top);
+    m_Toast->show(text, m_Button->screenRect(), area, durationMs);
 }
 
 void StreamMenuController::setAutoHideButton(bool autoHide)

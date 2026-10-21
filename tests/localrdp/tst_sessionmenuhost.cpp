@@ -85,3 +85,27 @@ void TestSessionMenuHost::lockPcWithoutAgentIsHarmless()
     host.performAction(StreamAction::LockPc);
     QVERIFY(input.performed.isEmpty());
 }
+
+void TestSessionMenuHost::toggleClipboardSyncPersists()
+{
+    FakeInput input;
+    StreamingPreferences* prefs = StreamingPreferences::get();
+    SessionMenuHost host(&input, prefs, nullptr);
+    QCOMPARE(host.queryState().clipboardSync, true);
+    host.performAction(StreamAction::ToggleClipboardSync);
+    QCOMPARE(host.queryState().clipboardSync, false);
+    prefs->clipboardSync = true;
+    prefs->reload();
+    QCOMPARE(prefs->clipboardSync, false);
+    QVERIFY(input.performed.isEmpty());
+}
+
+void TestSessionMenuHost::sendFilesOpensPicker()
+{
+    FakeInput input;
+    int picks = 0;
+    SessionMenuHost host(&input, StreamingPreferences::get(), nullptr, [&]() { picks++; });
+    host.performAction(StreamAction::SendFilesToPc);
+    QCOMPARE(picks, 1);
+    QVERIFY(input.performed.isEmpty());
+}
