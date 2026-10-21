@@ -77,6 +77,10 @@ int main(int argc, char* argv[])
         TestClipMessages t;
         failures += runTest(&t);
     }
+    {
+        TestClipExchange t;
+        failures += runTest(&t);
+    }
     std::printf("LOCALRDP TESTS: %s\n", failures == 0 ? "ALL PASSED" : "FAILED");
     return failures == 0 ? 0 : 1;
 }

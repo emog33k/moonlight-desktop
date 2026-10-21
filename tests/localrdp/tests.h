@@ -156,3 +156,18 @@ private slots:
     void chunkTooShortRejected();
     void errorRoundTrip();
 };
+
+class TestClipExchange : public QObject
+{
+    Q_OBJECT
+private slots:
+    void textRoundTrip();
+    void fileRangeFromDisk();
+    void staleSeqErrors();
+    void newOfferCancelsWait();
+    void disconnectCancelsWait();
+    void timeoutReturnsEmpty();
+    void directoryIndexRejected();
+    void indexOutOfRangeRejected();
+    void clearedSourceErrors();
+};
