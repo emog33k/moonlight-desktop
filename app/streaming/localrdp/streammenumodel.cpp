@@ -33,7 +33,7 @@ QVector<MenuItem> buildStreamMenu(const StreamState& s)
         separator(),
         header(QStringLiteral("Клавиатура")),
         item(K::Check, QStringLiteral("Передавать Alt+Tab, Win на ПК"), QStringLiteral("Ctrl+Alt+Shift+K"), A::ToggleSystemKeyCapture, s.systemKeyCapture),
-        item(K::Command, QStringLiteral("Напечатать текст из буфера ноутбука"), QStringLiteral("Ctrl+Alt+Shift+V"), A::PasteClipboardText),
+        item(K::Command, QStringLiteral("Напечатать текст с ноутбука"), QStringLiteral("Ctrl+Alt+Shift+V"), A::PasteClipboardText),
         separator(),
         header(QStringLiteral("Экран")),
         item(K::Check, QStringLiteral("Полный экран"), QStringLiteral("Ctrl+Alt+Shift+X"), A::ToggleFullscreen, s.fullscreen),

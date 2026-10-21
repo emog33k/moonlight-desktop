@@ -2271,6 +2271,12 @@ void Session::exec()
         case SDL_KEYUP:
         case SDL_KEYDOWN:
             presence.runCallbacks();
+#ifdef Q_OS_WIN32
+            // LocalRDP: while the in-stream menu is open it gets the keyboard
+            if (m_StreamMenu != nullptr && m_StreamMenu->handleKeyEvent(event.key)) {
+                break;
+            }
+#endif
             m_InputHandler->handleKeyEvent(&event.key);
             break;
         case SDL_MOUSEBUTTONDOWN:

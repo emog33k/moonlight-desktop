@@ -150,6 +150,10 @@ int main(int argc, char* argv[])
         TestFloatingButton t;
         failures += runTest(&t);
     }
+    {
+        TestStreamMenu t;
+        failures += runTest(&t);
+    }
 
     SDL_Quit();
     std::printf("LOCALRDP UI TESTS: %s\n", failures == 0 ? "ALL PASSED" : "FAILED");

@@ -62,3 +62,40 @@ private:
     QTemporaryDir* m_SettingsDir = nullptr;
     SDL_Window* m_Window = nullptr;
 };
+
+namespace LocalRdp { class StreamMenuController; }
+
+class TestStreamMenu : public QObject
+{
+    Q_OBJECT
+private slots:
+    void init();
+    void cleanup();
+    void opensNextToButton();
+    void toggleTwiceCloses();
+    void buttonClickOpensMenu();
+    void clickItemPerformsActionAndCloses();
+    void clickHeaderKeepsOpen();
+    void clickOutsideClosesWithoutAction();
+    void escapeClosesAndIsConsumed();
+    void arrowsAndEnterActivate();
+    void menuHotkeyPassesThroughWhenOpen();
+    void otherKeysConsumedWhileOpen();
+    void gameModeReleasesAndRestoresCapture();
+    void disconnectDoesNotRecapture();
+    void desktopModeKeepsCapture();
+    void minimizeClosesMenu();
+    void destroyWhileOpenRemovesEverything();
+
+private:
+    HWND menuHwnd();
+    bool menuShown();
+    QPoint itemCenterOnScreen(LocalRdp::StreamAction action);
+    void click(QPoint screenPos);
+
+    QTemporaryDir* m_SettingsDir = nullptr;
+    SDL_Window* m_Window = nullptr;
+    HWND m_Owner = nullptr;
+    FakeHost* m_Host = nullptr;
+    LocalRdp::StreamMenuController* m_Controller = nullptr;
+};

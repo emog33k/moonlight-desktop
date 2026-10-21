@@ -32,6 +32,8 @@ public:
 
     // Where the button is on screen (used to place the menu next to it).
     QRect screenRect() const;
+    // The window edge the button sits on.
+    Edge edge() const { return m_Placement.edge; }
 
 private:
     static LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);

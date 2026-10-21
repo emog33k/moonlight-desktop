@@ -45,3 +45,18 @@ private slots:
     void persistRoundTrip();
     void corruptSettingsFallBack();
 };
+
+class TestMenuLayout : public QObject
+{
+    Q_OBJECT
+private slots:
+    void rowsStackAtScale1();
+    void scalesWithDpi();
+    void hitTestOnlyActionable();
+    void keyboardNavigationSkipsNonActionable();
+    void menuLeftOfRightEdgeButton();
+    void menuRightOfLeftEdgeButton();
+    void menuBelowTopEdgeButton();
+    void menuAboveBottomEdgeButton();
+    void menuKeptInsideWorkArea();
+};

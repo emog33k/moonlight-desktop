@@ -192,6 +192,7 @@ SOURCES += \
     streaming/input/mouse.cpp \
     streaming/input/reltouch.cpp \
     streaming/localrdp/buttonplacement.cpp \
+    streaming/localrdp/menulayout.cpp \
     streaming/localrdp/streammenumodel.cpp \
     streaming/session.cpp \
     streaming/audio/audio.cpp \
@@ -231,6 +232,8 @@ HEADERS += \
     settings/streamingpreferences.h \
     streaming/input/input.h \
     streaming/localrdp/buttonplacement.h \
+    streaming/localrdp/menulayout.h \
+    streaming/localrdp/streammenuhost.h \
     streaming/localrdp/streamactions.h \
     streaming/localrdp/streammenumodel.h \
     streaming/session.h \
@@ -399,10 +402,12 @@ win32 {
     # LocalRDP: floating button and menu over the stream window (Win32 + GDI+)
     SOURCES += \
         streaming/localrdp/floatingbutton_win32.cpp \
+        streaming/localrdp/streammenu_win32.cpp \
         streaming/localrdp/streammenucontroller.cpp \
         streaming/localrdp/win32canvas.cpp
     HEADERS += \
         streaming/localrdp/floatingbutton_win32.h \
+        streaming/localrdp/streammenu_win32.h \
         streaming/localrdp/streammenucontroller.h \
         streaming/localrdp/win32canvas.h
     LIBS += gdiplus.lib
