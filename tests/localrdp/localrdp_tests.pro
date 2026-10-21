@@ -21,8 +21,10 @@ SOURCES += \
     tst_menulayout.cpp \
     tst_protocol.cpp \
     tst_trust.cpp \
+    tst_peerconnection.cpp \
     ../../app/localrdp-shared/protocol.cpp \
     ../../app/localrdp-shared/trust.cpp \
+    ../../app/localrdp-shared/peerconnection.cpp \
     ../../app/streaming/localrdp/menulayout.cpp \
     ../../app/settings/streamingpreferences.cpp \
     ../../app/streaming/localrdp/streammenumodel.cpp \
@@ -30,6 +32,7 @@ SOURCES += \
 
 HEADERS += \
     tests.h \
+    ../../app/localrdp-shared/peerconnection.h \
     ../../app/settings/streamingpreferences.h \
     ../../app/streaming/localrdp/streamactions.h \
     ../../app/streaming/localrdp/streammenumodel.h \

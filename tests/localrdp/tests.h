@@ -87,3 +87,12 @@ private slots:
     void dpapiRoundTrip();
     void dpapiTamperedFails();
 };
+
+class TestPeerConnection : public QObject
+{
+    Q_OBJECT
+private slots:
+    void pinnedServerConnects();
+    void wrongServerCertRejected();
+    void garbageFrameCloses();
+};
