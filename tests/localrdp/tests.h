@@ -90,6 +90,7 @@ private slots:
     void missingRootRejected();
     void dpapiRoundTrip();
     void dpapiTamperedFails();
+    void utf8BomTolerated();
 };
 
 class TestPeerConnection : public QObject

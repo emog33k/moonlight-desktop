@@ -87,6 +87,15 @@ int main(int argc, char* argv[])
     }
 
     AgentConfig config;
+    // --bind / --port: for local testing (e.g. --bind 127.0.0.1)
+    const int bindArg = args.indexOf("--bind");
+    if (bindArg >= 0 && bindArg + 1 < args.size()) {
+        config.bindAddress = QHostAddress(args.at(bindArg + 1));
+    }
+    const int portArg = args.indexOf("--port");
+    if (portArg >= 0 && portArg + 1 < args.size()) {
+        config.port = (quint16)args.at(portArg + 1).toUInt();
+    }
     config.serverCert = cert;
     config.serverKey = key;
     config.readSunshineState = [statePath]() {

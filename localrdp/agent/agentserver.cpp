@@ -67,7 +67,11 @@ void AgentServer::onEncrypted(QSslSocket* socket)
     const QSslCertificate peer = socket->peerCertificate();
     const QByteArray state = m_Config.readSunshineState ? m_Config.readSunshineState() : QByteArray();
     if (!isPairedClient(state, peer)) {
-        emit message("unpaired client rejected from " + socket->peerAddress().toString());
+        emit message("unpaired client rejected from " + socket->peerAddress().toString() + " (" +
+                     (peer.isNull() ? QString("no certificate")
+                                    : "certificate " + peer.subjectDisplayName() + ", sha256 " +
+                                      QString::fromLatin1(peer.digest(QCryptographicHash::Sha256).toHex().left(16))) +
+                     (state.isEmpty() ? QString(", Sunshine state file unreadable") : QString()) + ")");
         socket->abort();
         socket->deleteLater();
         return;

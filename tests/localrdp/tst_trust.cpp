@@ -85,3 +85,9 @@ void TestTrust::dpapiTamperedFails()
     QVERIFY(!unprotectForCurrentUser(*blob).has_value());
     QVERIFY(!unprotectForCurrentUser("garbage").has_value());
 }
+
+void TestTrust::utf8BomTolerated()
+{
+    const QByteArray state = QByteArray("\xEF\xBB\xBF") + sunshineState({ { testCert("client1"), "true" } });
+    QVERIFY(isPairedClient(state, testCert("client1")));
+}
