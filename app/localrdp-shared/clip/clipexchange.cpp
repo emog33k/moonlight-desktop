@@ -120,6 +120,7 @@ void RemoteFetcher::setOffer(const Offer& offer)
         std::lock_guard<std::mutex> lock(m_Mutex);
         m_HasOffer = true;
         m_Seq = offer.seq;
+        m_Offer = offer;
         m_Generation++;
         for (auto& p : m_Pending) {
             p.second.failed = true;
@@ -141,34 +142,51 @@ void RemoteFetcher::disconnected()
     m_Cv.notify_all();
 }
 
-std::optional<QByteArray> RemoteFetcher::fetchAll(What what, int timeoutMs)
+std::optional<QByteArray> RemoteFetcher::fetchAll(quint64 seq, What what, int timeoutMs)
 {
+    std::optional<quint64> size;
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        if (!m_HasOffer || seq != m_Seq) {
+            return std::nullopt;
+        }
+        size = what == What::Text ? m_Offer.textBytes : what == What::Image ? m_Offer.imageBytes
+             : what == What::Png ? m_Offer.pngBytes : std::nullopt;
+    }
+    if (!size) {
+        return std::nullopt;
+    }
     Request r;
+    r.seq = seq;
     r.what = what;
-    return run(r, timeoutMs);
+    return run(r, (qsizetype)*size, (qsizetype)*size, timeoutMs);
 }
 
-std::optional<QByteArray> RemoteFetcher::fetchRange(int fileIndex, quint64 offset, quint32 length, int timeoutMs)
+std::optional<QByteArray> RemoteFetcher::fetchRange(quint64 seq, int fileIndex, quint64 offset, quint32 length,
+                                                    int timeoutMs)
 {
     Request r;
+    r.seq = seq;
     r.what = What::File;
     r.index = fileIndex;
     r.offset = offset;
     r.length = qMin<quint32>(length, kClipChunk);
-    return run(r, timeoutMs);
+    return run(r, (qsizetype)r.length, -1, timeoutMs);
 }
 
-std::optional<QByteArray> RemoteFetcher::run(Request request, int timeoutMs)
+std::optional<QByteArray> RemoteFetcher::run(Request request, qsizetype limit, qsizetype exact, int timeoutMs)
 {
     std::unique_lock<std::mutex> lock(m_Mutex);
-    if (!m_HasOffer) {
+    // Only for the offer the caller belongs to: an old paste never gets new data
+    if (!m_HasOffer || request.seq != m_Seq) {
         return std::nullopt;
     }
     request.id = m_NextId++;
-    request.seq = m_Seq;
     const quint64 generation = m_Generation;
     Pending& pending = m_Pending[request.id];
     pending.generation = generation;
+    pending.limit = limit;
+    pending.exact = exact;
 
     lock.unlock();
     m_Send(MsgType::ClipRequest, encodeRequest(request));
@@ -181,7 +199,9 @@ std::optional<QByteArray> RemoteFetcher::run(Request request, int timeoutMs)
             break;
         }
         if (p.done) {
-            result = std::move(p.data);
+            if (p.exact < 0 || p.data.size() == p.exact) {
+                result = std::move(p.data);
+            }
             break;
         }
         // The timeout is time without progress, so long transfers are fine
@@ -210,7 +230,12 @@ void RemoteFetcher::onData(const QByteArray& chunkPayload)
         if (it == m_Pending.end() || it->second.failed) {
             return; // cancelled or unknown: ignore
         }
-        it->second.data.append(chunk->data);
+        if (it->second.data.size() + chunk->data.size() > it->second.limit) {
+            it->second.failed = true; // more than offered: refuse
+        }
+        else {
+            it->second.data.append(chunk->data);
+        }
         if (chunk->last) {
             it->second.done = true;
         }

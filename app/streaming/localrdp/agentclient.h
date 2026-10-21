@@ -11,6 +11,7 @@
 #include <QStringList>
 
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <mutex>
 
@@ -44,7 +45,8 @@ public:
     // Clipboard and file sync with the PC (on by default).
     void setClipboardSync(bool enabled);
     // Offer files to the PC as if copied on the laptop (paste there with Ctrl+V).
-    void offerFiles(const QStringList& paths);
+    // done(ok, reason) runs on a background thread with the outcome.
+    void offerFiles(const QStringList& paths, std::function<void(bool, QString)> done = {});
 
 private:
     std::atomic<int> m_Status;

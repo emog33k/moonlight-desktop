@@ -9,6 +9,7 @@
 #include <psapi.h>
 #include <shlobj.h>
 
+#include <atomic>
 #include <memory>
 #include <set>
 
@@ -21,10 +22,12 @@ namespace {
 struct Peer {
     LocalClipSource source;
     std::shared_ptr<RemoteFetcher> fetcher;
+    std::atomic<int> requests { 0 };
     Peer()
     {
         fetcher = std::make_shared<RemoteFetcher>([this](Proto::MsgType type, QByteArray payload) {
             if (type != Proto::MsgType::ClipRequest) return;
+            requests++;
             source.serve(*decodeRequest(payload), [this](Proto::MsgType t, QByteArray reply) {
                 if (t == Proto::MsgType::ClipData) fetcher->onData(reply);
                 else fetcher->onError(reply);
@@ -238,5 +241,59 @@ void TestRemoteDataObject::fetchFailureGivesError()
     hr = S_OK;
     readStream(data, 0, &hr);
     QVERIFY(FAILED(hr));
+    data->Release();
+}
+
+void TestRemoteDataObject::oldStreamFailsAfterNewOffer()
+{
+    QTemporaryDir dir;
+    QFile a(dir.filePath("a.bin"));
+    a.open(QIODevice::WriteOnly);
+    a.write(QByteArray(3 * kClipChunk, 'A'));
+    a.close();
+    QFile b(dir.filePath("b.bin"));
+    b.open(QIODevice::WriteOnly);
+    b.write(QByteArray(3 * kClipChunk, 'B'));
+    b.close();
+
+    Offer first;
+    first.seq = 1000;
+    first.files = { { "x.bin", (quint64)3 * kClipChunk, false } };
+    Peer peer;
+    peer.offer(first, {}, {}, { a.fileName() });
+    IDataObject* data = createRemoteDataObject(first, peer.fetcher);
+
+    FORMATETC f = { (CLIPFORMAT)RegisterClipboardFormatW(CFSTR_FILECONTENTS), nullptr, DVASPECT_CONTENT, 0, TYMED_ISTREAM };
+    STGMEDIUM m = {};
+    QCOMPARE(data->GetData(&f, &m), S_OK);
+    std::vector<char> buf(kClipChunk);
+    ULONG got = 0;
+    QCOMPARE(m.pstm->Read(buf.data(), (ULONG)buf.size(), &got), S_OK);
+    QCOMPARE(buf[0], 'A');
+
+    // The source copies something else; same name, same size
+    Offer second = first;
+    second.seq = 2000;
+    peer.offer(second, {}, {}, { b.fileName() });
+
+    const HRESULT hr = m.pstm->Read(buf.data(), (ULONG)buf.size(), &got);
+    QVERIFY(FAILED(hr));
+    ReleaseStgMedium(&m);
+    data->Release();
+}
+
+void TestRemoteDataObject::textCachedAcrossGetData()
+{
+    const QByteArray utf16((const char*)u"abc", 6);
+    Offer o;
+    o.seq = 11;
+    o.textBytes = utf16.size();
+    Peer peer;
+    peer.offer(o, utf16, {}, {});
+    IDataObject* data = createRemoteDataObject(o, peer.fetcher);
+    hglobalBytes(data, CF_UNICODETEXT);
+    hglobalBytes(data, CF_UNICODETEXT);
+    hglobalBytes(data, CF_UNICODETEXT);
+    QCOMPARE(peer.requests.load(), 1);
     data->Release();
 }

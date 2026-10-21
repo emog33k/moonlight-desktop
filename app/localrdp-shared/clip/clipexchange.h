@@ -48,9 +48,11 @@ public:
     void disconnected();
 
     // Whole text/image/png. timeoutMs is the longest wait without progress.
-    std::optional<QByteArray> fetchAll(What what, int timeoutMs = 15000);
+    // seq: the offer the caller belongs to; a newer offer makes the call fail.
+    std::optional<QByteArray> fetchAll(quint64 seq, What what, int timeoutMs = 15000);
     // Part of file `fileIndex` (at most kClipChunk bytes; shorter at end of file).
-    std::optional<QByteArray> fetchRange(int fileIndex, quint64 offset, quint32 length, int timeoutMs = 15000);
+    std::optional<QByteArray> fetchRange(quint64 seq, int fileIndex, quint64 offset, quint32 length,
+                                         int timeoutMs = 15000);
 
     void onData(const QByteArray& chunkPayload);
     void onError(const QByteArray& errorPayload);
@@ -61,14 +63,17 @@ private:
         QByteArray data;
         bool done = false;
         bool failed = false;
+        qsizetype limit = 0;   // never more than the offer said
+        qsizetype exact = -1;  // whole-item fetches must match the offered size
     };
-    std::optional<QByteArray> run(Request request, int timeoutMs);
+    std::optional<QByteArray> run(Request request, qsizetype limit, qsizetype exact, int timeoutMs);
 
     SendFn m_Send;
     std::mutex m_Mutex;
     std::condition_variable m_Cv;
     bool m_HasOffer = false;
     quint64 m_Seq = 0;
+    Offer m_Offer;
     quint64 m_Generation = 0;
     quint32 m_NextId = 1;
     std::map<quint32, Pending> m_Pending;

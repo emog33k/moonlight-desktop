@@ -102,7 +102,7 @@ void TestClipExchange::textRoundTrip()
     pipe.source.set(offer, text, {}, {}, {});
     pipe.fetcher.setOffer(offer);
 
-    const auto got = pipe.fetcher.fetchAll(What::Text);
+    const auto got = pipe.fetcher.fetchAll(5, What::Text);
     QVERIFY(got.has_value());
     QCOMPARE(got->size(), text.size());
     QVERIFY(*got == text);
@@ -126,12 +126,12 @@ void TestClipExchange::fileRangeFromDisk()
     pipe.source.set(offer, {}, {}, {}, { QString(), path });
     pipe.fetcher.setOffer(offer);
 
-    const auto part = pipe.fetcher.fetchRange(1, 2 * 1024 * 1024 + 3, 100000);
+    const auto part = pipe.fetcher.fetchRange(9, 1, 2 * 1024 * 1024 + 3, 100000);
     QVERIFY(part.has_value());
     QCOMPARE(part->size(), 100000);
     QVERIFY(*part == content.mid(2 * 1024 * 1024 + 3, 100000));
 
-    const auto tail = pipe.fetcher.fetchRange(1, content.size() - 10, kClipChunk);
+    const auto tail = pipe.fetcher.fetchRange(9, 1, content.size() - 10, kClipChunk);
     QCOMPARE(tail->size(), 10); // short read at end of file
 }
 
@@ -140,7 +140,7 @@ void TestClipExchange::staleSeqErrors()
     Pipe pipe;
     pipe.source.set(textOffer(2, "new"), "new", {}, {}, {});
     pipe.fetcher.setOffer(textOffer(1, "old")); // fetcher still thinks seq 1
-    QVERIFY(!pipe.fetcher.fetchAll(What::Text, 3000).has_value());
+    QVERIFY(!pipe.fetcher.fetchAll(1, What::Text, 3000).has_value());
 }
 
 void TestClipExchange::newOfferCancelsWait()
@@ -154,7 +154,7 @@ void TestClipExchange::newOfferCancelsWait()
     });
     QElapsedTimer t;
     t.start();
-    QVERIFY(!pipe.fetcher.fetchAll(What::Text, 10000).has_value());
+    QVERIFY(!pipe.fetcher.fetchAll(1, What::Text, 10000).has_value());
     QVERIFY2(t.elapsed() < 1000, qPrintable(QString::number(t.elapsed())));
     later.join();
 }
@@ -170,7 +170,7 @@ void TestClipExchange::disconnectCancelsWait()
     });
     QElapsedTimer t;
     t.start();
-    QVERIFY(!pipe.fetcher.fetchAll(What::Text, 10000).has_value());
+    QVERIFY(!pipe.fetcher.fetchAll(1, What::Text, 10000).has_value());
     QVERIFY(t.elapsed() < 1000);
     later.join();
 }
@@ -182,7 +182,7 @@ void TestClipExchange::timeoutReturnsEmpty()
     pipe.fetcher.setOffer(textOffer(1, "x"));
     QElapsedTimer t;
     t.start();
-    QVERIFY(!pipe.fetcher.fetchAll(What::Text, 200).has_value());
+    QVERIFY(!pipe.fetcher.fetchAll(1, What::Text, 200).has_value());
     QVERIFY(t.elapsed() >= 150 && t.elapsed() < 2000);
 }
 
@@ -194,7 +194,7 @@ void TestClipExchange::directoryIndexRejected()
     Pipe pipe;
     pipe.source.set(offer, {}, {}, {}, { QString() });
     pipe.fetcher.setOffer(offer);
-    QVERIFY(!pipe.fetcher.fetchRange(0, 0, 10, 3000).has_value());
+    QVERIFY(!pipe.fetcher.fetchRange(3, 0, 0, 10, 3000).has_value());
 }
 
 void TestClipExchange::indexOutOfRangeRejected()
@@ -210,9 +210,9 @@ void TestClipExchange::indexOutOfRangeRejected()
     Pipe pipe;
     pipe.source.set(offer, {}, {}, {}, { f.fileName() });
     pipe.fetcher.setOffer(offer);
-    QVERIFY(!pipe.fetcher.fetchRange(1, 0, 10, 3000).has_value());
-    QVERIFY(!pipe.fetcher.fetchRange(-1, 0, 10, 3000).has_value());
-    QCOMPARE(*pipe.fetcher.fetchRange(0, 0, 10, 3000), QByteArray("hello"));
+    QVERIFY(!pipe.fetcher.fetchRange(3, 1, 0, 10, 3000).has_value());
+    QVERIFY(!pipe.fetcher.fetchRange(3, -1, 0, 10, 3000).has_value());
+    QCOMPARE(*pipe.fetcher.fetchRange(3, 0, 0, 10, 3000), QByteArray("hello"));
 }
 
 void TestClipExchange::clearedSourceErrors()
@@ -221,5 +221,44 @@ void TestClipExchange::clearedSourceErrors()
     pipe.source.set(textOffer(4, "abc"), "abc", {}, {}, {});
     pipe.fetcher.setOffer(textOffer(4, "abc"));
     pipe.source.clear();
-    QVERIFY(!pipe.fetcher.fetchAll(What::Text, 3000).has_value());
+    QVERIFY(!pipe.fetcher.fetchAll(4, What::Text, 3000).has_value());
+}
+
+void TestClipExchange::oldRequestAfterNewOfferFails()
+{
+    // A paste of the old clipboard must never receive the new clipboard's data
+    QTemporaryDir dir;
+    QFile a(dir.filePath("a.bin"));
+    a.open(QIODevice::WriteOnly);
+    a.write("OLD-CONTENT");
+    a.close();
+    QFile b(dir.filePath("b.bin"));
+    b.open(QIODevice::WriteOnly);
+    b.write("NEW-CONTENT");
+    b.close();
+
+    Offer first;
+    first.seq = 100;
+    first.files = { { "x.bin", 11, false } };
+    Offer second = first;
+    second.seq = 200;
+
+    Pipe pipe;
+    pipe.source.set(first, {}, {}, {}, { a.fileName() });
+    pipe.fetcher.setOffer(first);
+    QCOMPARE(*pipe.fetcher.fetchRange(100, 0, 0, 3, 3000), QByteArray("OLD"));
+
+    pipe.source.set(second, {}, {}, {}, { b.fileName() });
+    pipe.fetcher.setOffer(second);
+    QVERIFY(!pipe.fetcher.fetchRange(100, 0, 3, 3, 3000).has_value()); // old paste continues: fails
+    QCOMPARE(*pipe.fetcher.fetchRange(200, 0, 0, 3, 3000), QByteArray("NEW"));
+}
+
+void TestClipExchange::moreDataThanOfferedFails()
+{
+    Pipe pipe;
+    Offer claimed = textOffer(7, "abc");     // says 3 bytes
+    pipe.source.set(claimed, QByteArray(5000, 'z'), {}, {}, {}); // sends 5000
+    pipe.fetcher.setOffer(claimed);
+    QVERIFY(!pipe.fetcher.fetchAll(7, What::Text, 3000).has_value());
 }

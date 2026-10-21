@@ -1741,10 +1741,20 @@ void Session::localRdpSendFiles(const QStringList& paths)
         m_StreamMenu->showToast(QStringLiteral("Агент на ПК не подключён — файлы не отправлены"));
     }
     else {
-        m_AgentClient->offerFiles(paths);
-        m_StreamMenu->showToast(paths.size() == 1
-                                    ? QStringLiteral("Файл в буфере ПК — нажмите Ctrl+V в нужной папке")
-                                    : QStringLiteral("Файлы (%1) в буфере ПК — нажмите Ctrl+V в нужной папке").arg(paths.size()));
+        const int count = paths.size();
+        m_AgentClient->offerFiles(paths, [count](bool ok, QString reason) {
+            // On the clipboard thread: hand the notice to the stream loop
+            SDL_Event event = {};
+            event.type = SDL_USEREVENT;
+            event.user.code = SDL_CODE_LOCALRDP_TOAST;
+            event.user.data1 = new QString(
+                !ok ? QStringLiteral("Файлы не отправлены: %1").arg(reason)
+                    : count == 1 ? QStringLiteral("Файл в буфере ПК — нажмите Ctrl+V в нужной папке")
+                                 : QStringLiteral("Файлы (%1) в буфере ПК — нажмите Ctrl+V в нужной папке").arg(count));
+            if (SDL_PushEvent(&event) <= 0) {
+                delete (QString*)event.user.data1;
+            }
+        });
     }
 #else
     Q_UNUSED(paths);
@@ -1945,7 +1955,9 @@ void Session::exec()
             event.type = SDL_USEREVENT;
             event.user.code = SDL_CODE_LOCALRDP_FILES_PICKED;
             event.user.data1 = new QStringList(paths);
-            SDL_PushEvent(&event);
+            if (SDL_PushEvent(&event) <= 0) {
+                delete (QStringList*)event.user.data1;
+            }
         });
     });
     m_StreamMenu = new LocalRdp::StreamMenuController(m_Window, m_MenuHost);
@@ -2118,6 +2130,17 @@ void Session::exec()
                 }
 #endif
                 break;
+            case SDL_CODE_LOCALRDP_TOAST:
+            {
+                QString* text = (QString*)event.user.data1;
+#ifdef Q_OS_WIN32
+                if (m_StreamMenu != nullptr) {
+                    m_StreamMenu->showToast(*text);
+                }
+#endif
+                delete text;
+                break;
+            }
             case SDL_CODE_LOCALRDP_FILES_PICKED:
             {
                 QStringList* paths = (QStringList*)event.user.data1;

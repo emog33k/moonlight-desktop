@@ -305,9 +305,9 @@ void AgentClient::setClipboardSync(bool enabled)
     m_Clipboard->setEnabled(enabled);
 }
 
-void AgentClient::offerFiles(const QStringList& paths)
+void AgentClient::offerFiles(const QStringList& paths, std::function<void(bool, QString)> done)
 {
-    m_Clipboard->offerFiles(paths);
+    m_Clipboard->offerFiles(paths, std::move(done));
 }
 
 }

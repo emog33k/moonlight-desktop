@@ -21,6 +21,8 @@ struct LocalSnapshot {
     QByteArray png;        // "PNG" format
     QStringList filePaths; // absolute path per offer.files entry; empty for folders
     bool excluded = false; // marked private (password managers): must not be offered
+    bool busy = false;     // another program held the clipboard: read again shortly
+    QString filesProblem;  // why given/copied files could not be offered (empty if fine)
 };
 
 // Reads a data object (OleGetClipboard() in production). Folders are walked

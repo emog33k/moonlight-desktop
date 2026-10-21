@@ -34,8 +34,8 @@ HGLOBAL globalFrom(const void* data, SIZE_T size)
 class RemoteFileStream : public IStream
 {
 public:
-    RemoteFileStream(std::shared_ptr<RemoteFetcher> fetcher, int index, quint64 size, QString name)
-        : m_Fetcher(std::move(fetcher)), m_Index(index), m_Size(size), m_Name(std::move(name)) {}
+    RemoteFileStream(std::shared_ptr<RemoteFetcher> fetcher, quint64 seq, int index, quint64 size, QString name)
+        : m_Fetcher(std::move(fetcher)), m_Seq(seq), m_Index(index), m_Size(size), m_Name(std::move(name)) {}
 
     STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override
     {
@@ -61,7 +61,7 @@ public:
         while (done < cb && m_Pos < m_Size) {
             if (m_BufferPos >= m_Buffer.size()) {
                 const quint32 want = (quint32)qMin<quint64>(kClipChunk, m_Size - m_Pos);
-                auto data = m_Fetcher->fetchRange(m_Index, m_Pos, want);
+                auto data = m_Fetcher->fetchRange(m_Seq, m_Index, m_Pos, want);
                 if (!data || data->isEmpty()) {
                     if (pcbRead) *pcbRead = done;
                     return STG_E_READFAULT;
@@ -125,6 +125,7 @@ public:
 
 private:
     std::shared_ptr<RemoteFetcher> m_Fetcher;
+    quint64 m_Seq;
     int m_Index;
     quint64 m_Size;
     QString m_Name;
@@ -198,7 +199,7 @@ public:
             }
             const FileEntry& e = m_Offer.files[f->lindex];
             m->tymed = TYMED_ISTREAM;
-            m->pstm = new RemoteFileStream(m_Fetcher, (int)f->lindex, e.size, e.name);
+            m->pstm = new RemoteFileStream(m_Fetcher, m_Offer.seq, (int)f->lindex, e.size, e.name);
             return S_OK;
         }
         if (!(f->tymed & TYMED_HGLOBAL)) {
@@ -207,16 +208,17 @@ public:
 
         HGLOBAL h = nullptr;
         if (cf == CF_UNICODETEXT && m_Offer.textBytes) {
-            auto data = m_Fetcher->fetchAll(What::Text);
+            const QByteArray* data = cached(m_Text, What::Text);
             if (!data) return E_FAIL;
-            data->append(2, 0); // terminator
-            h = globalFrom(data->constData(), data->size());
+            QByteArray terminated = *data;
+            terminated.append(2, 0);
+            h = globalFrom(terminated.constData(), terminated.size());
         } else if (cf == CF_DIB && m_Offer.imageBytes) {
-            auto data = m_Fetcher->fetchAll(What::Image);
+            const QByteArray* data = cached(m_Dib, What::Image);
             if (!data) return E_FAIL;
             h = globalFrom(data->constData(), data->size());
         } else if (cf == m_CfPng && m_Offer.pngBytes) {
-            auto data = m_Fetcher->fetchAll(What::Png);
+            const QByteArray* data = cached(m_Png, What::Png);
             if (!data) return E_FAIL;
             h = globalFrom(data->constData(), data->size());
         } else if (cf == m_CfFileDescriptor && !m_Offer.files.isEmpty()) {
@@ -276,6 +278,15 @@ public:
     STDMETHODIMP EndOperation(HRESULT, IBindCtx*, DWORD) override { m_InOperation = FALSE; return S_OK; }
 
 private:
+    // Fetched once per offer; later pastes and format probes reuse it
+    const QByteArray* cached(std::optional<QByteArray>& slot, What what)
+    {
+        if (!slot) {
+            slot = m_Fetcher->fetchAll(m_Offer.seq, what);
+        }
+        return slot ? &*slot : nullptr;
+    }
+
     HGLOBAL fileGroupDescriptor()
     {
         const int n = m_Offer.files.size();
@@ -301,6 +312,7 @@ private:
     Offer m_Offer;
     std::shared_ptr<RemoteFetcher> m_Fetcher;
     std::vector<FORMATETC> m_Formats;
+    std::optional<QByteArray> m_Text, m_Dib, m_Png;
     CLIPFORMAT m_CfFileDescriptor, m_CfFileContents, m_CfDropEffect, m_CfPng, m_CfHistory, m_CfCloud;
     std::atomic<ULONG> m_Refs { 1 };
     BOOL m_Async = TRUE;

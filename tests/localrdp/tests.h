@@ -180,6 +180,8 @@ private slots:
     void directoryIndexRejected();
     void indexOutOfRangeRejected();
     void clearedSourceErrors();
+    void oldRequestAfterNewOfferFails();
+    void moreDataThanOfferedFails();
 };
 
 class TestClipReader : public QObject
@@ -207,6 +209,8 @@ private slots:
     void largeStreamBoundedMemory();
     void historyExclusionFormats();
     void fetchFailureGivesError();
+    void oldStreamFailsAfterNewOffer();
+    void textCachedAcrossGetData();
 };
 
 class TestClipboardBridge : public QObject
@@ -219,4 +223,7 @@ private slots:
     void notConnectedSendsNothing();
     void badFramesIgnored();
     void systemClipboardRoundTrip();
+    void fileRequestsServedOffCallerThread();
+    void offerFilesReportsOutcome();
+    void seqStartsRandom();
 };

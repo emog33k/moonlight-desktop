@@ -20,11 +20,15 @@ static bool hasFormat(IDataObject* data, CLIPFORMAT format)
     return data->QueryGetData(&fmt) == S_OK;
 }
 
-static std::optional<QByteArray> getBytes(IDataObject* data, CLIPFORMAT format)
+static std::optional<QByteArray> getBytes(IDataObject* data, CLIPFORMAT format, bool* busy = nullptr)
 {
     FORMATETC fmt = { format, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
     STGMEDIUM medium = {};
-    if (data->GetData(&fmt, &medium) != S_OK) {
+    const HRESULT hr = data->GetData(&fmt, &medium);
+    if (hr != S_OK) {
+        if (busy && hr == CLIPBRD_E_CANT_OPEN) {
+            *busy = true;
+        }
         return std::nullopt;
     }
     std::optional<QByteArray> result;
@@ -84,6 +88,7 @@ struct Walk {
     QStringList paths;
     quint64 total = 0;
     bool tooMuch = false;
+    QString problem;
 
     void add(const QString& name, const QString& path, quint64 size, bool isDir)
     {
@@ -91,7 +96,16 @@ struct Walk {
             return;
         }
         total += size;
-        if (entries.size() >= kMaxFiles || total > kMaxTotalFileBytes || !isSafeRelativeName(name)) {
+        if (entries.size() >= kMaxFiles) {
+            problem = QStringLiteral("больше %1 файлов").arg(kMaxFiles);
+        }
+        else if (total > kMaxTotalFileBytes) {
+            problem = QStringLiteral("больше %1 ГБ").arg(kMaxTotalFileBytes >> 30);
+        }
+        else if (!isSafeRelativeName(name)) {
+            problem = QStringLiteral("слишком длинный путь или недопустимое имя: %1").arg(name.left(60));
+        }
+        if (!problem.isEmpty()) {
             tooMuch = true;
             return;
         }
@@ -135,7 +149,7 @@ LocalSnapshot readDataObject(IDataObject* data, quint64 seq)
         return s;
     }
 
-    if (auto text = getBytes(data, CF_UNICODETEXT)) {
+    if (auto text = getBytes(data, CF_UNICODETEXT, &s.busy)) {
         // Up to the first terminator (HGLOBALs are often larger than the text)
         const char16_t* chars = (const char16_t*)text->constData();
         qsizetype n = 0;
@@ -149,24 +163,25 @@ LocalSnapshot readDataObject(IDataObject* data, quint64 seq)
         }
     }
 
-    if (auto dib = getBytes(data, CF_DIB)) {
+    if (auto dib = getBytes(data, CF_DIB, &s.busy)) {
         if (!dib->isEmpty() && (quint64)dib->size() <= kMaxImageBytes) {
             s.dib = *dib;
             s.offer.imageBytes = (quint64)dib->size();
         }
     }
 
-    if (auto png = getBytes(data, registered(L"PNG"))) {
+    if (auto png = getBytes(data, registered(L"PNG"), &s.busy)) {
         if (!png->isEmpty() && (quint64)png->size() <= kMaxImageBytes) {
             s.png = *png;
             s.offer.pngBytes = (quint64)png->size();
         }
     }
 
-    if (auto hdrop = getBytes(data, CF_HDROP)) {
+    if (auto hdrop = getBytes(data, CF_HDROP, &s.busy)) {
         const LocalSnapshot files = snapshotFromPaths(droppedPaths(*hdrop), seq);
         s.offer.files = files.offer.files;
         s.filePaths = files.filePaths;
+        s.filesProblem = files.filesProblem;
     }
     return s;
 }
@@ -176,9 +191,11 @@ LocalSnapshot snapshotFromPaths(const QStringList& paths, quint64 seq)
     LocalSnapshot s;
     s.offer.seq = seq;
     Walk walk;
+    int missing = 0;
     for (const QString& path : paths) {
         const QFileInfo info(path);
         if (!info.exists()) {
+            missing++;
             continue;
         }
         if (info.isDir()) {
@@ -192,6 +209,12 @@ LocalSnapshot snapshotFromPaths(const QStringList& paths, quint64 seq)
     if (!walk.tooMuch) {
         s.offer.files = walk.entries;
         s.filePaths = walk.paths;
+    }
+    else {
+        s.filesProblem = walk.problem;
+    }
+    if (s.offer.files.isEmpty() && s.filesProblem.isEmpty() && !paths.isEmpty()) {
+        s.filesProblem = missing > 0 ? QStringLiteral("файлы не найдены") : QStringLiteral("нечего отправлять");
     }
     return s;
 }
