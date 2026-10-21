@@ -176,3 +176,16 @@ private slots:
     void indexOutOfRangeRejected();
     void clearedSourceErrors();
 };
+
+class TestClipReader : public QObject
+{
+    Q_OBJECT
+private slots:
+    void textOffer();
+    void dibOffer();
+    void pngOffer();
+    void filesAndNestedFolders();
+    void excludedFormatMarksExcluded();
+    void historyZeroMarksExcluded();
+    void tooManyFilesGivesNoFiles();
+};
