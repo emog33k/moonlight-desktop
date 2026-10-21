@@ -24,16 +24,13 @@
 
 void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
 {
+    using LocalRdp::StreamAction;
+
     switch (combo) {
     case KeyComboQuit:
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                     "Detected quit key combo");
-
-        // Push a quit event to the main loop
-        SDL_Event event;
-        event.type = SDL_QUIT;
-        event.quit.timestamp = SDL_GetTicks();
-        SDL_PushEvent(&event);
+        performAction(StreamAction::Disconnect);
         break;
 
     case KeyComboUngrabInput:
@@ -51,43 +48,135 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
     case KeyComboToggleFullScreen:
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                     "Detected full-screen toggle combo");
-        Session::s_ActiveSession->toggleFullscreen();
-
-        // Force raise all keys just be safe across this full-screen/windowed
-        // transition just in case key events get lost.
-        raiseAllKeys();
+        performAction(StreamAction::ToggleFullscreen);
         break;
 
     case KeyComboToggleStatsOverlay:
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                     "Detected stats toggle combo");
-
-        // Toggle the stats overlay
-        Session::get()->getOverlayManager().setOverlayState(Overlay::OverlayDebug,
-                                                            !Session::get()->getOverlayManager().isOverlayEnabled(Overlay::OverlayDebug));
+        performAction(StreamAction::ToggleStats);
         break;
 
     case KeyComboToggleMouseMode:
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                     "Detected mouse mode toggle combo");
-
-        // Uncapture input
-        setCaptureActive(false);
-
-        // Toggle mouse mode
-        m_AbsoluteMouseMode = !m_AbsoluteMouseMode;
-
-        // Recapture input
-        setCaptureActive(true);
+        performAction(m_AbsoluteMouseMode ? StreamAction::SetGameMouseMode
+                                          : StreamAction::SetDesktopMouseMode);
         break;
 
     case KeyComboToggleCursorHide:
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                     "Detected show mouse combo");
+        performAction(StreamAction::ToggleLocalCursor);
+        break;
 
+    case KeyComboToggleMinimize:
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected minimize combo");
+        performAction(StreamAction::Minimize);
+        break;
+
+    case KeyComboPasteText:
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected type clipboard text combo");
+        performAction(StreamAction::PasteClipboardText);
+        break;
+
+    case KeyComboTogglePointerRegionLock:
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected pointer region lock toggle combo");
+        performAction(StreamAction::TogglePointerLock);
+        break;
+
+    case KeyComboQuitAndExit:
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected quitAndExit key combo");
+        performAction(StreamAction::DisconnectAndExit);
+        break;
+
+    case KeyComboToggleKeyboardGrab:
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected keyboard grab toggle combo");
+        performAction(StreamAction::ToggleSystemKeyCapture);
+        break;
+
+    case KeyComboToggleStreamMenu:
+    {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected stream menu combo");
+        raiseAllKeys();
+
+        // The session's event loop owns the menu
+        SDL_Event menuEvent = {};
+        menuEvent.type = SDL_USEREVENT;
+        menuEvent.user.code = SDL_CODE_TOGGLE_STREAM_MENU;
+        SDL_PushEvent(&menuEvent);
+        break;
+    }
+
+    default:
+        Q_UNREACHABLE();
+    }
+}
+
+void SdlInputHandler::performAction(LocalRdp::StreamAction action)
+{
+    using LocalRdp::StreamAction;
+
+    // Never leave keys (e.g. the Ctrl+Alt+Shift of a shortcut) pressed on the host
+    raiseAllKeys();
+
+    switch (action) {
+    case StreamAction::Disconnect:
+    case StreamAction::DisconnectAndExit:
+    {
+        if (action == StreamAction::DisconnectAndExit) {
+            // Indicate that we want to exit afterwards
+            Session::get()->setShouldExit(true);
+        }
+
+        // Push a quit event to the main loop
+        SDL_Event event = {};
+        event.type = SDL_QUIT;
+        event.quit.timestamp = SDL_GetTicks();
+        SDL_PushEvent(&event);
+        break;
+    }
+
+    case StreamAction::ToggleFullscreen:
+        Session::s_ActiveSession->toggleFullscreen();
+        break;
+
+    case StreamAction::ToggleStats:
+        Session::get()->getOverlayManager().setOverlayState(Overlay::OverlayDebug,
+                                                            !Session::get()->getOverlayManager().isOverlayEnabled(Overlay::OverlayDebug));
+        break;
+
+    case StreamAction::SetDesktopMouseMode:
+    case StreamAction::SetGameMouseMode:
+    {
+        bool wantAbsolute = action == StreamAction::SetDesktopMouseMode;
+        if (wantAbsolute == m_AbsoluteMouseMode) {
+            break;
+        }
+
+        // Uncapture input, switch mode, recapture
+        setCaptureActive(false);
+        m_AbsoluteMouseMode = wantAbsolute;
+        setCaptureActive(true);
+
+        m_Prefs->absoluteMouseMode = m_AbsoluteMouseMode;
+        m_Prefs->saveInputPrefs();
+        break;
+    }
+
+    case StreamAction::ToggleLocalCursor:
         if (!SDL_GetRelativeMouseMode()) {
             m_MouseCursorCapturedVisibilityState = !m_MouseCursorCapturedVisibilityState;
             SDL_ShowCursor(m_MouseCursorCapturedVisibilityState);
+
+            m_Prefs->showLocalCursor = m_MouseCursorCapturedVisibilityState == SDL_ENABLE;
+            m_Prefs->saveInputPrefs();
         }
         else {
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
@@ -95,21 +184,41 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
         }
         break;
 
-    case KeyComboToggleMinimize:
-        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                    "Detected minimize combo");
-        SDL_MinimizeWindow(m_Window);
+    case StreamAction::TogglePointerLock:
+        m_PointerRegionLockActive = !m_PointerRegionLockActive;
+
+        // Remember that the user changed this manually
+        m_PointerRegionLockToggledByUser = true;
+
+        // Apply the new region lock
+        updatePointerRegionLock();
+
+        m_Prefs->lockPointerToWindow = m_PointerRegionLockActive;
+        m_Prefs->saveInputPrefs();
         break;
 
-    case KeyComboPasteText:
+    case StreamAction::ToggleHostCursor:
+        // Sunshine shows/hides the cursor in the video on Ctrl+Alt+Shift+N
+        sendHostShortcut(0x4E /* VK for the N key */);
+        break;
+
+    case StreamAction::ToggleSystemKeyCapture:
+        // Toggle the system key capture mode
+        if (isSystemKeyCaptureActive()) {
+            m_CaptureSystemKeysMode = StreamingPreferences::CSK_OFF;
+        }
+        else {
+            m_CaptureSystemKeysMode = StreamingPreferences::CSK_ALWAYS;
+        }
+
+        updateKeyboardGrabState();
+
+        m_Prefs->captureSysKeysMode = m_CaptureSystemKeysMode;
+        m_Prefs->saveInputPrefs();
+        break;
+
+    case StreamAction::PasteClipboardText:
     {
-        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                    "Detected type clipboard text combo");
-
-        // Force raise all keys to ensure that none of them interfere
-        // with the text we're going to type.
-        raiseAllKeys();
-
         char* text;
         if (SDL_HasClipboardText() && (text = SDL_GetClipboardText()) != nullptr) {
             // Sending both CR and LF will lead to two newlines in the destination for
@@ -135,51 +244,45 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
         break;
     }
 
-    case KeyComboTogglePointerRegionLock:
-        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                    "Detected pointer region lock toggle combo");
-        m_PointerRegionLockActive = !m_PointerRegionLockActive;
-
-        // Remember that the user changed this manually, so we don't mess with it anymore
-        // during windowed <-> full-screen transitions.
-        m_PointerRegionLockToggledByUser = true;
-
-        // Apply the new region lock
-        updatePointerRegionLock();
+    case StreamAction::Minimize:
+        SDL_MinimizeWindow(m_Window);
         break;
 
-    case KeyComboQuitAndExit:
-        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                    "Detected quitAndExit key combo");
-
-        // Indicate that we want to exit afterwards
-        Session::get()->setShouldExit(true);
-
-        // Push a quit event to the main loop
-        SDL_Event quitExitEvent;
-        quitExitEvent.type = SDL_QUIT;
-        quitExitEvent.quit.timestamp = SDL_GetTicks();
-        SDL_PushEvent(&quitExitEvent);
-        break;
-
-    case KeyComboToggleKeyboardGrab:
-        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                    "Detected keyboard grab toggle combo");
-
-        // Toggle the system key capture mode
-        if (isSystemKeyCaptureActive()) {
-            m_CaptureSystemKeysMode = StreamingPreferences::CSK_OFF;
-        }
-        else {
-            m_CaptureSystemKeysMode = StreamingPreferences::CSK_ALWAYS;
-        }
-
-        updateKeyboardGrabState();
-        break;
-
-    default:
+    case StreamAction::Count:
         Q_UNREACHABLE();
     }
+}
+
+LocalRdp::StreamState SdlInputHandler::queryState()
+{
+    LocalRdp::StreamState state;
+    state.absoluteMouse = m_AbsoluteMouseMode;
+    state.localCursorVisible = m_MouseCursorCapturedVisibilityState == SDL_ENABLE;
+    state.pointerLocked = m_PointerRegionLockActive;
+    state.systemKeyCapture = m_CaptureSystemKeysMode != StreamingPreferences::CSK_OFF;
+    state.fullscreen = m_Window != nullptr && (SDL_GetWindowFlags(m_Window) & SDL_WINDOW_FULLSCREEN) != 0;
+    state.statsVisible = Session::get()->getOverlayManager().isOverlayEnabled(Overlay::OverlayDebug);
+    return state;
+}
+
+void SdlInputHandler::sendHostShortcut(short virtualKey)
+{
+    // Same key codes and modifier bookkeeping as a real Ctrl+Alt+Shift+<key> press
+    // coming through handleKeyEvent(): left modifiers, high bit set on every code.
+    const short lctrl = (short)(0xA2 | 0x8000);
+    const short lalt = (short)(0xA4 | 0x8000);
+    const short lshift = (short)(0xA0 | 0x8000);
+    const short key = (short)(virtualKey | 0x8000);
+    const char all = MODIFIER_CTRL | MODIFIER_ALT | MODIFIER_SHIFT;
+
+    LiSendKeyboardEvent2(lctrl, KEY_ACTION_DOWN, MODIFIER_CTRL, 0);
+    LiSendKeyboardEvent2(lalt, KEY_ACTION_DOWN, MODIFIER_CTRL | MODIFIER_ALT, 0);
+    LiSendKeyboardEvent2(lshift, KEY_ACTION_DOWN, all, 0);
+    LiSendKeyboardEvent2(key, KEY_ACTION_DOWN, all, 0);
+    LiSendKeyboardEvent2(key, KEY_ACTION_UP, all, 0);
+    LiSendKeyboardEvent2(lshift, KEY_ACTION_UP, MODIFIER_CTRL | MODIFIER_ALT, 0);
+    LiSendKeyboardEvent2(lalt, KEY_ACTION_UP, MODIFIER_CTRL, 0);
+    LiSendKeyboardEvent2(lctrl, KEY_ACTION_UP, 0, 0);
 }
 
 void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)

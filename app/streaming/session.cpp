@@ -2036,6 +2036,9 @@ void Session::exec()
                 m_InputHandler->setAdaptiveTriggers((uint16_t)(uintptr_t)event.user.data1,
                                                     (DualSenseOutputReport *)event.user.data2);
                 break;
+            case SDL_CODE_TOGGLE_STREAM_MENU:
+                // Handled by the in-stream menu (added with the floating button)
+                break;
             default:
                 SDL_assert(false);
             }

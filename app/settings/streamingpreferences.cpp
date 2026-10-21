@@ -371,6 +371,16 @@ void StreamingPreferences::save()
     settings.setValue(SER_KEEPAWAKE, keepAwake);
 }
 
+void StreamingPreferences::saveInputPrefs()
+{
+    QSettings settings;
+
+    settings.setValue(SER_ABSMOUSEMODE, absoluteMouseMode);
+    settings.setValue(SER_SHOWLOCALCURSOR, showLocalCursor);
+    settings.setValue(SER_LOCKPOINTER, lockPointerToWindow);
+    settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
+}
+
 int StreamingPreferences::getDefaultBitrate(int width, int height, int fps, bool yuv444)
 {
     // Don't scale bitrate linearly beyond 60 FPS. It's definitely not a linear

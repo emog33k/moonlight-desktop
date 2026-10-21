@@ -49,3 +49,24 @@ void TestStreamingPreferences::newPreferencesRoundTrip()
     QCOMPARE(prefs->showLocalCursor, true);
     QCOMPARE(prefs->lockPointerToWindow, true);
 }
+
+void TestStreamingPreferences::saveInputPrefsOnlyWritesInputKeys()
+{
+    StreamingPreferences* prefs = StreamingPreferences::get();
+    prefs->reload();
+    const int defaultWidth = prefs->width;
+
+    prefs->absoluteMouseMode = false;
+    prefs->showLocalCursor = true;
+    prefs->lockPointerToWindow = true;
+    prefs->captureSysKeysMode = StreamingPreferences::CSK_OFF;
+    prefs->width = 1234; // e.g. a one-off command line override; must not be persisted
+    prefs->saveInputPrefs();
+
+    prefs->reload();
+    QCOMPARE(prefs->absoluteMouseMode, false);
+    QCOMPARE(prefs->showLocalCursor, true);
+    QCOMPARE(prefs->lockPointerToWindow, true);
+    QCOMPARE(prefs->captureSysKeysMode, StreamingPreferences::CSK_OFF);
+    QCOMPARE(prefs->width, defaultWidth);
+}

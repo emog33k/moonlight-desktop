@@ -2,6 +2,11 @@
 
 #include "settings/streamingpreferences.h"
 #include "backend/computermanager.h"
+#include "streaming/localrdp/streamactions.h"
+
+// LocalRDP: SDL_USEREVENT code asking the session to open/close the in-stream menu
+// (other codes live in session.cpp and video/decoder.h)
+#define SDL_CODE_TOGGLE_STREAM_MENU 106
 
 #include "SDL_compat.h"
 
@@ -152,6 +157,12 @@ public:
 
     void updatePointerRegionLock();
 
+    // LocalRDP: one entry point for the in-stream menu and the Ctrl+Alt+Shift shortcuts.
+    // Always releases held keys first so nothing stays pressed on the host.
+    void performAction(LocalRdp::StreamAction action);
+
+    LocalRdp::StreamState queryState();
+
     static
     QString getUnmappedGamepads();
 
@@ -168,6 +179,7 @@ private:
         KeyComboTogglePointerRegionLock,
         KeyComboQuitAndExit,
         KeyComboToggleKeyboardGrab,
+        KeyComboToggleStreamMenu,
         KeyComboMax
     };
 
@@ -187,6 +199,9 @@ private:
     void handleRelativeFingerEvent(SDL_TouchFingerEvent* event);
 
     void performSpecialKeyCombo(KeyCombo combo);
+
+    // Presses and releases Ctrl+Alt+Shift+<vk> on the host (for host-side shortcuts).
+    void sendHostShortcut(short virtualKey);
 
     static
     Uint32 longPressTimerCallback(Uint32 interval, void* param);

@@ -13,6 +13,7 @@ private slots:
     void cleanup();
     void remoteDesktopDefaults();
     void newPreferencesRoundTrip();
+    void saveInputPrefsOnlyWritesInputKeys();
 };
 
 class TestStreamMenuModel : public QObject

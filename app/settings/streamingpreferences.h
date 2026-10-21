@@ -16,6 +16,10 @@ public:
 
     Q_INVOKABLE void save();
 
+    // LocalRDP: persist only the mouse/keyboard options changed from the in-stream
+    // menu, so one-off overrides (e.g. from the command line) are never saved.
+    void saveInputPrefs();
+
     void reload();
 
     enum AudioConfig
