@@ -18,8 +18,13 @@ enum class StreamAction {
     Minimize,
     Disconnect,
     DisconnectAndExit,
+    LockPc,
+    ToggleLockOnDisconnect,
     Count // not an action: number of actions
 };
+
+// Connection to LocalRDP Agent on the PC (PC lock, later clipboard and files).
+enum class AgentStatus { Unknown, Connecting, Connected, NotFound, CertError, Rejected };
 
 struct StreamState {
     bool absoluteMouse = true;
@@ -28,6 +33,8 @@ struct StreamState {
     bool systemKeyCapture = true;
     bool fullscreen = false;
     bool statsVisible = false;
+    AgentStatus agentStatus = AgentStatus::Unknown;
+    bool lockOnDisconnect = false;
 };
 
 }

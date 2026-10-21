@@ -399,18 +399,30 @@ config_SL {
 win32 {
     HEADERS += streaming/video/ffmpeg-renderers/dxutil.h
 
-    # LocalRDP: floating button and menu over the stream window (Win32 + GDI+)
+    # LocalRDP: floating button and menu over the stream window (Win32 + GDI+),
+    # and the connection to LocalRDP Agent on the PC
     SOURCES += \
+        localrdp-shared/peerconnection.cpp \
+        localrdp-shared/protocol.cpp \
+        localrdp-shared/trust.cpp \
+        streaming/localrdp/agentclient.cpp \
+        streaming/localrdp/sessionmenuhost.cpp \
         streaming/localrdp/floatingbutton_win32.cpp \
         streaming/localrdp/streammenu_win32.cpp \
         streaming/localrdp/streammenucontroller.cpp \
         streaming/localrdp/win32canvas.cpp
     HEADERS += \
+        localrdp-shared/peerconnection.h \
+        localrdp-shared/protocol.h \
+        localrdp-shared/trust.h \
+        streaming/localrdp/agentclient.h \
+        streaming/localrdp/sessionmenuhost.h \
+        streaming/localrdp/streamevents.h \
         streaming/localrdp/floatingbutton_win32.h \
         streaming/localrdp/streammenu_win32.h \
         streaming/localrdp/streammenucontroller.h \
         streaming/localrdp/win32canvas.h
-    LIBS += gdiplus.lib
+    LIBS += gdiplus.lib crypt32.lib
 }
 win32:!winrt {
     message(DXVA2 and D3D11VA renderers selected)

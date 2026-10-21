@@ -45,7 +45,7 @@ StreamMenuController::StreamMenuController(SDL_Window* window, StreamMenuHost* h
         // Bring the stream forward so the menu's mouse capture and the keyboard
         // (Esc, arrows) work even if another app was active. We just received
         // the click, so Windows allows this.
-        if (GetForegroundWindow() != m_Hwnd) {
+        if (m_BringToFrontOnClick && GetForegroundWindow() != m_Hwnd) {
             SetForegroundWindow(m_Hwnd);
         }
         postUserEvent(SDL_CODE_TOGGLE_STREAM_MENU);

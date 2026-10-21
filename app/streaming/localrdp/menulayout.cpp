@@ -12,9 +12,9 @@ static int scaled(int px, double scale)
 
 static bool isActionable(const MenuItem& item)
 {
-    return item.kind == MenuItemKind::Radio ||
+    return item.enabled && (item.kind == MenuItemKind::Radio ||
            item.kind == MenuItemKind::Check ||
-           item.kind == MenuItemKind::Command;
+           item.kind == MenuItemKind::Command);
 }
 
 MenuLayout layoutMenu(const QVector<MenuItem>& items, double scale)
@@ -32,6 +32,9 @@ MenuLayout layoutMenu(const QVector<MenuItem>& items, double scale)
             break;
         case MenuItemKind::Separator:
             h = scaled(9, scale);
+            break;
+        case MenuItemKind::Status:
+            h = scaled(24, scale);
             break;
         default:
             h = scaled(30, scale);

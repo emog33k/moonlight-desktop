@@ -65,6 +65,14 @@ int main(int argc, char* argv[])
         TestAgentServer t;
         failures += runTest(&t);
     }
+    {
+        TestAgentClient t;
+        failures += runTest(&t);
+    }
+    {
+        TestSessionMenuHost t;
+        failures += runTest(&t);
+    }
     std::printf("LOCALRDP TESTS: %s\n", failures == 0 ? "ALL PASSED" : "FAILED");
     return failures == 0 ? 0 : 1;
 }

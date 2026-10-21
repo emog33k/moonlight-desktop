@@ -97,3 +97,21 @@ void TestMenuLayout::menuKeptInsideWorkArea()
     QCOMPARE(placeMenu(QRect(1930, 5, 40, 40), Edge::Left, QSize(310, 500), QRect(1920, 0, 1280, 1024), 6),
              QPoint(1976, 5));
 }
+
+void TestMenuLayout::statusRowAndDisabledItems()
+{
+    QVector<MenuItem> items = {
+        { MenuItemKind::Status, "Агент", "", std::nullopt, false },
+        { MenuItemKind::Command, "A", "", StreamAction::LockPc, false },
+        { MenuItemKind::Command, "B", "", StreamAction::Minimize, false },
+    };
+    items[1].enabled = false;
+
+    const MenuLayout l = layoutMenu(items, 1.0);
+    QCOMPARE(l.itemRects[0].height(), 24);
+    QCOMPARE(hitTestMenu(l, items, l.itemRects[0].center()), -1); // status line
+    QCOMPARE(hitTestMenu(l, items, l.itemRects[1].center()), -1); // disabled
+    QCOMPARE(hitTestMenu(l, items, l.itemRects[2].center()), 2);
+    QCOMPARE(nextActionable(items, -1, +1), 2);
+    QCOMPARE(nextActionable(items, 2, +1), 2); // the only enabled item
+}

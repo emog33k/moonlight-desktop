@@ -156,6 +156,8 @@ int main(int argc, char* argv[])
     QCoreApplication::setApplicationName("localrdp_ui_tests");
 
     SDL_SetMainReady();
+    // Never take focus from whatever the user is doing (e.g. a full screen game)
+    SDL_SetHint(SDL_HINT_WINDOW_NO_ACTIVATION_WHEN_SHOWN, "1");
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::printf("SDL_Init failed: %s\n", SDL_GetError());
         return 1;

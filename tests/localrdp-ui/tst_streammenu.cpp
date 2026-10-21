@@ -33,6 +33,7 @@ void TestStreamMenu::init()
     m_Owner = UiTest::hwndOf(m_Window);
     m_Host = new FakeHost();
     m_Controller = new StreamMenuController(m_Window, m_Host);
+    m_Controller->setBringToFrontOnClick(qEnvironmentVariableIsSet("LOCALRDP_UI_FOREGROUND"));
 }
 
 void TestStreamMenu::cleanup()
@@ -277,6 +278,12 @@ void TestStreamMenu::pointerLockSuspendedWhileOpen()
 
 void TestStreamMenu::openingFromBackgroundActivatesStream()
 {
+    // This test changes the foreground window, which would pull the user out of
+    // whatever they are doing; run it only on request.
+    if (!qEnvironmentVariableIsSet("LOCALRDP_UI_FOREGROUND")) {
+        QSKIP("Set LOCALRDP_UI_FOREGROUND=1 to run (it switches the active window)");
+    }
+
     // Another window of ours is in front; clicking the button must bring the stream
     // forward so the menu's mouse capture and keyboard work as expected.
     SDL_Window* other = UiTest::createStreamWindow(50, 50, 300, 200);

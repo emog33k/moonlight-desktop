@@ -26,6 +26,9 @@ private slots:
     void everyActionableItemHasAction();
     void everyActionAppearsOnce();
     void shortcutText();
+    void agentStatusLine();
+    void lockPcNeedsAgent();
+    void lockPcTexts();
 };
 
 class TestButtonPlacement : public QObject
@@ -59,6 +62,7 @@ private slots:
     void menuBelowTopEdgeButton();
     void menuAboveBottomEdgeButton();
     void menuKeptInsideWorkArea();
+    void statusRowAndDisabledItems();
 };
 
 class TestProtocol : public QObject
@@ -109,4 +113,30 @@ private slots:
     void dropLocksAfterGrace();
     void reconnectWithinGraceCancelsLock();
     void unpairWhileRunning();
+};
+
+class TestAgentClient : public QObject
+{
+    Q_OBJECT
+private slots:
+    void connectsAndReportsConnected();
+    void notFoundWhenNoServer();
+    void certErrorWhenServerCertDiffers();
+    void rejectedWhenNotPaired();
+    void lockNowReachesServer();
+    void goodbyeWithLockOnDisconnect();
+    void reconnectsAfterAgentRestart();
+    void destructorReturnsFast();
+};
+
+class TestSessionMenuHost : public QObject
+{
+    Q_OBJECT
+private slots:
+    void init();
+    void cleanup();
+    void stateCombinesInputPrefsAndAgent();
+    void inputActionsForwarded();
+    void toggleLockOnDisconnectPersists();
+    void lockPcWithoutAgentIsHarmless();
 };

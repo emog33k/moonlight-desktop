@@ -19,10 +19,10 @@ struct MenuLayout {
 };
 
 // Sizes at 96 DPI (multiplied by scale): padding 6, width 380,
-// header row 26, item row 30, separator row 9.
+// header row 26, item row 30, separator row 9, status row 24.
 MenuLayout layoutMenu(const QVector<MenuItem>& items, double scale);
 
-// Index of the actionable item (radio/check/command) under a panel-relative point, or -1.
+// Index of the enabled actionable item (radio/check/command) under a panel-relative point, or -1.
 int hitTestMenu(const MenuLayout& layout, const QVector<MenuItem>& items, QPoint local);
 
 // Next actionable item after `from` in direction dir (+1 down, -1 up), wrapping around.

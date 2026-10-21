@@ -48,6 +48,9 @@ public:
     // overlay sits on top of the stream (keeps DWM independent flip possible).
     void setAutoHideButton(bool autoHide);
     void setCursorProviderForTests(std::function<QPoint()> provider);
+    // Clicking the button brings the stream window to the front (on by default;
+    // UI tests turn it off so they never take focus from the user).
+    void setBringToFrontOnClick(bool enabled) { m_BringToFrontOnClick = enabled; }
 
 private:
     void openMenu();
@@ -65,6 +68,7 @@ private:
     bool m_CaptureReleased = false;
     // We lifted "keep the cursor inside the window" while the menu is open.
     bool m_PointerLockSuspended = false;
+    bool m_BringToFrontOnClick = true;
 };
 
 }

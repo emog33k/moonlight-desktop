@@ -16,7 +16,10 @@
 #endif
 
 #ifdef Q_OS_WIN32
+#include "localrdp/agentclient.h"
+#include "localrdp/sessionmenuhost.h"
 #include "localrdp/streammenucontroller.h"
+#include "backend/identitymanager.h"
 #endif
 
 #ifdef Q_OS_WIN32
@@ -581,6 +584,8 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_UnexpectedTermination(true), // Failure prior to streaming is unexpected
       m_InputHandler(nullptr),
       m_StreamMenu(nullptr),
+      m_MenuHost(nullptr),
+      m_AgentClient(nullptr),
       m_MouseEmulationRefCount(0),
       m_FlushingWindowEventsRef(0),
       m_ShouldExit(false),
@@ -1885,7 +1890,17 @@ void Session::exec()
 
 #ifdef Q_OS_WIN32
     // LocalRDP: floating menu button over the stream window
-    m_StreamMenu = new LocalRdp::StreamMenuController(m_Window, m_InputHandler);
+    {
+        // Connection to LocalRDP Agent on the PC: same identity Moonlight uses with
+        // Sunshine, and only the PC certificate pinned at pairing is accepted.
+        const QSslConfiguration identity = IdentityManager::get()->getSslConfig();
+        m_AgentClient = new LocalRdp::AgentClient(m_Computer->activeAddress.address(),
+                                                  identity.localCertificate(), identity.privateKey(),
+                                                  m_Computer->serverCert);
+        m_AgentClient->setLockOnDisconnect(m_Preferences->lockOnDisconnect);
+    }
+    m_MenuHost = new LocalRdp::SessionMenuHost(m_InputHandler, m_Preferences, m_AgentClient);
+    m_StreamMenu = new LocalRdp::StreamMenuController(m_Window, m_MenuHost);
 #endif
 
     QSvgRenderer svgIconRenderer(QString(":/res/moonlight.svg"));
@@ -2346,6 +2361,17 @@ DispatchDeferredCleanup:
     // LocalRDP: remove the button/menu first so nothing is left on screen
     delete m_StreamMenu;
     m_StreamMenu = nullptr;
+    delete m_MenuHost;
+    m_MenuHost = nullptr;
+    if (m_AgentClient != nullptr) {
+        // Ending on purpose: the agent may lock the PC right away (if enabled).
+        // After a connection loss it waits for a reconnect instead.
+        if (!m_UnexpectedTermination) {
+            m_AgentClient->sayGoodbye();
+        }
+        delete m_AgentClient;
+        m_AgentClient = nullptr;
+    }
 #endif
 
     // Uncapture the mouse and hide the window immediately,

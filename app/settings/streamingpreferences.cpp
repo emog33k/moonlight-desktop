@@ -54,6 +54,7 @@
 #define SER_RENDERER "renderer"
 #define SER_SHOWLOCALCURSOR "localrdp/showlocalcursor"
 #define SER_LOCKPOINTER "localrdp/lockpointer"
+#define SER_LOCKONDISCONNECT "localrdp/lockondisconnect"
 
 #define CURRENT_DEFAULT_VER 2
 
@@ -140,6 +141,7 @@ void StreamingPreferences::reload()
     absoluteMouseMode = settings.value(SER_ABSMOUSEMODE, true).toBool();
     showLocalCursor = settings.value(SER_SHOWLOCALCURSOR, false).toBool();
     lockPointerToWindow = settings.value(SER_LOCKPOINTER, false).toBool();
+    lockOnDisconnect = settings.value(SER_LOCKONDISCONNECT, false).toBool();
     absoluteTouchMode = settings.value(SER_ABSTOUCHMODE, true).toBool();
     framePacing = settings.value(SER_FRAMEPACING, false).toBool();
     connectionWarnings = settings.value(SER_CONNWARNINGS, true).toBool();
@@ -343,6 +345,7 @@ void StreamingPreferences::save()
     settings.setValue(SER_ABSMOUSEMODE, absoluteMouseMode);
     settings.setValue(SER_SHOWLOCALCURSOR, showLocalCursor);
     settings.setValue(SER_LOCKPOINTER, lockPointerToWindow);
+    settings.setValue(SER_LOCKONDISCONNECT, lockOnDisconnect);
     settings.setValue(SER_ABSTOUCHMODE, absoluteTouchMode);
     settings.setValue(SER_FRAMEPACING, framePacing);
     settings.setValue(SER_CONNWARNINGS, connectionWarnings);
@@ -378,6 +381,7 @@ void StreamingPreferences::saveInputPrefs()
     settings.setValue(SER_ABSMOUSEMODE, absoluteMouseMode);
     settings.setValue(SER_SHOWLOCALCURSOR, showLocalCursor);
     settings.setValue(SER_LOCKPOINTER, lockPointerToWindow);
+    settings.setValue(SER_LOCKONDISCONNECT, lockOnDisconnect);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
 }
 

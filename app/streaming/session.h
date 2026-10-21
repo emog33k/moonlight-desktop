@@ -89,7 +89,7 @@ public:
     }
 };
 
-namespace LocalRdp { class StreamMenuController; }
+namespace LocalRdp { class StreamMenuController; class SessionMenuHost; class AgentClient; }
 
 class Session : public QObject
 {
@@ -263,6 +263,8 @@ private:
     bool m_UnexpectedTermination;
     SdlInputHandler* m_InputHandler;
     LocalRdp::StreamMenuController* m_StreamMenu; // Windows only; null elsewhere
+    LocalRdp::SessionMenuHost* m_MenuHost;
+    LocalRdp::AgentClient* m_AgentClient;
     int m_MouseEmulationRefCount;
     int m_FlushingWindowEventsRef;
     QStringList m_LaunchWarnings;

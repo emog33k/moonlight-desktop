@@ -18,6 +18,36 @@ static MenuItem item(MenuItemKind kind, const QString& label, const QString& sho
     return { kind, label, shortcut, action, checked };
 }
 
+static MenuItem status(const QString& text)
+{
+    return { MenuItemKind::Status, text, QString(), std::nullopt, false };
+}
+
+static MenuItem disabledUnless(MenuItem item, bool enabled)
+{
+    item.enabled = enabled;
+    return item;
+}
+
+static QString agentStatusText(AgentStatus status)
+{
+    switch (status) {
+    case AgentStatus::Connecting:
+        return QStringLiteral("Агент на ПК: подключение…");
+    case AgentStatus::Connected:
+        return QStringLiteral("Агент на ПК: подключён");
+    case AgentStatus::NotFound:
+        return QStringLiteral("Агент на ПК: не найден");
+    case AgentStatus::CertError:
+        return QStringLiteral("Агент на ПК: ошибка сертификата");
+    case AgentStatus::Rejected:
+        return QStringLiteral("Агент на ПК: ПК отклонил подключение");
+    case AgentStatus::Unknown:
+        break;
+    }
+    return QStringLiteral("Агент на ПК: —");
+}
+
 QVector<MenuItem> buildStreamMenu(const StreamState& s)
 {
     using K = MenuItemKind;
@@ -38,6 +68,12 @@ QVector<MenuItem> buildStreamMenu(const StreamState& s)
         header(QStringLiteral("Экран")),
         item(K::Check, QStringLiteral("Полный экран"), QStringLiteral("Ctrl+Alt+Shift+X"), A::ToggleFullscreen, s.fullscreen),
         item(K::Check, QStringLiteral("Статистика"), QStringLiteral("Ctrl+Alt+Shift+S"), A::ToggleStats, s.statsVisible),
+        separator(),
+        header(QStringLiteral("ПК")),
+        status(agentStatusText(s.agentStatus)),
+        disabledUnless(item(K::Command, QStringLiteral("Заблокировать ПК"), QString(), A::LockPc),
+                       s.agentStatus == AgentStatus::Connected),
+        item(K::Check, QStringLiteral("Блокировать ПК при отключении"), QString(), A::ToggleLockOnDisconnect, s.lockOnDisconnect),
         separator(),
         item(K::Command, QStringLiteral("Свернуть"), QStringLiteral("Ctrl+Alt+Shift+D"), A::Minimize),
         item(K::Command, QStringLiteral("Отключиться"), QStringLiteral("Ctrl+Alt+Shift+Q"), A::Disconnect),

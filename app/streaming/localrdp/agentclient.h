@@ -1,0 +1,44 @@
+#pragma once
+
+#include "streamactions.h"
+#include "localrdp-shared/protocol.h"
+
+#include <QSslCertificate>
+#include <QSslKey>
+#include <QString>
+#include <QThread>
+
+#include <atomic>
+
+namespace LocalRdp {
+
+class AgentClientWorker;
+
+// Connection from the stream to LocalRDP Agent on the PC. Runs on its own thread
+// (the Qt main thread is busy with the SDL loop during a stream) and keeps
+// reconnecting while it exists. All methods are safe to call from any thread.
+class AgentClient
+{
+public:
+    AgentClient(const QString& host, const QSslCertificate& clientCert, const QSslKey& clientKey,
+                const QSslCertificate& pinnedServer, quint16 port = Proto::kAgentPort,
+                int retryMs = 3000);
+    ~AgentClient(); // returns within about a second
+
+    AgentClient(const AgentClient&) = delete;
+    AgentClient& operator=(const AgentClient&) = delete;
+
+    AgentStatus status() const { return (AgentStatus)m_Status.load(); }
+
+    void lockNow();
+    void setLockOnDisconnect(bool enabled);
+    // Tell the agent the user is ending the stream on purpose (before destroying).
+    void sayGoodbye();
+
+private:
+    std::atomic<int> m_Status;
+    QThread m_Thread;
+    AgentClientWorker* m_Worker;
+};
+
+}

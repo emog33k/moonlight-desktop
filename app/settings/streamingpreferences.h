@@ -182,6 +182,8 @@ public:
     bool showLocalCursor;
     // LocalRDP: keep the cursor inside the stream window
     bool lockPointerToWindow;
+    // LocalRDP: lock the PC when the stream ends (needs LocalRDP Agent on the PC)
+    bool lockOnDisconnect;
     bool absoluteTouchMode;
     bool framePacing;
     bool connectionWarnings;

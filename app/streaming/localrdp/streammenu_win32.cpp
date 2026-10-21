@@ -191,6 +191,7 @@ void StreamMenuWindow::render()
     Gdiplus::SolidBrush labelBrush(Gdiplus::Color(255, 0xEE, 0xEE, 0xEE));
     Gdiplus::SolidBrush dimBrush(Gdiplus::Color(255, 0x9A, 0x9A, 0xA0));
     Gdiplus::SolidBrush shortcutBrush(Gdiplus::Color(255, 0x8A, 0x8A, 0x90));
+    Gdiplus::SolidBrush disabledBrush(Gdiplus::Color(255, 0x5E, 0x5E, 0x64));
 
     Gdiplus::StringFormat leftFmt;
     leftFmt.SetLineAlignment(Gdiplus::StringAlignmentCenter);
@@ -218,6 +219,13 @@ void StreamMenuWindow::render()
             g.DrawString(text.c_str(), -1, &headerFont, tr, &leftFmt, &dimBrush);
             break;
         }
+        case MenuItemKind::Status:
+        {
+            const std::wstring text = wide(item.label);
+            Gdiplus::RectF tr(rf.X + markerW, rf.Y, rf.Width - markerW - textPad, rf.Height);
+            g.DrawString(text.c_str(), -1, &shortcutFont, tr, &leftFmt, &dimBrush);
+            break;
+        }
         case MenuItemKind::Separator:
         {
             Gdiplus::Pen line(Gdiplus::Color(255, 0x3A, 0x3A, 0x3E), 1.0f);
@@ -227,7 +235,7 @@ void StreamMenuWindow::render()
         }
         default:
         {
-            if (i == m_Highlight) {
+            if (i == m_Highlight && item.enabled) {
                 Gdiplus::GraphicsPath hl;
                 roundRect(hl, rf.X, rf.Y + 1, rf.Width, rf.Height - 2, 5 * s);
                 Gdiplus::SolidBrush hlBrush(Gdiplus::Color(0x30, 255, 255, 255));
@@ -271,7 +279,7 @@ void StreamMenuWindow::render()
             Gdiplus::RectF lr(rf.X + markerW, rf.Y,
                               rf.Width - markerW - textPad - shortcutW - (shortcutW > 0 ? 12 * s : 0),
                               rf.Height);
-            g.DrawString(label.c_str(), -1, &labelFont, lr, &leftFmt, &labelBrush);
+            g.DrawString(label.c_str(), -1, &labelFont, lr, &leftFmt, item.enabled ? &labelBrush : &disabledBrush);
             break;
         }
         }

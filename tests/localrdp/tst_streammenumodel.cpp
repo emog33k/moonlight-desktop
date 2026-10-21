@@ -34,7 +34,7 @@ void TestStreamMenuModel::headersInOrder()
             headers << item.label;
         }
     }
-    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Экран" }));
+    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Экран", "ПК" }));
 }
 
 void TestStreamMenuModel::desktopModeChecked()
@@ -60,6 +60,7 @@ void TestStreamMenuModel::checksMirrorState()
         { &StreamState::systemKeyCapture, StreamAction::ToggleSystemKeyCapture },
         { &StreamState::fullscreen, StreamAction::ToggleFullscreen },
         { &StreamState::statsVisible, StreamAction::ToggleStats },
+        { &StreamState::lockOnDisconnect, StreamAction::ToggleLockOnDisconnect },
     };
 
     for (const Case& c : cases) {
@@ -103,4 +104,52 @@ void TestStreamMenuModel::shortcutText()
     QCOMPARE(findByAction(items, StreamAction::SetGameMouseMode)->shortcut, QString("Ctrl+Alt+Shift+M"));
     QCOMPARE(findByAction(items, StreamAction::SetDesktopMouseMode)->shortcut, QString());
     QCOMPARE(findByAction(items, StreamAction::Disconnect)->shortcut, QString("Ctrl+Alt+Shift+Q"));
+}
+
+void TestStreamMenuModel::agentStatusLine()
+{
+    struct Case { AgentStatus status; QString text; };
+    const Case cases[] = {
+        { AgentStatus::Unknown, "Агент на ПК: —" },
+        { AgentStatus::Connecting, "Агент на ПК: подключение…" },
+        { AgentStatus::Connected, "Агент на ПК: подключён" },
+        { AgentStatus::NotFound, "Агент на ПК: не найден" },
+        { AgentStatus::CertError, "Агент на ПК: ошибка сертификата" },
+        { AgentStatus::Rejected, "Агент на ПК: ПК отклонил подключение" },
+    };
+    for (const Case& c : cases) {
+        StreamState state;
+        state.agentStatus = c.status;
+        int statusLines = 0;
+        for (const MenuItem& item : buildStreamMenu(state)) {
+            if (item.kind == MenuItemKind::Status) {
+                statusLines++;
+                QCOMPARE(item.label, c.text);
+                QVERIFY(!item.action.has_value());
+            }
+        }
+        QCOMPARE(statusLines, 1);
+    }
+}
+
+void TestStreamMenuModel::lockPcNeedsAgent()
+{
+    StreamState state;
+    for (AgentStatus status : { AgentStatus::Unknown, AgentStatus::Connecting, AgentStatus::NotFound,
+                                AgentStatus::CertError, AgentStatus::Rejected }) {
+        state.agentStatus = status;
+        QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::LockPc)->enabled, false);
+    }
+    state.agentStatus = AgentStatus::Connected;
+    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::LockPc)->enabled, true);
+    // The preference can be changed any time; it is sent when the agent connects
+    state.agentStatus = AgentStatus::NotFound;
+    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::ToggleLockOnDisconnect)->enabled, true);
+}
+
+void TestStreamMenuModel::lockPcTexts()
+{
+    const QVector<MenuItem> items = buildStreamMenu(StreamState());
+    QCOMPARE(findByAction(items, StreamAction::LockPc)->label, QString("Заблокировать ПК"));
+    QCOMPARE(findByAction(items, StreamAction::ToggleLockOnDisconnect)->label, QString("Блокировать ПК при отключении"));
 }

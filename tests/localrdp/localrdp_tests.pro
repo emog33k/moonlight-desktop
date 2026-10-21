@@ -23,6 +23,10 @@ SOURCES += \
     tst_trust.cpp \
     tst_peerconnection.cpp \
     tst_agentserver.cpp \
+    tst_agentclient.cpp \
+    tst_sessionmenuhost.cpp \
+    ../../app/streaming/localrdp/sessionmenuhost.cpp \
+    ../../app/streaming/localrdp/agentclient.cpp \
     ../../localrdp/agent/agentserver.cpp \
     ../../app/localrdp-shared/protocol.cpp \
     ../../app/localrdp-shared/trust.cpp \
@@ -36,6 +40,7 @@ HEADERS += \
     tests.h \
     ../../app/localrdp-shared/peerconnection.h \
     ../../localrdp/agent/agentserver.h \
+    ../../app/streaming/localrdp/agentclient.h \
     ../../app/settings/streamingpreferences.h \
     ../../app/streaming/localrdp/streamactions.h \
     ../../app/streaming/localrdp/streammenumodel.h \
