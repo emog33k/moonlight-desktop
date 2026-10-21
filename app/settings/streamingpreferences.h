@@ -174,6 +174,10 @@ public:
     bool enableMdns;
     bool quitAppAfter;
     bool absoluteMouseMode;
+    // LocalRDP: show the laptop cursor over the stream (host cursor is drawn in the video)
+    bool showLocalCursor;
+    // LocalRDP: keep the cursor inside the stream window
+    bool lockPointerToWindow;
     bool absoluteTouchMode;
     bool framePacing;
     bool connectionWarnings;

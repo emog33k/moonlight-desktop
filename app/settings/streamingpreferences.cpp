@@ -52,6 +52,8 @@
 #define SER_KEEPAWAKE "keepawake"
 #define SER_LANGUAGE "language"
 #define SER_RENDERER "renderer"
+#define SER_SHOWLOCALCURSOR "localrdp/showlocalcursor"
+#define SER_LOCKPOINTER "localrdp/lockpointer"
 
 #define CURRENT_DEFAULT_VER 2
 
@@ -135,7 +137,9 @@ void StreamingPreferences::reload()
     multiController = settings.value(SER_MULTICONT, true).toBool();
     enableMdns = settings.value(SER_MDNS, true).toBool();
     quitAppAfter = settings.value(SER_QUITAPPAFTER, false).toBool();
-    absoluteMouseMode = settings.value(SER_ABSMOUSEMODE, false).toBool();
+    absoluteMouseMode = settings.value(SER_ABSMOUSEMODE, true).toBool();
+    showLocalCursor = settings.value(SER_SHOWLOCALCURSOR, false).toBool();
+    lockPointerToWindow = settings.value(SER_LOCKPOINTER, false).toBool();
     absoluteTouchMode = settings.value(SER_ABSTOUCHMODE, true).toBool();
     framePacing = settings.value(SER_FRAMEPACING, false).toBool();
     connectionWarnings = settings.value(SER_CONNWARNINGS, true).toBool();
@@ -153,7 +157,7 @@ void StreamingPreferences::reload()
     keepAwake = settings.value(SER_KEEPAWAKE, true).toBool();
     enableHdr = settings.value(SER_HDR, false).toBool();
     captureSysKeysMode = static_cast<CaptureSysKeysMode>(settings.value(SER_CAPTURESYSKEYS,
-                                                         static_cast<int>(CaptureSysKeysMode::CSK_OFF)).toInt());
+                                                         static_cast<int>(CaptureSysKeysMode::CSK_ALWAYS)).toInt());
     audioConfig = static_cast<AudioConfig>(settings.value(SER_AUDIOCFG,
                                                   static_cast<int>(AudioConfig::AC_STEREO)).toInt());
     videoCodecConfig = static_cast<VideoCodecConfig>(settings.value(SER_VIDEOCFG,
@@ -162,9 +166,10 @@ void StreamingPreferences::reload()
                                                   static_cast<int>(VideoDecoderSelection::VDS_AUTO)).toInt());
     rendererSelection = static_cast<RendererSelection>(settings.value(SER_RENDERER,
                                                   static_cast<int>(RendererSelection::RS_AUTO)).toInt());
+    // LocalRDP: windowed by default, so the mouse can leave the stream like a normal app.
     windowMode = static_cast<WindowMode>(settings.value(SER_WINDOWMODE,
                                                         // Try to load from the old preference value too
-                                                        static_cast<int>(settings.value(SER_FULLSCREEN, true).toBool() ?
+                                                        static_cast<int>(settings.value(SER_FULLSCREEN, false).toBool() ?
                                                                              recommendedFullScreenMode : WindowMode::WM_WINDOWED)).toInt());
     uiDisplayMode = static_cast<UIDisplayMode>(settings.value(SER_UIDISPLAYMODE,
                                                static_cast<int>(settings.value(SER_STARTWINDOWED, true).toBool() ? UIDisplayMode::UI_WINDOWED
@@ -336,6 +341,8 @@ void StreamingPreferences::save()
     settings.setValue(SER_MDNS, enableMdns);
     settings.setValue(SER_QUITAPPAFTER, quitAppAfter);
     settings.setValue(SER_ABSMOUSEMODE, absoluteMouseMode);
+    settings.setValue(SER_SHOWLOCALCURSOR, showLocalCursor);
+    settings.setValue(SER_LOCKPOINTER, lockPointerToWindow);
     settings.setValue(SER_ABSTOUCHMODE, absoluteTouchMode);
     settings.setValue(SER_FRAMEPACING, framePacing);
     settings.setValue(SER_CONNWARNINGS, connectionWarnings);

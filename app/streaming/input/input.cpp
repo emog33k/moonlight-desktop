@@ -10,19 +10,20 @@
 #include <QGuiApplication>
 
 SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, int streamHeight)
-    : m_MultiController(prefs.multiController),
+    : m_Prefs(&prefs),
+      m_MultiController(prefs.multiController),
       m_GamepadMouse(prefs.gamepadMouse),
       m_SwapMouseButtons(prefs.swapMouseButtons),
       m_ReverseScrollDirection(prefs.reverseScrollDirection),
       m_SwapFaceButtons(prefs.swapFaceButtons),
       m_MouseWasInVideoRegion(false),
       m_PendingMouseButtonsAllUpOnVideoRegionLeave(false),
-      m_PointerRegionLockActive(false),
+      m_PointerRegionLockActive(prefs.lockPointerToWindow),
       m_PointerRegionLockToggledByUser(false),
       m_FakeMouseCaptureActive(false),
       m_KeyboardCaptureActive(false),
       m_CaptureSystemKeysMode(prefs.captureSysKeysMode),
-      m_MouseCursorCapturedVisibilityState(SDL_DISABLE),
+      m_MouseCursorCapturedVisibilityState(prefs.showLocalCursor ? SDL_ENABLE : SDL_DISABLE),
       m_LongPressTimer(0),
       m_StreamWidth(streamWidth),
       m_StreamHeight(streamHeight),

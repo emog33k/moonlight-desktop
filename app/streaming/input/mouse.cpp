@@ -289,15 +289,9 @@ void SdlInputHandler::updatePointerRegionLock()
         return;
     }
 
-    // Our pointer lock behavior tracks with the fullscreen mode unless the user has
-    // toggled it themselves using the keyboard shortcut. If that's the case, they
-    // have full control over it and we don't touch it anymore.
-    if (!m_PointerRegionLockToggledByUser) {
-        // Lock the pointer in true full-screen mode or in any fullscreen mode when only a single monitor is present
-        Uint32 fullscreenFlags = SDL_GetWindowFlags(m_Window) & SDL_WINDOW_FULLSCREEN_DESKTOP;
-        m_PointerRegionLockActive = (fullscreenFlags == SDL_WINDOW_FULLSCREEN) ||
-                                    (fullscreenFlags != 0 && SDL_GetNumVideoDisplays() == 1);
-    }
+    // LocalRDP: the pointer lock no longer follows the fullscreen mode. It is only on
+    // when the user asks for it (preference, menu or Ctrl+Alt+Shift+L), so the cursor
+    // can always leave the stream like in a normal remote desktop app.
 
     // If region lock is enabled, grab the cursor so it can't accidentally leave our window.
     if (isCaptureActive() && m_PointerRegionLockActive) {

@@ -203,6 +203,7 @@ private:
     static
     Uint32 dragTimerCallback(Uint32 interval, void* param);
 
+    StreamingPreferences* m_Prefs;
     SDL_Window* m_Window;
     bool m_MultiController;
     bool m_GamepadMouse;
