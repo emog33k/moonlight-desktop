@@ -23,6 +23,7 @@ struct AgentConfig {
     std::function<QByteArray()> readSunshineState; // contents of sunshine_state.json
     std::function<void()> lockWorkstation;          // LockWorkStation() in the real agent
     int reconnectGraceMs = 15000;
+    int idleTimeoutMs = 8000;   // no frame for this long = connection is dead (laptop pings every 2 s)
     quint16 port = Proto::kAgentPort;
     QHostAddress bindAddress = QHostAddress::Any;
 };
@@ -57,6 +58,7 @@ private:
     bool m_SessionSaidGoodbye = false;
     bool m_LockOnDisconnect = false;
     QTimer m_GraceTimer;
+    QTimer m_IdleTimer;      // restarted by every frame of the session
 };
 
 }

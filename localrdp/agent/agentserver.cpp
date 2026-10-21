@@ -39,6 +39,16 @@ AgentServer::AgentServer(AgentConfig config, QObject* parent)
 
     m_GraceTimer.setSingleShot(true);
     connect(&m_GraceTimer, &QTimer::timeout, this, [this]() { lockNow("no reconnect within grace period"); });
+
+    // A laptop that vanished (Wi-Fi gone, lid closed) never sends a FIN; its
+    // pings stop instead. Treat that like a dropped connection.
+    m_IdleTimer.setSingleShot(true);
+    connect(&m_IdleTimer, &QTimer::timeout, this, [this]() {
+        if (m_Session) {
+            emit message("no traffic from the laptop; dropping the session");
+            m_Session->socket()->abort();
+        }
+    });
 }
 
 AgentServer::~AgentServer()
@@ -77,9 +87,6 @@ void AgentServer::onEncrypted(QSslSocket* socket)
         return;
     }
 
-    // The laptop is back: forget a pending lock from an earlier drop
-    m_GraceTimer.stop();
-
     if (m_Session) {
         // Replaced by the new connection, not a disconnect: no lock
         PeerConnection* old = m_Session;
@@ -93,7 +100,10 @@ void AgentServer::onEncrypted(QSslSocket* socket)
     auto conn = new PeerConnection(socket, this);
     m_Session = conn;
     m_SessionSaidGoodbye = false;
-    m_LockOnDisconnect = false;
+    // m_LockOnDisconnect keeps its last known value until the laptop says otherwise,
+    // and a pending lock is only cancelled once the laptop has said Hello: a
+    // reconnect that dies again right away must not leave the PC unlocked.
+    m_IdleTimer.start(m_Config.idleTimeoutMs);
     connect(conn, &PeerConnection::frameReceived, this, [this, conn](const Frame& f) { onFrame(conn, f); });
     connect(conn, &PeerConnection::closed, this, [this, conn]() { onSessionClosed(conn); });
     emit message("paired client connected from " + socket->peerAddress().toString());
@@ -101,8 +111,19 @@ void AgentServer::onEncrypted(QSslSocket* socket)
 
 void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
 {
+    if (conn == m_Session) {
+        m_IdleTimer.start(m_Config.idleTimeoutMs);
+    }
+
     switch (frame.type) {
     case MsgType::Hello:
+        // The laptop is really back: forget a pending lock from an earlier drop
+        m_GraceTimer.stop();
+        if (auto o = parseJsonPayload(frame.payload)) {
+            if (o->contains("lockOnDisconnect")) {
+                m_LockOnDisconnect = o->value("lockOnDisconnect").toBool();
+            }
+        }
         conn->send(MsgType::HelloAck, jsonPayload(QJsonObject{
             { "version", (int)kProtocolVersion },
             { "agent", "LocalRDP Agent" },
@@ -138,6 +159,7 @@ void AgentServer::onSessionClosed(PeerConnection* conn)
         return;
     }
     m_Session = nullptr;
+    m_IdleTimer.stop();
     conn->deleteLater();
     emit message("session closed");
 

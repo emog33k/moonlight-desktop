@@ -102,6 +102,15 @@ QSslSocket* connectPinned(const QString& host, quint16 port,
         socket->ignoreSslErrors(errors);
     });
 
+    // Also when verification raised no errors at all (e.g. a TLS-inspecting
+    // antivirus whose root the laptop trusts): only the pinned certificate is ok.
+    QObject::connect(socket, &QSslSocket::encrypted, socket, [socket, pinnedServer]() {
+        if (pinnedServer.isNull() || socket->peerCertificate() != pinnedServer) {
+            socket->abort();
+        }
+    });
+
+    socket->setSocketOption(QAbstractSocket::KeepAliveOption, 1);
     socket->connectToHostEncrypted(host, port);
     return socket;
 }

@@ -1,6 +1,7 @@
 #include "agentclient.h"
 #include "localrdp-shared/peerconnection.h"
 
+#include <QElapsedTimer>
 #include <QJsonObject>
 #include <QPointer>
 #include <QTimer>
@@ -14,14 +15,16 @@ class AgentClientWorker : public QObject
 {
 public:
     AgentClientWorker(std::atomic<int>& status, QString host, QSslCertificate clientCert, QSslKey clientKey,
-                      QSslCertificate pinnedServer, quint16 port, int retryMs)
+                      QSslCertificate pinnedServer, quint16 port, int retryMs, int pingMs, int pongTimeoutMs)
         : m_Status(status),
           m_Host(std::move(host)),
           m_ClientCert(std::move(clientCert)),
           m_ClientKey(std::move(clientKey)),
           m_PinnedServer(std::move(pinnedServer)),
           m_Port(port),
-          m_RetryMs(retryMs)
+          m_RetryMs(retryMs),
+          m_PingMs(pingMs),
+          m_PongTimeoutMs(pongTimeoutMs)
     {
     }
 
@@ -30,6 +33,9 @@ public:
         m_RetryTimer = new QTimer(this);
         m_RetryTimer->setSingleShot(true);
         connect(m_RetryTimer, &QTimer::timeout, this, &AgentClientWorker::connectOnce);
+        // Pings let both sides notice a connection that died without a FIN
+        m_PingTimer = new QTimer(this);
+        connect(m_PingTimer, &QTimer::timeout, this, &AgentClientWorker::onPingTimer);
         connectOnce();
     }
 
@@ -89,6 +95,12 @@ private:
         m_Socket->setParent(this);
 
         connect(m_Socket, &QSslSocket::encrypted, this, [this]() {
+            if (m_Socket->peerCertificate() != m_PinnedServer) {
+                // connectPinned aborts this too; report it as what it is
+                setStatus(AgentStatus::CertError);
+                scheduleRetry();
+                return;
+            }
             m_Encrypted = true;
             QSslSocket* socket = m_Socket;
             m_Socket = nullptr;
@@ -99,7 +111,9 @@ private:
             m_Conn->send(MsgType::Hello, jsonPayload(QJsonObject{
                 { "version", (int)kProtocolVersion },
                 { "client", "Moonlight LocalRDP" },
+                { "lockOnDisconnect", m_LockOnDisconnect },
             }));
+            m_LastHeard.start();
         });
         connect(m_Socket, &QAbstractSocket::errorOccurred, this, [this](QAbstractSocket::SocketError error) {
             if (m_Encrypted) {
@@ -115,11 +129,30 @@ private:
 
     void onFrame(const Frame& frame)
     {
+        m_LastHeard.start();
         if (frame.type == MsgType::HelloAck) {
             m_Ready = true;
             setStatus(AgentStatus::Connected);
             sendLockOnDisconnect();
+            m_PingTimer->start(m_PingMs);
         }
+    }
+
+    void onPingTimer()
+    {
+        if (!m_Conn || !m_Ready) {
+            m_PingTimer->stop();
+            return;
+        }
+        if (m_LastHeard.elapsed() > m_PongTimeoutMs) {
+            // The PC stopped answering: start over
+            m_PingTimer->stop();
+            setStatus(AgentStatus::Connecting);
+            dropConnection();
+            scheduleRetry();
+            return;
+        }
+        m_Conn->send(MsgType::Ping);
     }
 
     void onClosed()
@@ -128,6 +161,7 @@ private:
         // (laptop not paired with Sunshine, or unpaired since).
         setStatus(m_Ready ? AgentStatus::Connecting : AgentStatus::Rejected);
         m_Ready = false;
+        m_PingTimer->stop();
         if (m_Conn) {
             m_Conn->deleteLater();
             m_Conn = nullptr;
@@ -170,6 +204,10 @@ private:
     QSslCertificate m_PinnedServer;
     quint16 m_Port;
     int m_RetryMs;
+    int m_PingMs;
+    int m_PongTimeoutMs;
+    QTimer* m_PingTimer = nullptr;
+    QElapsedTimer m_LastHeard;
 
     QTimer* m_RetryTimer = nullptr;
     QSslSocket* m_Socket = nullptr;  // until the handshake completes
@@ -181,10 +219,11 @@ private:
 };
 
 AgentClient::AgentClient(const QString& host, const QSslCertificate& clientCert, const QSslKey& clientKey,
-                         const QSslCertificate& pinnedServer, quint16 port, int retryMs)
+                         const QSslCertificate& pinnedServer, quint16 port, int retryMs, int pingMs, int pongTimeoutMs)
     : m_Status((int)AgentStatus::Unknown)
 {
-    m_Worker = new AgentClientWorker(m_Status, host, clientCert, clientKey, pinnedServer, port, retryMs);
+    m_Worker = new AgentClientWorker(m_Status, host, clientCert, clientKey, pinnedServer, port, retryMs,
+                                     pingMs, pongTimeoutMs);
     m_Worker->moveToThread(&m_Thread);
     QObject::connect(&m_Thread, &QThread::finished, m_Worker, &QObject::deleteLater);
     m_Thread.setObjectName("LocalRDP agent");
@@ -196,7 +235,9 @@ AgentClient::~AgentClient()
 {
     QMetaObject::invokeMethod(m_Worker, [w = m_Worker]() { w->stop(); }, Qt::BlockingQueuedConnection);
     m_Thread.quit();
-    m_Thread.wait(1000);
+    // No long blocking work runs on this thread, so this returns quickly; a
+    // QThread destroyed while still running would abort the whole program.
+    m_Thread.wait();
 }
 
 void AgentClient::lockNow()

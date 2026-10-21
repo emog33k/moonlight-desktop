@@ -22,7 +22,7 @@ class AgentClient
 public:
     AgentClient(const QString& host, const QSslCertificate& clientCert, const QSslKey& clientKey,
                 const QSslCertificate& pinnedServer, quint16 port = Proto::kAgentPort,
-                int retryMs = 3000);
+                int retryMs = 3000, int pingMs = 2000, int pongTimeoutMs = 6000);
     ~AgentClient(); // returns within about a second
 
     AgentClient(const AgentClient&) = delete;

@@ -114,6 +114,9 @@ private slots:
     void dropLocksAfterGrace();
     void reconnectWithinGraceCancelsLock();
     void unpairWhileRunning();
+    void silentClientDroppedAndLocks();
+    void pingsKeepSessionAlive();
+    void reconnectThenDropStillLocks();
 };
 
 class TestAgentClient : public QObject
@@ -128,6 +131,8 @@ private slots:
     void goodbyeWithLockOnDisconnect();
     void reconnectsAfterAgentRestart();
     void destructorReturnsFast();
+    void deadServerDetected();
+    void liveSessionStaysConnected();
 };
 
 class TestSessionMenuHost : public QObject

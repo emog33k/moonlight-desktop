@@ -25,7 +25,7 @@ struct Fixture {
     int locks = 0;
     std::unique_ptr<AgentServer> server;
 
-    Fixture()
+    explicit Fixture(int idleTimeoutMs = 60000)
     {
         state = sunshineState({ { testCert("client1"), "true" } });
         AgentConfig config;
@@ -34,6 +34,7 @@ struct Fixture {
         config.readSunshineState = [this]() { return state; };
         config.lockWorkstation = [this]() { locks++; };
         config.reconnectGraceMs = 300;
+        config.idleTimeoutMs = idleTimeoutMs;
         config.port = 0;
         config.bindAddress = QHostAddress::LocalHost;
         server.reset(new AgentServer(config));
@@ -189,4 +190,50 @@ void TestAgentServer::unpairWhileRunning()
         QVERIFY(closed.wait(3000) || closed.count() > 0);
         QCOMPARE(frames.count(), 0);
     }
+}
+
+void TestAgentServer::silentClientDroppedAndLocks()
+{
+    // Wi-Fi gone for good: TCP stays "open" on the PC but nothing arrives any more
+    Fixture f(400);
+    auto conn = f.connect("client1");
+    QSignalSpy frames(conn.get(), &PeerConnection::frameReceived);
+    conn->send(MsgType::Hello, jsonPayload(QJsonObject{ { "version", 1 }, { "lockOnDisconnect", true } }));
+    QVERIFY(waitForType(frames, MsgType::HelloAck));
+    // no Ping from here on, socket left open
+    QTRY_COMPARE_WITH_TIMEOUT(f.locks, 1, 3000);
+}
+
+void TestAgentServer::pingsKeepSessionAlive()
+{
+    Fixture f(400);
+    auto conn = f.connect("client1");
+    QSignalSpy frames(conn.get(), &PeerConnection::frameReceived);
+    conn->send(MsgType::Hello, jsonPayload(QJsonObject{ { "version", 1 }, { "lockOnDisconnect", true } }));
+    QVERIFY(waitForType(frames, MsgType::HelloAck));
+    QSignalSpy closed(conn.get(), &PeerConnection::closed);
+    for (int i = 0; i < 12; i++) {
+        conn->send(MsgType::Ping);
+        QTest::qWait(100);
+    }
+    QCOMPARE(closed.count(), 0);
+    QCOMPARE(f.locks, 0);
+}
+
+void TestAgentServer::reconnectThenDropStillLocks()
+{
+    // Flaky Wi-Fi: drop, quick reconnect that dies before saying anything, drop again
+    Fixture f;
+    {
+        auto conn = f.connect("client1");
+        QSignalSpy frames(conn.get(), &PeerConnection::frameReceived);
+        conn->send(MsgType::Hello, jsonPayload(QJsonObject{ { "version", 1 }, { "lockOnDisconnect", true } }));
+        QVERIFY(waitForType(frames, MsgType::HelloAck));
+    }
+    {
+        auto again = f.connect("client1"); // TLS only, no Hello
+        QVERIFY(again);
+        QTest::qWait(50);
+    }
+    QTRY_COMPARE_WITH_TIMEOUT(f.locks, 1, 3000);
 }
