@@ -189,3 +189,17 @@ private slots:
     void historyZeroMarksExcluded();
     void tooManyFilesGivesNoFiles();
 };
+
+class TestRemoteDataObject : public QObject
+{
+    Q_OBJECT
+private slots:
+    void enumFormats();
+    void textGetData();
+    void dibGetData();
+    void fileDescriptorNamesSizes();
+    void fileContentsStreamMatchesSource();
+    void largeStreamBoundedMemory();
+    void historyExclusionFormats();
+    void fetchFailureGivesError();
+};

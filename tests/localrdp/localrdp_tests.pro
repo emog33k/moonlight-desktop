@@ -3,7 +3,7 @@
 #   cd tests\localrdp && qmake && nmake release && release\localrdp_tests.exe
 QT += testlib qml network
 RESOURCES += data/testdata.qrc
-LIBS += crypt32.lib ole32.lib shell32.lib user32.lib
+LIBS += crypt32.lib ole32.lib shell32.lib user32.lib psapi.lib
 QT -= gui
 CONFIG += console c++17 testcase
 CONFIG -= app_bundle
@@ -28,6 +28,8 @@ SOURCES += \
     tst_clipmessages.cpp \
     tst_clipexchange.cpp \
     tst_clipreader.cpp \
+    tst_remotedataobject.cpp \
+    ../../app/localrdp-shared/clip/remotedataobject_win32.cpp \
     ../../app/localrdp-shared/clip/clipreader_win32.cpp \
     ../../app/localrdp-shared/clip/clipexchange.cpp \
     ../../app/localrdp-shared/clip/clipmessages.cpp \
