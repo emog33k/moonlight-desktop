@@ -89,6 +89,8 @@ public:
     }
 };
 
+namespace LocalRdp { class StreamMenuController; }
+
 class Session : public QObject
 {
     Q_OBJECT
@@ -260,6 +262,7 @@ private:
     QQuickWindow* m_QtWindow;
     bool m_UnexpectedTermination;
     SdlInputHandler* m_InputHandler;
+    LocalRdp::StreamMenuController* m_StreamMenu; // Windows only; null elsewhere
     int m_MouseEmulationRefCount;
     int m_FlushingWindowEventsRef;
     QStringList m_LaunchWarnings;

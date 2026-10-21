@@ -395,6 +395,17 @@ config_SL {
 }
 win32 {
     HEADERS += streaming/video/ffmpeg-renderers/dxutil.h
+
+    # LocalRDP: floating button and menu over the stream window (Win32 + GDI+)
+    SOURCES += \
+        streaming/localrdp/floatingbutton_win32.cpp \
+        streaming/localrdp/streammenucontroller.cpp \
+        streaming/localrdp/win32canvas.cpp
+    HEADERS += \
+        streaming/localrdp/floatingbutton_win32.h \
+        streaming/localrdp/streammenucontroller.h \
+        streaming/localrdp/win32canvas.h
+    LIBS += gdiplus.lib
 }
 win32:!winrt {
     message(DXVA2 and D3D11VA renderers selected)

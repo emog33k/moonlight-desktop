@@ -16,6 +16,10 @@
 #endif
 
 #ifdef Q_OS_WIN32
+#include "localrdp/streammenucontroller.h"
+#endif
+
+#ifdef Q_OS_WIN32
 // Scaling the icon down on Win32 looks dreadful, so render at lower res
 #define ICON_SIZE 32
 #else
@@ -576,6 +580,7 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_QtWindow(nullptr),
       m_UnexpectedTermination(true), // Failure prior to streaming is unexpected
       m_InputHandler(nullptr),
+      m_StreamMenu(nullptr),
       m_MouseEmulationRefCount(0),
       m_FlushingWindowEventsRef(0),
       m_ShouldExit(false),
@@ -1878,6 +1883,11 @@ void Session::exec()
 
     m_InputHandler->setWindow(m_Window);
 
+#ifdef Q_OS_WIN32
+    // LocalRDP: floating menu button over the stream window
+    m_StreamMenu = new LocalRdp::StreamMenuController(m_Window, m_InputHandler);
+#endif
+
     QSvgRenderer svgIconRenderer(QString(":/res/moonlight.svg"));
     QImage svgImage(ICON_SIZE, ICON_SIZE, QImage::Format_RGBA8888);
     svgImage.fill(0);
@@ -2037,7 +2047,11 @@ void Session::exec()
                                                     (DualSenseOutputReport *)event.user.data2);
                 break;
             case SDL_CODE_TOGGLE_STREAM_MENU:
-                // Handled by the in-stream menu (added with the floating button)
+#ifdef Q_OS_WIN32
+                if (m_StreamMenu != nullptr) {
+                    m_StreamMenu->toggleMenu();
+                }
+#endif
                 break;
             default:
                 SDL_assert(false);
@@ -2045,6 +2059,12 @@ void Session::exec()
             break;
 
         case SDL_WINDOWEVENT:
+#ifdef Q_OS_WIN32
+            if (m_StreamMenu != nullptr) {
+                m_StreamMenu->handleWindowEvent(event.window);
+            }
+#endif
+
             // Early handling of some events
             switch (event.window.event) {
             case SDL_WINDOWEVENT_FOCUS_LOST:
@@ -2313,6 +2333,12 @@ void Session::exec()
 DispatchDeferredCleanup:
     // Switch back to synchronous logging mode
     StreamUtils::exitAsyncLoggingMode();
+
+#ifdef Q_OS_WIN32
+    // LocalRDP: remove the button/menu first so nothing is left on screen
+    delete m_StreamMenu;
+    m_StreamMenu = nullptr;
+#endif
 
     // Uncapture the mouse and hide the window immediately,
     // so we can return to the Qt GUI ASAP.

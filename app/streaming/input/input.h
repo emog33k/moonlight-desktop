@@ -3,6 +3,7 @@
 #include "settings/streamingpreferences.h"
 #include "backend/computermanager.h"
 #include "streaming/localrdp/streamactions.h"
+#include "streaming/localrdp/streammenuhost.h"
 
 // LocalRDP: SDL_USEREVENT code asking the session to open/close the in-stream menu
 // (other codes live in session.cpp and video/decoder.h)
@@ -86,7 +87,7 @@ struct DualSenseOutputReport{
 #define GAMEPAD_HAPTIC_SIMPLE_HIFREQ_MOTOR_WEIGHT 0.33
 #define GAMEPAD_HAPTIC_SIMPLE_LOWFREQ_MOTOR_WEIGHT 0.8
 
-class SdlInputHandler
+class SdlInputHandler : public LocalRdp::StreamMenuHost
 {
 public:
     explicit SdlInputHandler(StreamingPreferences& prefs, int streamWidth, int streamHeight);
@@ -145,11 +146,11 @@ public:
 
     void notifyFocusGained();
 
-    bool isCaptureActive();
+    bool isCaptureActive() override;
 
     bool isSystemKeyCaptureActive();
 
-    void setCaptureActive(bool active);
+    void setCaptureActive(bool active) override;
 
     bool isMouseInVideoRegion(int mouseX, int mouseY, int windowWidth = -1, int windowHeight = -1);
 
@@ -159,9 +160,9 @@ public:
 
     // LocalRDP: one entry point for the in-stream menu and the Ctrl+Alt+Shift shortcuts.
     // Always releases held keys first so nothing stays pressed on the host.
-    void performAction(LocalRdp::StreamAction action);
+    void performAction(LocalRdp::StreamAction action) override;
 
-    LocalRdp::StreamState queryState();
+    LocalRdp::StreamState queryState() override;
 
     static
     QString getUnmappedGamepads();
