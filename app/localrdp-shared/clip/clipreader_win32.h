@@ -28,5 +28,9 @@ struct LocalSnapshot {
 // junctions are not followed. Too many/too large files drop the file part only.
 LocalSnapshot readDataObject(IDataObject* data, quint64 seq);
 
+// Files and folders given by path ("send files to PC", drag and drop), walked
+// the same way as copied files. Too many/too large gives no files.
+LocalSnapshot snapshotFromPaths(const QStringList& paths, quint64 seq);
+
 }
 }

@@ -203,3 +203,15 @@ private slots:
     void historyExclusionFormats();
     void fetchFailureGivesError();
 };
+
+class TestClipboardBridge : public QObject
+{
+    Q_OBJECT
+private slots:
+    void offerFilesSendsOffer();
+    void peerRequestServedFromOfferFiles();
+    void disabledSendsNothing();
+    void notConnectedSendsNothing();
+    void badFramesIgnored();
+    void systemClipboardRoundTrip();
+};

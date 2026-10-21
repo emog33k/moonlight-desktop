@@ -164,24 +164,34 @@ LocalSnapshot readDataObject(IDataObject* data, quint64 seq)
     }
 
     if (auto hdrop = getBytes(data, CF_HDROP)) {
-        Walk walk;
-        for (const QString& path : droppedPaths(*hdrop)) {
-            const QFileInfo info(path);
-            if (!info.exists()) {
-                continue;
-            }
-            if (info.isDir()) {
-                walk.add(info.fileName(), QString(), 0, true);
-                walk.walkDir(info.absoluteFilePath(), info.fileName());
-            }
-            else {
-                walk.add(info.fileName(), info.absoluteFilePath(), (quint64)info.size(), false);
-            }
+        const LocalSnapshot files = snapshotFromPaths(droppedPaths(*hdrop), seq);
+        s.offer.files = files.offer.files;
+        s.filePaths = files.filePaths;
+    }
+    return s;
+}
+
+LocalSnapshot snapshotFromPaths(const QStringList& paths, quint64 seq)
+{
+    LocalSnapshot s;
+    s.offer.seq = seq;
+    Walk walk;
+    for (const QString& path : paths) {
+        const QFileInfo info(path);
+        if (!info.exists()) {
+            continue;
         }
-        if (!walk.tooMuch) {
-            s.offer.files = walk.entries;
-            s.filePaths = walk.paths;
+        if (info.isDir()) {
+            walk.add(info.fileName(), QString(), 0, true);
+            walk.walkDir(info.absoluteFilePath(), info.fileName());
         }
+        else {
+            walk.add(info.fileName(), info.absoluteFilePath(), (quint64)info.size(), false);
+        }
+    }
+    if (!walk.tooMuch) {
+        s.offer.files = walk.entries;
+        s.filePaths = walk.paths;
     }
     return s;
 }
