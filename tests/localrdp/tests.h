@@ -14,3 +14,15 @@ private slots:
     void remoteDesktopDefaults();
     void newPreferencesRoundTrip();
 };
+
+class TestStreamMenuModel : public QObject
+{
+    Q_OBJECT
+private slots:
+    void headersInOrder();
+    void desktopModeChecked();
+    void checksMirrorState();
+    void everyActionableItemHasAction();
+    void everyActionAppearsOnce();
+    void shortcutText();
+};

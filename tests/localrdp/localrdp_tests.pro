@@ -14,8 +14,12 @@ SOURCES += \
     main.cpp \
     wmstub.cpp \
     tst_streamingpreferences.cpp \
-    ../../app/settings/streamingpreferences.cpp
+    tst_streammenumodel.cpp \
+    ../../app/settings/streamingpreferences.cpp \
+    ../../app/streaming/localrdp/streammenumodel.cpp
 
 HEADERS += \
     tests.h \
-    ../../app/settings/streamingpreferences.h
+    ../../app/settings/streamingpreferences.h \
+    ../../app/streaming/localrdp/streamactions.h \
+    ../../app/streaming/localrdp/streammenumodel.h
