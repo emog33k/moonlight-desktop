@@ -119,7 +119,7 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
     }
 }
 
-void SdlInputHandler::performAction(LocalRdp::StreamAction action)
+void SdlInputHandler::performAction(LocalRdp::StreamAction action, int param)
 {
     using LocalRdp::StreamAction;
 
@@ -197,9 +197,15 @@ void SdlInputHandler::performAction(LocalRdp::StreamAction action)
         m_Prefs->saveInputPrefs();
         break;
 
-    case StreamAction::ToggleHostCursor:
-        // Sunshine shows/hides the cursor in the video on Ctrl+Alt+Shift+N
-        sendHostShortcut(0x4E /* VK for the N key */);
+    case StreamAction::SwitchDisplay:
+        // Sunshine switches the captured monitor on Ctrl+Alt+Shift+F1..F12, live
+        if (param >= 0 && param < 12) {
+            sendHostShortcut((short)(0x70 /* VK_F1 */ + param));
+        }
+        break;
+
+    case StreamAction::ToggleLocalCursorShapes:
+        // Handled by the session (cursor sync with LocalRDP Agent)
         break;
 
     case StreamAction::ToggleSystemKeyCapture:

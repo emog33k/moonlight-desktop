@@ -22,16 +22,21 @@ public:
                     std::function<void()> pickFilesToSend = {});
 
     StreamState queryState() override;
-    void performAction(StreamAction action) override;
+    void performAction(StreamAction action, int param = 0) override;
     bool isCaptureActive() override;
     void setCaptureActive(bool active) override;
     void suspendPointerLock(bool suspended) override;
+
+    // The session applies the AnyDesk-style cursor setting when it changes.
+    void setCursorShapesChangedHandler(std::function<void(bool)> handler) { m_OnCursorShapesChanged = std::move(handler); }
 
 private:
     StreamMenuHost* m_Input;
     StreamingPreferences* m_Prefs;
     AgentClient* m_Agent;
     std::function<void()> m_PickFilesToSend;
+    int m_CurrentDisplay = -1;
+    std::function<void(bool)> m_OnCursorShapesChanged;
 };
 
 }

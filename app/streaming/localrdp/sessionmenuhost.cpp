@@ -19,10 +19,15 @@ StreamState SessionMenuHost::queryState()
     state.agentStatus = m_Agent ? m_Agent->status() : AgentStatus::NotFound;
     state.lockOnDisconnect = m_Prefs->lockOnDisconnect;
     state.clipboardSync = m_Prefs->clipboardSync;
+    state.localCursorShapes = m_Prefs->localCursorShapes;
+    state.currentDisplay = m_CurrentDisplay;
+    if (m_Agent) {
+        state.displays = m_Agent->displays();
+    }
     return state;
 }
 
-void SessionMenuHost::performAction(StreamAction action)
+void SessionMenuHost::performAction(StreamAction action, int param)
 {
     switch (action) {
     case StreamAction::LockPc:
@@ -44,13 +49,24 @@ void SessionMenuHost::performAction(StreamAction action)
             m_Agent->setClipboardSync(m_Prefs->clipboardSync);
         }
         break;
+    case StreamAction::ToggleLocalCursorShapes:
+        m_Prefs->localCursorShapes = !m_Prefs->localCursorShapes;
+        m_Prefs->saveInputPrefs();
+        if (m_OnCursorShapesChanged) {
+            m_OnCursorShapesChanged(m_Prefs->localCursorShapes);
+        }
+        break;
+    case StreamAction::SwitchDisplay:
+        m_CurrentDisplay = param;
+        m_Input->performAction(action, param);
+        break;
     case StreamAction::SendFilesToPc:
         if (m_PickFilesToSend) {
             m_PickFilesToSend();
         }
         break;
     default:
-        m_Input->performAction(action);
+        m_Input->performAction(action, param);
         break;
     }
 }

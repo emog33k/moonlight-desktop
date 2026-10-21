@@ -26,6 +26,15 @@ static const MenuItem* findByAction(const QVector<MenuItem>& items, StreamAction
     return nullptr;
 }
 
+static QVector<StreamAction> actionsOf(const QVector<MenuItem>& items)
+{
+    QVector<StreamAction> out;
+    for (const MenuItem& item : items) {
+        if (item.action) out << *item.action;
+    }
+    return out;
+}
+
 void TestStreamMenuModel::headersInOrder()
 {
     QStringList headers;
@@ -34,7 +43,7 @@ void TestStreamMenuModel::headersInOrder()
             headers << item.label;
         }
     }
-    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Экран", "ПК" }));
+    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Монитор ПК", "Экран", "ПК" }));
 }
 
 void TestStreamMenuModel::desktopModeChecked()
@@ -55,7 +64,7 @@ void TestStreamMenuModel::checksMirrorState()
 {
     struct Case { bool StreamState::* field; StreamAction action; };
     const Case cases[] = {
-        { &StreamState::localCursorVisible, StreamAction::ToggleLocalCursor },
+        { &StreamState::localCursorShapes, StreamAction::ToggleLocalCursorShapes },
         { &StreamState::pointerLocked, StreamAction::TogglePointerLock },
         { &StreamState::systemKeyCapture, StreamAction::ToggleSystemKeyCapture },
         { &StreamState::fullscreen, StreamAction::ToggleFullscreen },
@@ -88,6 +97,8 @@ void TestStreamMenuModel::everyActionableItemHasAction()
 
 void TestStreamMenuModel::everyActionAppearsOnce()
 {
+    // Hotkey-only actions are not in the menu; SwitchDisplay appears once per monitor.
+    const QSet<StreamAction> notInMenu = { StreamAction::ToggleLocalCursor };
     QVector<int> counts(static_cast<int>(StreamAction::Count), 0);
     for (const MenuItem& item : buildStreamMenu(StreamState())) {
         if (item.action) {
@@ -95,7 +106,9 @@ void TestStreamMenuModel::everyActionAppearsOnce()
         }
     }
     for (int i = 0; i < counts.size(); i++) {
-        QVERIFY2(counts[i] == 1, qPrintable(QString("action %1 appears %2 times").arg(i).arg(counts[i])));
+        const StreamAction a = static_cast<StreamAction>(i);
+        const int expected = notInMenu.contains(a) ? 0 : a == StreamAction::SwitchDisplay ? 4 : 1;
+        QVERIFY2(counts[i] == expected, qPrintable(QString("action %1 appears %2 times").arg(i).arg(counts[i])));
     }
 }
 
@@ -105,6 +118,7 @@ void TestStreamMenuModel::shortcutText()
     QCOMPARE(findByAction(items, StreamAction::SetGameMouseMode)->shortcut, QString("Ctrl+Alt+Shift+M"));
     QCOMPARE(findByAction(items, StreamAction::SetDesktopMouseMode)->shortcut, QString());
     QCOMPARE(findByAction(items, StreamAction::Disconnect)->shortcut, QString("Ctrl+Alt+Shift+Q"));
+    QVERIFY(!findByLabel(items, "Курсор ПК: показать/скрыть")); // replaced by AnyDesk-style cursor
 }
 
 void TestStreamMenuModel::agentStatusLine()
@@ -143,7 +157,6 @@ void TestStreamMenuModel::lockPcNeedsAgent()
     }
     state.agentStatus = AgentStatus::Connected;
     QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::LockPc)->enabled, true);
-    // The preference can be changed any time; it is sent when the agent connects
     state.agentStatus = AgentStatus::NotFound;
     QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::ToggleLockOnDisconnect)->enabled, true);
 }
@@ -153,6 +166,7 @@ void TestStreamMenuModel::lockPcTexts()
     const QVector<MenuItem> items = buildStreamMenu(StreamState());
     QCOMPARE(findByAction(items, StreamAction::LockPc)->label, QString("Заблокировать ПК"));
     QCOMPARE(findByAction(items, StreamAction::ToggleLockOnDisconnect)->label, QString("Блокировать ПК при отключении"));
+    QCOMPARE(findByAction(items, StreamAction::ToggleLocalCursorShapes)->label, QString("Курсор как в AnyDesk"));
 }
 
 void TestStreamMenuModel::sendFilesNeedsAgentAndSync()
@@ -168,4 +182,56 @@ void TestStreamMenuModel::sendFilesNeedsAgentAndSync()
     QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::SendFilesToPc)->enabled, false);
     QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::SendFilesToPc)->label, QString("Отправить файлы на ПК…"));
     QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::ToggleClipboardSync)->label, QString("Синхронизация буфера обмена"));
+}
+
+void TestStreamMenuModel::sectionsSplit()
+{
+    const StreamState s;
+    QCOMPARE(actionsOf(buildSectionMenu(MenuSection::Mouse, s)),
+             QVector<StreamAction>({ StreamAction::SetDesktopMouseMode, StreamAction::SetGameMouseMode,
+                                     StreamAction::ToggleLocalCursorShapes, StreamAction::TogglePointerLock }));
+    QCOMPARE(actionsOf(buildSectionMenu(MenuSection::Keyboard, s)),
+             QVector<StreamAction>({ StreamAction::ToggleSystemKeyCapture, StreamAction::PasteClipboardText }));
+    QCOMPARE(actionsOf(buildSectionMenu(MenuSection::Clipboard, s)),
+             QVector<StreamAction>({ StreamAction::ToggleClipboardSync, StreamAction::SendFilesToPc }));
+    QCOMPARE(actionsOf(buildSectionMenu(MenuSection::Pc, s)),
+             QVector<StreamAction>({ StreamAction::LockPc, StreamAction::ToggleLockOnDisconnect }));
+    QCOMPARE(actionsOf(buildSectionMenu(MenuSection::Session, s)),
+             QVector<StreamAction>({ StreamAction::Minimize, StreamAction::Disconnect, StreamAction::DisconnectAndExit }));
+    const QVector<StreamAction> screen = actionsOf(buildSectionMenu(MenuSection::Screen, s));
+    QVERIFY(screen.contains(StreamAction::ToggleFullscreen));
+    QVERIFY(screen.contains(StreamAction::ToggleStats));
+    QVERIFY(screen.contains(StreamAction::SwitchDisplay));
+}
+
+void TestStreamMenuModel::displaysListed()
+{
+    StreamState s;
+    s.displays = { { "DISPLAY1", 2560, 1440, true }, { "DISPLAY2", 1920, 1080, false } };
+    s.currentDisplay = 1;
+    QVector<MenuItem> radios;
+    for (const MenuItem& item : buildSectionMenu(MenuSection::Screen, s)) {
+        if (item.action && *item.action == StreamAction::SwitchDisplay) radios << item;
+    }
+    QCOMPARE(radios.size(), 2);
+    QCOMPARE(radios[0].label, QString("Монитор 1: 2560×1440, основной"));
+    QCOMPARE(radios[1].label, QString("Монитор 2: 1920×1080"));
+    QCOMPARE(radios[0].param, 0);
+    QCOMPARE(radios[1].param, 1);
+    QCOMPARE(radios[0].checked, false);
+    QCOMPARE(radios[1].checked, true);
+    QCOMPARE(radios[0].kind, MenuItemKind::Radio);
+    QCOMPARE(radios[0].shortcut, QString("Ctrl+Alt+Shift+F1"));
+}
+
+void TestStreamMenuModel::displaysUnknownGivesGeneric()
+{
+    QStringList labels;
+    for (const MenuItem& item : buildSectionMenu(MenuSection::Screen, StreamState())) {
+        if (item.action && *item.action == StreamAction::SwitchDisplay) {
+            labels << item.label;
+            QCOMPARE(item.checked, false);
+        }
+    }
+    QCOMPARE(labels, QStringList({ "Монитор 1", "Монитор 2", "Монитор 3", "Монитор 4" }));
 }

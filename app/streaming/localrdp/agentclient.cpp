@@ -310,4 +310,10 @@ void AgentClient::offerFiles(const QStringList& paths, std::function<void(bool, 
     m_Clipboard->offerFiles(paths, std::move(done));
 }
 
+QVector<DisplayInfo> AgentClient::displays() const
+{
+    std::lock_guard<std::mutex> lock(m_DisplaysMutex);
+    return m_Displays;
+}
+
 }

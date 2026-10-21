@@ -31,7 +31,7 @@ static std::wstring wide(const QString& s)
 }
 
 StreamMenuWindow::StreamMenuWindow(HWND owner,
-                                   std::function<void(StreamAction)> onAction,
+                                   std::function<void(StreamAction, int)> onAction,
                                    std::function<void()> onDismissed)
     : m_Owner(owner),
       m_OnAction(std::move(onAction)),
@@ -115,9 +115,10 @@ void StreamMenuWindow::activate(int index)
         return;
     }
     const StreamAction action = *m_Items[index].action;
+    const int param = m_Items[index].param;
     close();
     if (m_OnAction) {
-        m_OnAction(action);
+        m_OnAction(action, param);
     }
 }
 

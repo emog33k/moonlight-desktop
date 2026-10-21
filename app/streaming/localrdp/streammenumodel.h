@@ -19,9 +19,16 @@ struct MenuItem {
     std::optional<StreamAction> action; // empty for headers and separators
     bool checked = false;
     bool enabled = true;                // disabled items are grey and do nothing
+    int param = 0;                      // e.g. display index for SwitchDisplay
 };
 
-// Builds the in-stream menu, top to bottom, reflecting the current state.
+// The toolbar's buttons, left to right; Session holds the right-hand buttons.
+enum class MenuSection { Mouse, Keyboard, Clipboard, Screen, Pc, Session };
+
+// One toolbar button's dropdown.
+QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& state);
+
+// Everything in one menu (Ctrl+Alt+Shift+Space, e.g. in full screen).
 QVector<MenuItem> buildStreamMenu(const StreamState& state);
 
 }

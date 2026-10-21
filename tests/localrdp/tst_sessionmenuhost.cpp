@@ -16,7 +16,8 @@ public:
     StreamState state;
     QVector<StreamAction> performed;
     StreamState queryState() override { return state; }
-    void performAction(StreamAction a) override { performed << a; }
+    QVector<int> params;
+    void performAction(StreamAction a, int param) override { performed << a; params << param; }
     bool isCaptureActive() override { return true; }
     void setCaptureActive(bool) override {}
     void suspendPointerLock(bool) override {}
@@ -108,4 +109,28 @@ void TestSessionMenuHost::sendFilesOpensPicker()
     host.performAction(StreamAction::SendFilesToPc);
     QCOMPARE(picks, 1);
     QVERIFY(input.performed.isEmpty());
+}
+
+void TestSessionMenuHost::switchDisplayForwardedAndRemembered()
+{
+    FakeInput input;
+    SessionMenuHost host(&input, StreamingPreferences::get(), nullptr);
+    QCOMPARE(host.queryState().currentDisplay, -1);
+    host.performAction(StreamAction::SwitchDisplay, 1);
+    QCOMPARE(input.performed, QVector<StreamAction>({ StreamAction::SwitchDisplay }));
+    QCOMPARE(input.params, QVector<int>({ 1 }));
+    QCOMPARE(host.queryState().currentDisplay, 1);
+}
+
+void TestSessionMenuHost::toggleCursorShapesPersists()
+{
+    FakeInput input;
+    StreamingPreferences* prefs = StreamingPreferences::get();
+    SessionMenuHost host(&input, prefs, nullptr);
+    QCOMPARE(host.queryState().localCursorShapes, true);
+    host.performAction(StreamAction::ToggleLocalCursorShapes);
+    QCOMPARE(host.queryState().localCursorShapes, false);
+    prefs->localCursorShapes = true;
+    prefs->reload();
+    QCOMPARE(prefs->localCursorShapes, false);
 }

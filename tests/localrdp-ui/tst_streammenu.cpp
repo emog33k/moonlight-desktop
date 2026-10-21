@@ -350,3 +350,20 @@ void TestStreamMenu::toastShowsThenHides()
     UiTest::pump(700);
     QVERIFY(!IsWindowVisible(toast));
 }
+
+void TestStreamMenu::displayItemCarriesIndex()
+{
+    m_Controller->toggleMenu();
+    const QVector<MenuItem> items = buildStreamMenu(m_Host->state);
+    const MenuLayout layout = layoutMenu(items, 1.0);
+    const QPoint origin = UiTest::windowScreenRect(menuHwnd()).topLeft();
+    int third = -1, seen = 0;
+    for (int i = 0; i < items.size(); i++) {
+        if (items[i].action && *items[i].action == StreamAction::SwitchDisplay && seen++ == 2) third = i;
+    }
+    QVERIFY(third >= 0);
+    click(origin + layout.itemRects[third].center());
+    deliverMenuEvents(*m_Controller);
+    QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::SwitchDisplay }));
+    QCOMPARE(m_Host->params, QVector<int>({ 2 }));
+}

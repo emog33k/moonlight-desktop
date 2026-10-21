@@ -30,6 +30,9 @@ private slots:
     void lockPcNeedsAgent();
     void lockPcTexts();
     void sendFilesNeedsAgentAndSync();
+    void sectionsSplit();
+    void displaysListed();
+    void displaysUnknownGivesGeneric();
 };
 
 class TestButtonPlacement : public QObject
@@ -150,6 +153,8 @@ private slots:
     void lockPcWithoutAgentIsHarmless();
     void toggleClipboardSyncPersists();
     void sendFilesOpensPicker();
+    void switchDisplayForwardedAndRemembered();
+    void toggleCursorShapesPersists();
 };
 
 class TestClipMessages : public QObject

@@ -26,7 +26,7 @@ public:
     // onAction: an item was chosen (the menu has already closed).
     // onDismissed: the menu closed itself without a choice (click outside, capture lost).
     StreamMenuWindow(HWND owner,
-                     std::function<void(StreamAction)> onAction,
+                     std::function<void(StreamAction, int)> onAction,
                      std::function<void()> onDismissed);
     ~StreamMenuWindow();
 
@@ -55,7 +55,7 @@ private:
 
     HWND m_Owner;
     HWND m_Hwnd = nullptr;
-    std::function<void(StreamAction)> m_OnAction;
+    std::function<void(StreamAction, int)> m_OnAction;
     std::function<void()> m_OnDismissed;
 
     QVector<MenuItem> m_Items;

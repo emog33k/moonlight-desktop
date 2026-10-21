@@ -160,7 +160,7 @@ public:
 
     // LocalRDP: one entry point for the in-stream menu and the Ctrl+Alt+Shift shortcuts.
     // Always releases held keys first so nothing stays pressed on the host.
-    void performAction(LocalRdp::StreamAction action) override;
+    void performAction(LocalRdp::StreamAction action, int param = 0) override;
 
     LocalRdp::StreamState queryState() override;
 

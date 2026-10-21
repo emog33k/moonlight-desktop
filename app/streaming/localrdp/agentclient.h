@@ -48,6 +48,9 @@ public:
     // done(ok, reason) runs on a background thread with the outcome.
     void offerFiles(const QStringList& paths, std::function<void(bool, QString)> done = {});
 
+    // The PC's monitors as Sunshine numbers them (empty until the agent reports them).
+    QVector<DisplayInfo> displays() const;
+
 private:
     std::atomic<int> m_Status;
     std::unique_ptr<Clip::ClipboardBridge> m_Clipboard;
@@ -55,6 +58,8 @@ private:
     AgentClientWorker* m_Worker;
     // The clipboard bridge's threads send through this; cleared before the worker stops.
     std::mutex m_SendMutex;
+    mutable std::mutex m_DisplaysMutex;
+    QVector<DisplayInfo> m_Displays;
     AgentClientWorker* m_SendTarget = nullptr;
 };
 

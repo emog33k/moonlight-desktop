@@ -12,7 +12,8 @@ public:
     virtual ~StreamMenuHost() = default;
 
     virtual StreamState queryState() = 0;
-    virtual void performAction(StreamAction action) = 0;
+    // param: extra value for some actions (display index for SwitchDisplay).
+    virtual void performAction(StreamAction action, int param = 0) = 0;
 
     // Mouse capture (game mode hides and locks the cursor); the menu releases it while open.
     virtual bool isCaptureActive() = 0;

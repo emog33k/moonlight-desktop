@@ -48,42 +48,95 @@ static QString agentStatusText(AgentStatus status)
     return QStringLiteral("Агент на ПК: —");
 }
 
-QVector<MenuItem> buildStreamMenu(const StreamState& s)
+static QVector<MenuItem> displayItems(const StreamState& s)
+{
+    QVector<MenuItem> items;
+    // Sunshine switches the captured monitor on Ctrl+Alt+Shift+F1..F12
+    const int count = s.displays.isEmpty() ? 4 : qMin(s.displays.size(), 12);
+    for (int i = 0; i < count; i++) {
+        QString label = QStringLiteral("Монитор %1").arg(i + 1);
+        if (!s.displays.isEmpty()) {
+            const DisplayInfo& d = s.displays[i];
+            label += QStringLiteral(": %1×%2").arg(d.width).arg(d.height);
+            if (d.primary) {
+                label += QStringLiteral(", основной");
+            }
+        }
+        MenuItem m = item(MenuItemKind::Radio, label, QStringLiteral("Ctrl+Alt+Shift+F%1").arg(i + 1),
+                          StreamAction::SwitchDisplay, i == s.currentDisplay);
+        m.param = i;
+        items << m;
+    }
+    return items;
+}
+
+QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
 {
     using K = MenuItemKind;
     using A = StreamAction;
 
-    return {
-        header(QStringLiteral("Мышь")),
-        item(K::Radio, QStringLiteral("Режим рабочего стола"), QString(), A::SetDesktopMouseMode, s.absoluteMouse),
-        item(K::Radio, QStringLiteral("Игровой режим"), QStringLiteral("Ctrl+Alt+Shift+M"), A::SetGameMouseMode, !s.absoluteMouse),
-        item(K::Check, QStringLiteral("Показывать мой курсор"), QStringLiteral("Ctrl+Alt+Shift+C"), A::ToggleLocalCursor, s.localCursorVisible),
-        item(K::Check, QStringLiteral("Не выпускать курсор из окна"), QStringLiteral("Ctrl+Alt+Shift+L"), A::TogglePointerLock, s.pointerLocked),
-        item(K::Command, QStringLiteral("Курсор ПК: показать/скрыть"), QStringLiteral("Ctrl+Alt+Shift+N"), A::ToggleHostCursor),
-        separator(),
-        header(QStringLiteral("Клавиатура")),
-        item(K::Check, QStringLiteral("Передавать Alt+Tab, Win на ПК"), QStringLiteral("Ctrl+Alt+Shift+K"), A::ToggleSystemKeyCapture, s.systemKeyCapture),
-        item(K::Command, QStringLiteral("Напечатать текст с ноутбука"), QStringLiteral("Ctrl+Alt+Shift+V"), A::PasteClipboardText),
-        separator(),
-        header(QStringLiteral("Буфер обмена")),
-        item(K::Check, QStringLiteral("Синхронизация буфера обмена"), QString(), A::ToggleClipboardSync, s.clipboardSync),
-        disabledUnless(item(K::Command, QStringLiteral("Отправить файлы на ПК…"), QString(), A::SendFilesToPc),
-                       s.clipboardSync && s.agentStatus == AgentStatus::Connected),
-        separator(),
-        header(QStringLiteral("Экран")),
-        item(K::Check, QStringLiteral("Полный экран"), QStringLiteral("Ctrl+Alt+Shift+X"), A::ToggleFullscreen, s.fullscreen),
-        item(K::Check, QStringLiteral("Статистика"), QStringLiteral("Ctrl+Alt+Shift+S"), A::ToggleStats, s.statsVisible),
-        separator(),
-        header(QStringLiteral("ПК")),
-        status(agentStatusText(s.agentStatus)),
-        disabledUnless(item(K::Command, QStringLiteral("Заблокировать ПК"), QString(), A::LockPc),
-                       s.agentStatus == AgentStatus::Connected),
-        item(K::Check, QStringLiteral("Блокировать ПК при отключении"), QString(), A::ToggleLockOnDisconnect, s.lockOnDisconnect),
-        separator(),
-        item(K::Command, QStringLiteral("Свернуть"), QStringLiteral("Ctrl+Alt+Shift+D"), A::Minimize),
-        item(K::Command, QStringLiteral("Отключиться"), QStringLiteral("Ctrl+Alt+Shift+Q"), A::Disconnect),
-        item(K::Command, QStringLiteral("Отключиться и закрыть Moonlight"), QStringLiteral("Ctrl+Alt+Shift+E"), A::DisconnectAndExit),
-    };
+    switch (section) {
+    case MenuSection::Mouse:
+        return {
+            header(QStringLiteral("Мышь")),
+            item(K::Radio, QStringLiteral("Режим рабочего стола"), QString(), A::SetDesktopMouseMode, s.absoluteMouse),
+            item(K::Radio, QStringLiteral("Игровой режим"), QStringLiteral("Ctrl+Alt+Shift+M"), A::SetGameMouseMode, !s.absoluteMouse),
+            item(K::Check, QStringLiteral("Курсор как в AnyDesk"), QString(), A::ToggleLocalCursorShapes, s.localCursorShapes),
+            item(K::Check, QStringLiteral("Не выпускать курсор из окна"), QStringLiteral("Ctrl+Alt+Shift+L"), A::TogglePointerLock, s.pointerLocked),
+        };
+    case MenuSection::Keyboard:
+        return {
+            header(QStringLiteral("Клавиатура")),
+            item(K::Check, QStringLiteral("Передавать Alt+Tab, Win на ПК"), QStringLiteral("Ctrl+Alt+Shift+K"), A::ToggleSystemKeyCapture, s.systemKeyCapture),
+            item(K::Command, QStringLiteral("Напечатать текст с ноутбука"), QStringLiteral("Ctrl+Alt+Shift+V"), A::PasteClipboardText),
+        };
+    case MenuSection::Clipboard:
+        return {
+            header(QStringLiteral("Буфер обмена")),
+            item(K::Check, QStringLiteral("Синхронизация буфера обмена"), QString(), A::ToggleClipboardSync, s.clipboardSync),
+            disabledUnless(item(K::Command, QStringLiteral("Отправить файлы на ПК…"), QString(), A::SendFilesToPc),
+                           s.clipboardSync && s.agentStatus == AgentStatus::Connected),
+        };
+    case MenuSection::Screen:
+    {
+        QVector<MenuItem> items = { header(QStringLiteral("Монитор ПК")) };
+        items += displayItems(s);
+        items += {
+            header(QStringLiteral("Экран")),
+            item(K::Check, QStringLiteral("Полный экран"), QStringLiteral("Ctrl+Alt+Shift+X"), A::ToggleFullscreen, s.fullscreen),
+            item(K::Check, QStringLiteral("Статистика"), QStringLiteral("Ctrl+Alt+Shift+S"), A::ToggleStats, s.statsVisible),
+        };
+        return items;
+    }
+    case MenuSection::Pc:
+        return {
+            header(QStringLiteral("ПК")),
+            status(agentStatusText(s.agentStatus)),
+            disabledUnless(item(K::Command, QStringLiteral("Заблокировать ПК"), QString(), A::LockPc),
+                           s.agentStatus == AgentStatus::Connected),
+            item(K::Check, QStringLiteral("Блокировать ПК при отключении"), QString(), A::ToggleLockOnDisconnect, s.lockOnDisconnect),
+        };
+    case MenuSection::Session:
+        return {
+            item(K::Command, QStringLiteral("Свернуть"), QStringLiteral("Ctrl+Alt+Shift+D"), A::Minimize),
+            item(K::Command, QStringLiteral("Отключиться"), QStringLiteral("Ctrl+Alt+Shift+Q"), A::Disconnect),
+            item(K::Command, QStringLiteral("Отключиться и закрыть Moonlight"), QStringLiteral("Ctrl+Alt+Shift+E"), A::DisconnectAndExit),
+        };
+    }
+    return {};
+}
+
+QVector<MenuItem> buildStreamMenu(const StreamState& s)
+{
+    QVector<MenuItem> all;
+    for (MenuSection section : { MenuSection::Mouse, MenuSection::Keyboard, MenuSection::Clipboard,
+                                 MenuSection::Screen, MenuSection::Pc, MenuSection::Session }) {
+        if (!all.isEmpty()) {
+            all << separator();
+        }
+        all += buildSectionMenu(section, s);
+    }
+    return all;
 }
 
 }

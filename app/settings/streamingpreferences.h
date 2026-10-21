@@ -186,6 +186,8 @@ public:
     bool lockOnDisconnect;
     // LocalRDP: clipboard/file sync with the PC (needs LocalRDP Agent)
     bool clipboardSync;
+    // LocalRDP: AnyDesk-style cursor (local cursor with the PC cursor's shape)
+    bool localCursorShapes;
     bool absoluteTouchMode;
     bool framePacing;
     bool connectionWarnings;

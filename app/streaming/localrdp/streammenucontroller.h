@@ -60,7 +60,7 @@ public:
 private:
     void openMenu();
     void closeMenu(bool restoreCapture);
-    void onAction(StreamAction action);
+    void onAction(StreamAction action, int param);
     void onDismissed();
 
     SDL_Window* m_Window;

@@ -25,7 +25,8 @@ public:
     QVector<bool> captureChanges;
 
     LocalRdp::StreamState queryState() override { return state; }
-    void performAction(LocalRdp::StreamAction action) override { performed << action; }
+    QVector<int> params;
+    void performAction(LocalRdp::StreamAction action, int param) override { performed << action; params << param; }
     bool isCaptureActive() override { return captureActive; }
     void setCaptureActive(bool active) override { captureActive = active; captureChanges << active; }
     QVector<bool> pointerLockSuspends;
@@ -101,6 +102,7 @@ private slots:
     void openingFromBackgroundActivatesStream();
     void buttonAutoHidesInFullscreen();
     void toastShowsThenHides();
+    void displayItemCarriesIndex();
 
 private:
     HWND menuHwnd();

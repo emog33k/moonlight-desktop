@@ -7,7 +7,7 @@
 
 // Open/close the menu (hotkey or button click).
 #define SDL_CODE_TOGGLE_STREAM_MENU 106
-// A menu item was chosen; data1 = LocalRdp::StreamAction.
+// A menu item was chosen; data1 = LocalRdp::StreamAction, data2 = its parameter.
 #define SDL_CODE_STREAM_MENU_ACTION 107
 // The menu closed itself (click outside, capture lost).
 #define SDL_CODE_STREAM_MENU_DISMISSED 108

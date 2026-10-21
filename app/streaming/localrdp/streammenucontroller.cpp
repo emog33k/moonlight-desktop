@@ -19,12 +19,13 @@ static HWND hwndForWindow(SDL_Window* window)
     return info.info.win.window;
 }
 
-static void postUserEvent(int code, int data = 0)
+static void postUserEvent(int code, int data = 0, int data2 = 0)
 {
     SDL_Event event = {};
     event.type = SDL_USEREVENT;
     event.user.code = code;
     event.user.data1 = (void*)(intptr_t)data;
+    event.user.data2 = (void*)(intptr_t)data2;
     SDL_PushEvent(&event);
 }
 
@@ -52,7 +53,7 @@ StreamMenuController::StreamMenuController(SDL_Window* window, StreamMenuHost* h
         postUserEvent(SDL_CODE_TOGGLE_STREAM_MENU);
     }));
     m_Menu.reset(new StreamMenuWindow(m_Hwnd,
-                                      [](StreamAction action) { postUserEvent(SDL_CODE_STREAM_MENU_ACTION, (int)action); },
+                                      [](StreamAction action, int param) { postUserEvent(SDL_CODE_STREAM_MENU_ACTION, (int)action, param); },
                                       []() { postUserEvent(SDL_CODE_STREAM_MENU_DISMISSED); }));
     m_Toast.reset(new ToastWindow(m_Hwnd));
 }
@@ -129,7 +130,7 @@ void StreamMenuController::handleUserEvent(const SDL_UserEvent& event)
         toggleMenu();
         break;
     case SDL_CODE_STREAM_MENU_ACTION:
-        onAction((StreamAction)(intptr_t)event.data1);
+        onAction((StreamAction)(intptr_t)event.data1, (int)(intptr_t)event.data2);
         break;
     case SDL_CODE_STREAM_MENU_DISMISSED:
         onDismissed();
@@ -139,7 +140,7 @@ void StreamMenuController::handleUserEvent(const SDL_UserEvent& event)
     }
 }
 
-void StreamMenuController::onAction(StreamAction action)
+void StreamMenuController::onAction(StreamAction action, int param)
 {
     if (action < (StreamAction)0 || action >= StreamAction::Count) {
         return;
@@ -149,7 +150,7 @@ void StreamMenuController::onAction(StreamAction action)
     const bool leaving = action == StreamAction::Disconnect || action == StreamAction::DisconnectAndExit;
     closeMenu(!leaving);
 
-    m_Host->performAction(action);
+    m_Host->performAction(action, param);
 
     // Full screen / window changes move the stream area
     if (m_Button) {
