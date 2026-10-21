@@ -141,3 +141,18 @@ private slots:
     void toggleLockOnDisconnectPersists();
     void lockPcWithoutAgentIsHarmless();
 };
+
+class TestClipMessages : public QObject
+{
+    Q_OBJECT
+private slots:
+    void offerRoundTrip();
+    void emptyOffer();
+    void unsafeNamesRejected();
+    void safeNames();
+    void limits();
+    void requestRoundTrip();
+    void chunkRoundTrip();
+    void chunkTooShortRejected();
+    void errorRoundTrip();
+};

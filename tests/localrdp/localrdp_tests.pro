@@ -25,6 +25,8 @@ SOURCES += \
     tst_agentserver.cpp \
     tst_agentclient.cpp \
     tst_sessionmenuhost.cpp \
+    tst_clipmessages.cpp \
+    ../../app/localrdp-shared/clip/clipmessages.cpp \
     ../../app/streaming/localrdp/sessionmenuhost.cpp \
     ../../app/streaming/localrdp/agentclient.cpp \
     ../../localrdp/agent/agentserver.cpp \
