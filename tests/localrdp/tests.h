@@ -227,3 +227,14 @@ private slots:
     void offerFilesReportsOutcome();
     void seqStartsRandom();
 };
+
+class TestVideoArea : public QObject
+{
+    Q_OBJECT
+private slots:
+    void exactFit();
+    void pillarbox();
+    void toolbarInsetKeepsVideoBelow();
+    void tinyOrBrokenInputs();
+    void insetSetting();
+};

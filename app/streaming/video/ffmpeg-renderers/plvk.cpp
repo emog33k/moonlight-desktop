@@ -1,4 +1,5 @@
 #include "plvk.h"
+#include "streaming/localrdp/videoarea.h"
 
 #include "streaming/session.h"
 #include "streaming/streamutils.h"
@@ -1062,7 +1063,14 @@ void PlVkRenderer::renderFrame(AVFrame *frame)
     dst.h = targetFrame.crop.y1 - targetFrame.crop.y0;
 
     // Scale the video to the surface size while preserving the aspect ratio
-    StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
+    // (LocalRDP: below the toolbar)
+    {
+        const LocalRdp::VideoRect area = LocalRdp::videoArea(dst.w, dst.h, src.w, src.h, LocalRdp::videoTopInset());
+        dst.x += area.x;
+        dst.y += area.y;
+        dst.w = area.w;
+        dst.h = area.h;
+    }
 
     targetFrame.crop.x0 = dst.x;
     targetFrame.crop.y0 = dst.y;

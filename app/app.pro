@@ -193,6 +193,7 @@ SOURCES += \
     streaming/input/reltouch.cpp \
     streaming/localrdp/buttonplacement.cpp \
     streaming/localrdp/menulayout.cpp \
+    streaming/localrdp/videoarea.cpp \
     streaming/localrdp/streammenumodel.cpp \
     streaming/session.cpp \
     streaming/audio/audio.cpp \
@@ -233,6 +234,7 @@ HEADERS += \
     streaming/input/input.h \
     streaming/localrdp/buttonplacement.h \
     streaming/localrdp/menulayout.h \
+    streaming/localrdp/videoarea.h \
     streaming/localrdp/streammenuhost.h \
     streaming/localrdp/streamactions.h \
     streaming/localrdp/streammenumodel.h \

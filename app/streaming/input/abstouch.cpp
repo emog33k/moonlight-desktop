@@ -1,4 +1,5 @@
 #include "input.h"
+#include "streaming/localrdp/videoarea.h"
 
 #include <Limelight.h>
 #include "SDL_compat.h"
@@ -75,7 +76,15 @@ void SdlInputHandler::handleAbsoluteFingerEvent(SDL_TouchFingerEvent* event)
     dst.h = windowHeight;
 
     // Scale window-relative events to be video-relative and clamp to video region
-    StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
+    {
+        // LocalRDP: below the toolbar
+        const LocalRdp::VideoRect area = LocalRdp::videoArea(windowWidth, windowHeight, src.w, src.h,
+                                                             LocalRdp::videoTopInset());
+        dst.x = area.x;
+        dst.y = area.y;
+        dst.w = area.w;
+        dst.h = area.h;
+    }
     float vidrelx = qMin(qMax((int)(event->x * windowWidth), dst.x), dst.x + dst.w) - dst.x;
     float vidrely = qMin(qMax((int)(event->y * windowHeight), dst.y), dst.y + dst.h) - dst.y;
 
@@ -180,7 +189,15 @@ void SdlInputHandler::emulateAbsoluteFingerEvent(SDL_TouchFingerEvent* event)
     dst.h = windowHeight;
 
     // Use the stream and window sizes to determine the video region
-    StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
+    {
+        // LocalRDP: below the toolbar
+        const LocalRdp::VideoRect area = LocalRdp::videoArea(windowWidth, windowHeight, src.w, src.h,
+                                                             LocalRdp::videoTopInset());
+        dst.x = area.x;
+        dst.y = area.y;
+        dst.w = area.w;
+        dst.h = area.h;
+    }
 
     if (qSqrt(qPow(event->x - m_LastTouchDownEvent.x, 2) + qPow(event->y - m_LastTouchDownEvent.y, 2)) > LONG_PRESS_ACTIVATION_DELTA) {
         // Moved too far since touch down. Cancel the long press timer.

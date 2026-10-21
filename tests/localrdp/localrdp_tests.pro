@@ -30,6 +30,8 @@ SOURCES += \
     tst_clipreader.cpp \
     tst_remotedataobject.cpp \
     tst_clipboardbridge.cpp \
+    tst_videoarea.cpp \
+    ../../app/streaming/localrdp/videoarea.cpp \
     ../../app/localrdp-shared/clip/clipboardbridge_win32.cpp \
     ../../app/localrdp-shared/clip/remotedataobject_win32.cpp \
     ../../app/localrdp-shared/clip/clipreader_win32.cpp \

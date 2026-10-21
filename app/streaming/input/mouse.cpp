@@ -1,4 +1,5 @@
 #include "input.h"
+#include "streaming/localrdp/videoarea.h"
 
 #include <Limelight.h>
 #include "SDL_compat.h"
@@ -130,13 +131,15 @@ void SdlInputHandler::handleMouseMotionEvent(SDL_MouseMotionEvent* event)
         src.w = m_StreamWidth;
         src.h = m_StreamHeight;
 
-        dst.x = dst.y = 0;
-        dst.w = windowWidth;
-        dst.h = windowHeight;
-
-        // LocalRDP: lock to the whole window, not just the video area, so the
-        // floating menu button (which may sit in a black bar) stays reachable.
-        (void)src;
+        // The video region (below the LocalRDP toolbar, aspect ratio kept)
+        {
+            const LocalRdp::VideoRect area = LocalRdp::videoArea(windowWidth, windowHeight, src.w, src.h,
+                                                                 LocalRdp::videoTopInset());
+            dst.x = area.x;
+            dst.y = area.y;
+            dst.w = area.w;
+            dst.h = area.h;
+        }
 
         mouseInVideoRegion = isMouseInVideoRegion(x, y, windowWidth, windowHeight);
 
@@ -272,12 +275,16 @@ bool SdlInputHandler::isMouseInVideoRegion(int mouseX, int mouseY, int windowWid
     src.w = m_StreamWidth;
     src.h = m_StreamHeight;
 
-    dst.x = dst.y = 0;
-    dst.w = windowWidth;
-    dst.h = windowHeight;
-
     // Use the stream and window sizes to determine the video region
-    StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
+    // (LocalRDP: below the toolbar)
+    {
+        const LocalRdp::VideoRect area = LocalRdp::videoArea(windowWidth, windowHeight, src.w, src.h,
+                                                             LocalRdp::videoTopInset());
+        dst.x = area.x;
+        dst.y = area.y;
+        dst.w = area.w;
+        dst.h = area.h;
+    }
 
     return (mouseX >= dst.x && mouseX <= dst.x + dst.w) &&
            (mouseY >= dst.y && mouseY <= dst.y + dst.h);
@@ -307,7 +314,7 @@ void SdlInputHandler::updatePointerRegionLock()
         SDL_GetWindowSize(m_Window, &dst.w, &dst.h);
 
         // LocalRDP: lock to the whole window, not just the video area, so the
-        // floating menu button (which may sit in a black bar) stays reachable.
+        // toolbar at the top stays reachable.
         (void)src;
 
         // SDL 2.0.18 lets us lock the cursor to a specific region

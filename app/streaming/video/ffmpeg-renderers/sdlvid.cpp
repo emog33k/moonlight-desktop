@@ -1,4 +1,5 @@
 #include "sdlvid.h"
+#include "streaming/localrdp/videoarea.h"
 
 #include "streaming/session.h"
 #include "streaming/streamutils.h"
@@ -573,7 +574,14 @@ ReadbackRetry:
     src.h = frame->height;
     dst.x = dst.y = 0;
     SDL_GetRendererOutputSize(m_Renderer, &dst.w, &dst.h);
-    StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
+    {
+        // LocalRDP: below the toolbar, aspect ratio kept
+        const LocalRdp::VideoRect area = LocalRdp::videoArea(dst.w, dst.h, src.w, src.h, LocalRdp::videoTopInset());
+        dst.x = area.x;
+        dst.y = area.y;
+        dst.w = area.w;
+        dst.h = area.h;
+    }
 
     // Ensure the viewport is set to the desired video region
     SDL_RenderSetViewport(m_Renderer, &dst);

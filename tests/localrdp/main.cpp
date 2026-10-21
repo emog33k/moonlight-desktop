@@ -93,6 +93,10 @@ int main(int argc, char* argv[])
         TestClipboardBridge t;
         failures += runTest(&t);
     }
+    {
+        TestVideoArea t;
+        failures += runTest(&t);
+    }
     std::printf("LOCALRDP TESTS: %s\n", failures == 0 ? "ALL PASSED" : "FAILED");
     return failures == 0 ? 0 : 1;
 }

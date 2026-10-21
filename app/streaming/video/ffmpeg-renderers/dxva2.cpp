@@ -3,6 +3,7 @@
 #define NOMINMAX
 
 #include <initguid.h>
+#include "streaming/localrdp/videoarea.h"
 #include "dxva2.h"
 #include "dxutil.h"
 #include "utils.h"
@@ -914,11 +915,13 @@ void DXVA2Renderer::renderFrame(AVFrame *frame)
     src.x = src.y = 0;
     src.w = frame->width;
     src.h = frame->height;
-    dst.x = dst.y = 0;
-    dst.w = m_DisplayWidth;
-    dst.h = m_DisplayHeight;
-
-    StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
+    // LocalRDP: below the toolbar, aspect ratio kept
+    const LocalRdp::VideoRect area = LocalRdp::videoArea(m_DisplayWidth, m_DisplayHeight, src.w, src.h,
+                                                         LocalRdp::videoTopInset());
+    dst.x = area.x;
+    dst.y = area.y;
+    dst.w = area.w;
+    dst.h = area.h;
 
     sample.DstRect.left = dst.x;
     sample.DstRect.right = dst.x + dst.w;
