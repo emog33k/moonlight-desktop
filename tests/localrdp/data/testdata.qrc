@@ -1,0 +1,10 @@
+<RCC>
+  <qresource prefix="/testdata">
+    <file>server.crt</file>
+    <file>server.key</file>
+    <file>client1.crt</file>
+    <file>client1.key</file>
+    <file>client2.crt</file>
+    <file>client2.key</file>
+  </qresource>
+</RCC>

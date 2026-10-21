@@ -73,3 +73,17 @@ private slots:
     void zeroLengthFails();
     void badJsonRejected();
 };
+
+class TestTrust : public QObject
+{
+    Q_OBJECT
+private slots:
+    void pairedEnabledAccepted();
+    void pairedDisabledRejected();
+    void unknownRejected();
+    void nullCertRejected();
+    void garbageJsonRejected();
+    void missingRootRejected();
+    void dpapiRoundTrip();
+    void dpapiTamperedFails();
+};
