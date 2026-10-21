@@ -9,7 +9,7 @@ INCLUDEPATH += ../../app
 # Track dependencies on our own headers only. With headers outside this folder,
 # qmake otherwise writes broken relative paths to the Qt headers into the Makefile.
 CONFIG -= depend_includepath
-DEPENDPATH = . ../../app/localrdp-shared
+DEPENDPATH = . ../../app/localrdp-shared ../../app/localrdp-shared/clip
 
 SOURCES += \
     main.cpp \
