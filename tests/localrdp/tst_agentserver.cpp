@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "agentserver.h"
 #include "localrdp-shared/peerconnection.h"
+#include "localrdp-shared/hostdisplays.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -236,4 +237,59 @@ void TestAgentServer::reconnectThenDropStillLocks()
         QTest::qWait(50);
     }
     QTRY_COMPARE_WITH_TIMEOUT(f.locks, 1, 3000);
+}
+
+void TestAgentServer::displayListAfterHelloAndOnChange()
+{
+    DisplayList displays;
+    displays.displays = { { "\\.\DISPLAY1", 1920, 1080, true } };
+    displays.initial = 0;
+
+    AgentConfig config;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.listDisplays = [&displays]() { return displays; };
+    config.displayPollMs = 100;
+    AgentServer server(config);
+    QVERIFY(server.listen());
+
+    QSslSocket* socket = connectPinned("127.0.0.1", server.port(), testCert("client1"), testKey("client1"), testCert("server"));
+    QSignalSpy encrypted(socket, &QSslSocket::encrypted);
+    QVERIFY(encrypted.wait(5000));
+    PeerConnection conn(socket);
+    QSignalSpy frames(&conn, &PeerConnection::frameReceived);
+
+    // Nothing about the PC before Hello
+    QTest::qWait(300);
+    QCOMPARE(frames.count(), 0);
+
+    conn.send(MsgType::Hello, jsonPayload(hello()));
+    QVERIFY(waitForType(frames, MsgType::DisplayList));
+    auto lastList = [&frames]() {
+        std::optional<DisplayList> last;
+        for (const auto& args : frames) {
+            const Frame f = args.at(0).value<Frame>();
+            if (f.type == MsgType::DisplayList) {
+                last = decodeDisplayList(f.payload);
+            }
+        }
+        return last;
+    };
+    QVERIFY(lastList() && *lastList() == displays);
+
+    // Unchanged: not sent again
+    const int before = frames.count();
+    QTest::qWait(400);
+    int lists = 0;
+    for (int i = before; i < frames.count(); i++) {
+        lists += frames.at(i).at(0).value<Frame>().type == MsgType::DisplayList;
+    }
+    QCOMPARE(lists, 0);
+
+    // A monitor plugged in: sent again
+    displays.displays << HostDisplay{ "\\.\DISPLAY2", 1280, 1024, false };
+    QTRY_VERIFY_WITH_TIMEOUT(lastList() && lastList()->displays.size() == 2, 3000);
 }

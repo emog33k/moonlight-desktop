@@ -31,6 +31,8 @@ SOURCES += \
     tst_clipboardbridge.cpp \
     tst_videoarea.cpp \
     tst_toolbarlayout.cpp \
+    tst_hostdisplays.cpp \
+    ../../app/localrdp-shared/hostdisplays.cpp \
     ../../app/streaming/localrdp/toolbarlayout.cpp \
     ../../app/streaming/localrdp/videoarea.cpp \
     ../../app/localrdp-shared/clip/clipboardbridge_win32.cpp \

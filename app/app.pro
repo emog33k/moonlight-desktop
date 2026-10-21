@@ -409,7 +409,7 @@ win32 {
         localrdp-shared/clip/clipmessages.cpp \
         localrdp-shared/clip/clipreader_win32.cpp \
         localrdp-shared/clip/remotedataobject_win32.cpp \
-        localrdp-shared/peerconnection.cpp \
+        localrdp-shared/peerconnection.cpp         localrdp-shared/hostdisplays.cpp \
         localrdp-shared/protocol.cpp \
         localrdp-shared/trust.cpp \
         streaming/localrdp/filepicker_win32.cpp \
@@ -426,7 +426,7 @@ win32 {
         localrdp-shared/clip/clipmessages.h \
         localrdp-shared/clip/clipreader_win32.h \
         localrdp-shared/clip/remotedataobject_win32.h \
-        localrdp-shared/peerconnection.h \
+        localrdp-shared/peerconnection.h         localrdp-shared/hostdisplays.h \
         localrdp-shared/protocol.h \
         localrdp-shared/trust.h \
         streaming/localrdp/filepicker_win32.h \

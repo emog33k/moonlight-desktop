@@ -103,6 +103,7 @@ private slots:
     void silentClientDroppedAndLocks();
     void pingsKeepSessionAlive();
     void reconnectThenDropStillLocks();
+    void displayListAfterHelloAndOnChange();
 };
 
 class TestAgentClient : public QObject
@@ -121,6 +122,7 @@ private slots:
     void liveSessionStaysConnected();
     void filesOfferedFromLaptopReachThePc();
     void clipboardSyncOffSendsNothing();
+    void pcDisplaysShownInMenu();
 };
 
 class TestSessionMenuHost : public QObject
@@ -235,4 +237,15 @@ private slots:
     void narrowWindowKeepsRightButtons();
     void scalesWithDpi();
     void hitTest();
+};
+
+class TestHostDisplays : public QObject
+{
+    Q_OBJECT
+private slots:
+    void roundTrip();
+    void emptyList();
+    void malformedRejected();
+    void initialOutOfRangeUnknown();
+    void initialFromConfig();
 };

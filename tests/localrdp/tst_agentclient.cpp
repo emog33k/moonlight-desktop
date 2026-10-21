@@ -1,6 +1,8 @@
 #include "tests.h"
 #include "agentserver.h"
 #include "streaming/localrdp/agentclient.h"
+#include "streaming/localrdp/sessionmenuhost.h"
+#include "settings/streamingpreferences.h"
 
 #include <QElapsedTimer>
 #include <QFile>
@@ -231,4 +233,50 @@ void TestAgentClient::clipboardSyncOffSendsNothing()
     client.offerFiles({ f.fileName() });
     QTest::qWait(500);
     QCOMPARE(offers.load(), 0);
+}
+
+namespace {
+class MenuInput : public StreamMenuHost
+{
+public:
+    QVector<int> params;
+    StreamState queryState() override { return StreamState(); }
+    void performAction(StreamAction, int param) override { params << param; }
+    bool isCaptureActive() override { return true; }
+    void setCaptureActive(bool) override {}
+    void suspendPointerLock(bool) override {}
+};
+}
+
+void TestAgentClient::pcDisplaysShownInMenu()
+{
+    AgentConfig config;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.listDisplays = []() {
+        Proto::DisplayList l;
+        l.displays = { { "\\.\DISPLAY1", 2560, 1440, false }, { "\\.\DISPLAY2", 1920, 1080, true } };
+        l.initial = 1;
+        return l;
+    };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+
+    auto client = makeClient(server.port());
+    QTRY_COMPARE_WITH_TIMEOUT(client->displays().size(), 2, 5000);
+    QCOMPARE(client->displays()[0].width, 2560);
+    QCOMPARE(client->displays()[1].primary, true);
+    QCOMPARE(client->initialDisplay(), 1);
+
+    // The menu marks the monitor Sunshine started on until the user picks another
+    MenuInput input;
+    SessionMenuHost host(&input, StreamingPreferences::get(), client.get());
+    QCOMPARE(host.queryState().displays.size(), 2);
+    QCOMPARE(host.queryState().currentDisplay, 1);
+    host.performAction(StreamAction::SwitchDisplay, 0);
+    QCOMPARE(host.queryState().currentDisplay, 0);
+    QCOMPARE(input.params, QVector<int>({ 0 }));
 }

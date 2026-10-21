@@ -1,6 +1,7 @@
 #pragma once
 
 #include "localrdp-shared/clip/clipboardbridge_win32.h"
+#include "localrdp-shared/hostdisplays.h"
 #include "localrdp-shared/peerconnection.h"
 #include "localrdp-shared/protocol.h"
 
@@ -30,6 +31,10 @@ struct AgentConfig {
     QHostAddress bindAddress = QHostAddress::Any;
     bool useSystemClipboard = true;                  // false in tests
     std::function<void(const Clip::Offer&)> onPeerOffer; // log/tests
+    // The PC's monitors in Sunshine's order; sent after Hello and again whenever
+    // they change (checked every displayPollMs). Not set: never sent.
+    std::function<Proto::DisplayList()> listDisplays;
+    int displayPollMs = 3000;
 };
 
 // TLS server for the paired laptop. Only a client whose certificate is paired and
@@ -55,6 +60,7 @@ private:
     void onFrame(PeerConnection* conn, const Proto::Frame& frame);
     void onSessionClosed(PeerConnection* conn);
     void lockNow(const char* reason);
+    void sendDisplays(bool onlyIfChanged);
 
     AgentConfig m_Config;
     QSslServer* m_Server;
@@ -63,6 +69,8 @@ private:
     bool m_LockOnDisconnect = false;
     QTimer m_GraceTimer;
     QTimer m_IdleTimer;      // restarted by every frame of the session
+    QTimer m_DisplayTimer;
+    QByteArray m_SentDisplays; // last DisplayList payload sent to this session
     bool m_SessionReady = false; // Hello received
     std::unique_ptr<Clip::ClipboardBridge> m_Clipboard;
 };

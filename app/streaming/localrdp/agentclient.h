@@ -50,6 +50,8 @@ public:
 
     // The PC's monitors as Sunshine numbers them (empty until the agent reports them).
     QVector<DisplayInfo> displays() const;
+    // The monitor Sunshine started the stream on (-1 if unknown).
+    int initialDisplay() const;
 
 private:
     std::atomic<int> m_Status;
@@ -60,6 +62,7 @@ private:
     std::mutex m_SendMutex;
     mutable std::mutex m_DisplaysMutex;
     QVector<DisplayInfo> m_Displays;
+    int m_InitialDisplay = -1;
     AgentClientWorker* m_SendTarget = nullptr;
 };
 

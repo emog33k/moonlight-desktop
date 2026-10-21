@@ -27,6 +27,8 @@ enum class MsgType : quint8 {
     ClipRequest = 21,
     ClipData = 22,
     ClipError = 23,
+
+    DisplayList = 30,   // agent -> laptop, see hostdisplays.h
 };
 
 constexpr quint32 kProtocolVersion = 1;

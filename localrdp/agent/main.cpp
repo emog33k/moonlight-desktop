@@ -2,12 +2,14 @@
 // the paired Moonlight LocalRDP client (PC lock now; clipboard and files later).
 
 #include "agentserver.h"
+#include "displays_win32.h"
 #include "localrdp-shared/trust.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QMutex>
 #include <QSslKey>
 #include <QStandardPaths>
@@ -45,8 +47,21 @@ static QString programDataDir()
 
 int main(int argc, char* argv[])
 {
+    // Real pixel sizes for monitors and the cursor, whatever the scaling
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("LocalRDP Agent");
+
+    // Diagnostics: print the monitor list the laptop would get, then exit
+    if (app.arguments().contains("--list-displays")) {
+        Proto::DisplayList list;
+        list.displays = enumerateDisplays();
+        const QByteArray json = Proto::encodeDisplayList(list) + '\n';
+        fwrite(json.constData(), 1, (size_t)json.size(), stdout);
+        fflush(stdout);
+        return 0;
+    }
 
     const QString logDir = QDir::fromNativeSeparators(qEnvironmentVariable("LOCALAPPDATA")) + "/LocalRDP Agent";
     QDir().mkpath(logDir);
@@ -106,6 +121,14 @@ int main(int argc, char* argv[])
         return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
     };
     config.lockWorkstation = []() { LockWorkStation(); };
+    const QString confPath = QFileInfo(statePath).absolutePath() + "/sunshine.conf";
+    config.listDisplays = [confPath]() {
+        Proto::DisplayList list;
+        list.displays = enumerateDisplays();
+        QFile conf(confPath);
+        list.initial = conf.open(QIODevice::ReadOnly) ? Proto::initialDisplayFromConfig(list.displays, conf.readAll()) : -1;
+        return list;
+    };
     config.onPeerOffer = [](const Clip::Offer& offer) {
         writeLog(QString("laptop clipboard: %1%2%3%4 file(s)")
                      .arg(offer.textBytes ? "text, " : "")

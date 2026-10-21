@@ -54,6 +54,8 @@ AgentServer::AgentServer(AgentConfig config, QObject* parent)
 
     // A laptop that vanished (Wi-Fi gone, lid closed) never sends a FIN; its
     // pings stop instead. Treat that like a dropped connection.
+    connect(&m_DisplayTimer, &QTimer::timeout, this, [this]() { sendDisplays(true); });
+
     m_IdleTimer.setSingleShot(true);
     connect(&m_IdleTimer, &QTimer::timeout, this, [this]() {
         if (m_Session) {
@@ -105,6 +107,7 @@ void AgentServer::onEncrypted(QSslSocket* socket)
         PeerConnection* old = m_Session;
         m_Session = nullptr;
         m_SessionReady = false;
+        m_DisplayTimer.stop();
         m_Clipboard->connectionDown();
         old->disconnect(this);
         old->deleteLater();
@@ -147,6 +150,12 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
             { "version", (int)kProtocolVersion },
             { "agent", "LocalRDP Agent" },
         }));
+        if (conn == m_Session) {
+            sendDisplays(false);
+            if (m_Config.listDisplays) {
+                m_DisplayTimer.start(m_Config.displayPollMs);
+            }
+        }
         break;
     case MsgType::Ping:
         conn->send(MsgType::Pong, frame.payload);
@@ -187,6 +196,7 @@ void AgentServer::onSessionClosed(PeerConnection* conn)
     }
     m_Session = nullptr;
     m_IdleTimer.stop();
+    m_DisplayTimer.stop();
     m_SessionReady = false;
     m_Clipboard->connectionDown();
     conn->deleteLater();
@@ -195,6 +205,19 @@ void AgentServer::onSessionClosed(PeerConnection* conn)
     if (!m_SessionSaidGoodbye && m_LockOnDisconnect) {
         m_GraceTimer.start(m_Config.reconnectGraceMs);
     }
+}
+
+void AgentServer::sendDisplays(bool onlyIfChanged)
+{
+    if (!m_Config.listDisplays || !m_Session || !m_SessionReady) {
+        return;
+    }
+    const QByteArray payload = encodeDisplayList(m_Config.listDisplays());
+    if (onlyIfChanged && payload == m_SentDisplays) {
+        return;
+    }
+    m_SentDisplays = payload;
+    m_Session->send(MsgType::DisplayList, payload);
 }
 
 void AgentServer::lockNow(const char* reason)

@@ -1,5 +1,6 @@
 #include "agentclient.h"
 #include "localrdp-shared/clip/clipboardbridge_win32.h"
+#include "localrdp-shared/hostdisplays.h"
 #include "localrdp-shared/peerconnection.h"
 
 #include <QElapsedTimer>
@@ -15,10 +16,13 @@ using namespace Proto;
 class AgentClientWorker : public QObject
 {
 public:
-    AgentClientWorker(std::atomic<int>& status, Clip::ClipboardBridge* clipboard, QString host, QSslCertificate clientCert, QSslKey clientKey,
+    AgentClientWorker(std::atomic<int>& status, Clip::ClipboardBridge* clipboard,
+                      std::function<void(const DisplayList&)> onDisplays,
+                      QString host, QSslCertificate clientCert, QSslKey clientKey,
                       QSslCertificate pinnedServer, quint16 port, int retryMs, int pingMs, int pongTimeoutMs)
         : m_Status(status),
           m_Clipboard(clipboard),
+          m_OnDisplays(std::move(onDisplays)),
           m_Host(std::move(host)),
           m_ClientCert(std::move(clientCert)),
           m_ClientKey(std::move(clientKey)),
@@ -155,6 +159,13 @@ private:
                 m_Clipboard->onFrame(frame);
             }
             break;
+        case MsgType::DisplayList:
+            if (m_Ready) {
+                if (auto list = decodeDisplayList(frame.payload)) {
+                    m_OnDisplays(*list);
+                }
+            }
+            break;
         default:
             break;
         }
@@ -227,6 +238,7 @@ private:
 
     std::atomic<int>& m_Status;
     Clip::ClipboardBridge* m_Clipboard;
+    std::function<void(const DisplayList&)> m_OnDisplays;
     QString m_Host;
     QSslCertificate m_ClientCert;
     QSslKey m_ClientKey;
@@ -260,8 +272,17 @@ AgentClient::AgentClient(const QString& host, const QSslCertificate& clientCert,
         }
     }, useSystemClipboard));
 
-    m_Worker = new AgentClientWorker(m_Status, m_Clipboard.get(), host, clientCert, clientKey, pinnedServer, port,
-                                     retryMs, pingMs, pongTimeoutMs);
+    auto onDisplays = [this](const DisplayList& list) {
+        QVector<DisplayInfo> displays;
+        for (const HostDisplay& d : list.displays) {
+            displays << DisplayInfo{ d.name, d.width, d.height, d.primary };
+        }
+        std::lock_guard<std::mutex> lock(m_DisplaysMutex);
+        m_Displays = displays;
+        m_InitialDisplay = list.initial;
+    };
+    m_Worker = new AgentClientWorker(m_Status, m_Clipboard.get(), onDisplays, host, clientCert, clientKey,
+                                     pinnedServer, port, retryMs, pingMs, pongTimeoutMs);
     m_SendTarget = m_Worker;
     m_Worker->moveToThread(&m_Thread);
     QObject::connect(&m_Thread, &QThread::finished, m_Worker, &QObject::deleteLater);
@@ -314,6 +335,12 @@ QVector<DisplayInfo> AgentClient::displays() const
 {
     std::lock_guard<std::mutex> lock(m_DisplaysMutex);
     return m_Displays;
+}
+
+int AgentClient::initialDisplay() const
+{
+    std::lock_guard<std::mutex> lock(m_DisplaysMutex);
+    return m_InitialDisplay;
 }
 
 }
