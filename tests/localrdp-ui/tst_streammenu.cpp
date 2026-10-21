@@ -1,15 +1,15 @@
 #include "uitests.h"
-#include "streaming/localrdp/buttonplacement.h"
 #include "streaming/localrdp/menulayout.h"
 #include "streaming/localrdp/streammenucontroller.h"
 #include "streaming/localrdp/streammenumodel.h"
+#include "streaming/localrdp/toolbarlayout.h"
 
 #include <QSettings>
 #include <QTest>
 
 using namespace LocalRdp;
 
-static const wchar_t* const kButtonClass = L"LocalRdpFloatingButton";
+static const wchar_t* const kToolbarClass = L"LocalRdpToolbar";
 static const wchar_t* const kMenuClass = L"LocalRdpStreamMenu";
 
 static SDL_KeyboardEvent keyDown(SDL_Scancode scancode, SDL_Keycode sym, Uint16 mod = KMOD_NONE)
@@ -80,24 +80,22 @@ void TestStreamMenu::click(QPoint screenPos)
     UiTest::sendMouse(menuHwnd(), WM_LBUTTONUP, screenPos);
 }
 
-void TestStreamMenu::opensNextToButton()
+void TestStreamMenu::opensUnderToolbar()
 {
     QVERIFY(!m_Controller->isMenuOpen());
     m_Controller->toggleMenu();
     QVERIFY(m_Controller->isMenuOpen());
     QVERIFY(menuShown());
 
-    const QRect button = UiTest::windowScreenRect(UiTest::findOwnedWindow(m_Owner, kButtonClass));
-    MONITORINFO mi = { sizeof(mi) };
-    GetMonitorInfoW(MonitorFromWindow(m_Owner, MONITOR_DEFAULTTONEAREST), &mi);
-    const QRect work(mi.rcWork.left, mi.rcWork.top, mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top);
-    const QSize size = layoutMenu(buildStreamMenu(m_Host->state), 1.0).size;
-
-    QCOMPARE(UiTest::windowScreenRect(menuHwnd()),
-             QRect(placeMenu(button, Edge::Right, size, work, 6), size));
+    const QRect toolbar = UiTest::windowScreenRect(UiTest::findOwnedWindow(m_Owner, kToolbarClass));
+    const QRect menu = UiTest::windowScreenRect(menuHwnd());
+    QCOMPARE(menu.size(), layoutMenu(buildStreamMenu(m_Host->state), 1.0).size);
+    QVERIFY(menu.top() > toolbar.bottom());
+    QVERIFY(menu.top() <= toolbar.bottom() + 3);
+    QVERIFY(qAbs(menu.left() - toolbar.left()) <= 6);
 
     UiTest::pump(100);
-    UiTest::saveScreenshot(UiTest::windowScreenRect(menuHwnd()).united(button).adjusted(-10, -10, 10, 10), "menu-open");
+    UiTest::saveScreenshot(menu.united(toolbar).adjusted(-10, -10, 10, 10), "menu-open");
 }
 
 void TestStreamMenu::toggleTwiceCloses()
@@ -106,16 +104,6 @@ void TestStreamMenu::toggleTwiceCloses()
     m_Controller->toggleMenu();
     QVERIFY(!m_Controller->isMenuOpen());
     QVERIFY(!menuShown());
-}
-
-void TestStreamMenu::buttonClickOpensMenu()
-{
-    HWND button = UiTest::findOwnedWindow(m_Owner, kButtonClass);
-    const QPoint c = UiTest::windowScreenRect(button).center();
-    UiTest::sendMouse(button, WM_LBUTTONDOWN, c);
-    UiTest::sendMouse(button, WM_LBUTTONUP, c);
-    deliverMenuEvents(*m_Controller);
-    QVERIFY(m_Controller->isMenuOpen());
 }
 
 void TestStreamMenu::clickItemPerformsActionAndCloses()
@@ -230,7 +218,7 @@ void TestStreamMenu::destroyWhileOpenRemovesEverything()
     delete m_Controller;
     m_Controller = nullptr;
     QVERIFY(UiTest::findOwnedWindow(m_Owner, kMenuClass) == nullptr);
-    QVERIFY(UiTest::findOwnedWindow(m_Owner, kButtonClass) == nullptr);
+    QVERIFY(UiTest::findOwnedWindow(m_Owner, kToolbarClass) == nullptr);
 }
 
 void TestStreamMenu::keyUpsPassThroughWhileOpen()
@@ -284,7 +272,7 @@ void TestStreamMenu::openingFromBackgroundActivatesStream()
         QSKIP("Set LOCALRDP_UI_FOREGROUND=1 to run (it switches the active window)");
     }
 
-    // Another window of ours is in front; clicking the button must bring the stream
+    // Another window of ours is in front; pressing a toolbar section must bring the stream
     // forward so the menu's mouse capture and keyboard work as expected.
     SDL_Window* other = UiTest::createStreamWindow(50, 50, 300, 200);
     HWND otherHwnd = UiTest::hwndOf(other);
@@ -298,45 +286,15 @@ void TestStreamMenu::openingFromBackgroundActivatesStream()
               "covered by the real-stream check instead");
     }
 
-    HWND button = UiTest::findOwnedWindow(m_Owner, kButtonClass);
-    const QPoint c = UiTest::windowScreenRect(button).center();
-    UiTest::sendMouse(button, WM_LBUTTONDOWN, c);
-    UiTest::sendMouse(button, WM_LBUTTONUP, c);
+    HWND toolbar = UiTest::findOwnedWindow(m_Owner, kToolbarClass);
+    const QPoint c = m_Controller->toolbarButtonRect(0).center();
+    UiTest::sendMouse(toolbar, WM_LBUTTONDOWN, c);
     deliverMenuEvents(*m_Controller);
 
     QVERIFY(m_Controller->isMenuOpen());
     QCOMPARE(GetForegroundWindow(), m_Owner);
     m_Controller->toggleMenu();
     SDL_DestroyWindow(other);
-}
-
-void TestStreamMenu::buttonAutoHidesInFullscreen()
-{
-    HWND button = UiTest::findOwnedWindow(m_Owner, kButtonClass);
-    const QRect r = UiTest::windowScreenRect(button);
-    QPoint cursor = r.center() + QPoint(-400, 0);
-    m_Controller->setCursorProviderForTests([&]() { return cursor; });
-
-    m_Controller->setAutoHideButton(true);
-    UiTest::pump(1400);
-    QVERIFY(!IsWindowVisible(button));        // pointer far away: hidden
-
-    cursor = r.center() + QPoint(r.width() / 2 + 10, 0); // within the hot zone next to it
-    UiTest::pump(300);
-    QVERIFY(IsWindowVisible(button));
-
-    cursor = r.center() + QPoint(-400, 0);
-    UiTest::pump(1400);
-    QVERIFY(!IsWindowVisible(button));
-
-    m_Controller->toggleMenu();               // menu open: button stays
-    UiTest::pump(1400);
-    QVERIFY(IsWindowVisible(button));
-    m_Controller->toggleMenu();
-
-    m_Controller->setAutoHideButton(false);
-    UiTest::pump(300);
-    QVERIFY(IsWindowVisible(button));
 }
 
 void TestStreamMenu::toastShowsThenHides()

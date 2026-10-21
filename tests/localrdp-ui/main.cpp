@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
 
     int failures = 0;
     {
-        TestFloatingButton t;
+        TestToolbar t;
         failures += runTest(&t);
     }
     {

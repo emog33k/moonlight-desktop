@@ -57,7 +57,7 @@ StreamMenuWindow::~StreamMenuWindow()
     }
 }
 
-void StreamMenuWindow::show(const QRect& buttonScreenRect, Edge buttonEdge, const QVector<MenuItem>& items)
+void StreamMenuWindow::show(const QRect& buttonScreenRect, Edge buttonEdge, const QVector<MenuItem>& items, int gap)
 {
     if (m_Hwnd == nullptr) {
         return;
@@ -73,7 +73,7 @@ void StreamMenuWindow::show(const QRect& buttonScreenRect, Edge buttonEdge, cons
     const QRect work(mi.rcWork.left, mi.rcWork.top,
                      mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top);
     m_TopLeft = placeMenu(buttonScreenRect, buttonEdge, m_Layout.size, work,
-                          (int)(6 * m_Scale + 0.5));
+                          (int)(gap * m_Scale + 0.5));
 
     render();
     SetWindowPos(m_Hwnd, HWND_TOP, m_TopLeft.x(), m_TopLeft.y(), 0, 0,
@@ -308,7 +308,13 @@ LRESULT StreamMenuWindow::handleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_MOUSEMOVE:
         if (m_Open) {
             const QPoint local = localPointFromLParam(lParam);
-            setHighlight(containsLocal(local) ? hitTestMenu(m_Layout, m_Items, local) : -1);
+            const bool inside = containsLocal(local);
+            setHighlight(inside ? hitTestMenu(m_Layout, m_Items, local) : -1);
+            if (!inside && m_OnOutside) {
+                POINT pt = { local.x(), local.y() };
+                ClientToScreen(m_Hwnd, &pt);
+                m_OnOutside(QPoint(pt.x, pt.y), false);
+            }
             // With capture held the system does not update the cursor shape
             SetCursor(LoadCursor(nullptr, IDC_ARROW));
         }
@@ -320,7 +326,14 @@ LRESULT StreamMenuWindow::handleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
         if (m_Open) {
             const QPoint local = localPointFromLParam(lParam);
             if (!containsLocal(local)) {
-                dismiss();
+                POINT pt = { local.x(), local.y() };
+                ClientToScreen(m_Hwnd, &pt);
+                if (msg == WM_LBUTTONDOWN && m_OnOutside && m_OnOutside(QPoint(pt.x, pt.y), true)) {
+                    close();
+                }
+                else {
+                    dismiss();
+                }
             }
             else {
                 m_PressedIndex = hitTestMenu(m_Layout, m_Items, local);

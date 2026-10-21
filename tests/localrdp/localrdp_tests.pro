@@ -17,7 +17,6 @@ SOURCES += \
     wmstub.cpp \
     tst_streamingpreferences.cpp \
     tst_streammenumodel.cpp \
-    tst_buttonplacement.cpp \
     tst_menulayout.cpp \
     tst_protocol.cpp \
     tst_trust.cpp \
@@ -31,6 +30,8 @@ SOURCES += \
     tst_remotedataobject.cpp \
     tst_clipboardbridge.cpp \
     tst_videoarea.cpp \
+    tst_toolbarlayout.cpp \
+    ../../app/streaming/localrdp/toolbarlayout.cpp \
     ../../app/streaming/localrdp/videoarea.cpp \
     ../../app/localrdp-shared/clip/clipboardbridge_win32.cpp \
     ../../app/localrdp-shared/clip/remotedataobject_win32.cpp \
@@ -45,8 +46,7 @@ SOURCES += \
     ../../app/localrdp-shared/peerconnection.cpp \
     ../../app/streaming/localrdp/menulayout.cpp \
     ../../app/settings/streamingpreferences.cpp \
-    ../../app/streaming/localrdp/streammenumodel.cpp \
-    ../../app/streaming/localrdp/buttonplacement.cpp
+    ../../app/streaming/localrdp/streammenumodel.cpp
 
 HEADERS += \
     tests.h \
@@ -56,4 +56,4 @@ HEADERS += \
     ../../app/settings/streamingpreferences.h \
     ../../app/streaming/localrdp/streamactions.h \
     ../../app/streaming/localrdp/streammenumodel.h \
-    ../../app/streaming/localrdp/buttonplacement.h
+    ../../app/streaming/localrdp/toolbarlayout.h

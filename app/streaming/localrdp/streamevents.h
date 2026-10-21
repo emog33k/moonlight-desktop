@@ -15,3 +15,6 @@
 #define SDL_CODE_LOCALRDP_FILES_PICKED 109
 // Show a notice next to the button; data1 = new QString (receiver deletes).
 #define SDL_CODE_LOCALRDP_TOAST 110
+// Toolbar button; data1 = button index, data2 = 0 pressed, 1 pointer moved onto it
+// while a menu is open (switches the open dropdown, like a menu bar).
+#define SDL_CODE_LOCALRDP_TOOLBAR 111

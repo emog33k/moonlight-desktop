@@ -21,6 +21,7 @@
 #include <SDL_syswm.h>
 #include "localrdp/sessionmenuhost.h"
 #include "localrdp/streammenucontroller.h"
+#include "localrdp/toolbarlayout.h"
 #include "backend/identitymanager.h"
 #endif
 
@@ -1375,13 +1376,24 @@ void Session::getWindowDimensions(int& x, int& y,
         }
     }
 
+    // LocalRDP: the window is taller by the toolbar strip so the video keeps its size
+    int toolbar = 0;
+#ifdef Q_OS_WIN32
+    {
+        float ddpi = 0;
+        const double scale = (SDL_GetDisplayDPI(displayIndex, &ddpi, nullptr, nullptr) == 0 && ddpi > 0)
+                ? ddpi / 96.0 : 1.0;
+        toolbar = (int)(LocalRdp::kToolbarBaseHeight * scale + 0.5);
+    }
+#endif
+
     SDL_Rect usableBounds;
     if (SDL_GetDisplayUsableBounds(displayIndex, &usableBounds) == 0) {
         // If the stream resolution fits within the usable display area, use it directly
         if (m_StreamConfig.width <= usableBounds.w &&
-            m_StreamConfig.height <= usableBounds.h) {
+            m_StreamConfig.height + toolbar <= usableBounds.h) {
             width = m_StreamConfig.width;
-            height = m_StreamConfig.height;
+            height = m_StreamConfig.height + toolbar;
         } else {
             // Otherwise, use 80% of usable bounds and preserve aspect ratio
             SDL_Rect src, dst;
@@ -1390,12 +1402,12 @@ void Session::getWindowDimensions(int& x, int& y,
             src.h = m_StreamConfig.height;
 
             dst.w = ((int)(usableBounds.w * 0.80f)) & ~0x1;  // even width
-            dst.h = ((int)(usableBounds.h * 0.80f)) & ~0x1;  // even height
+            dst.h = ((int)(usableBounds.h * 0.80f) - toolbar) & ~0x1;  // even height
 
             StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
 
             width = dst.w;
-            height = dst.h;
+            height = dst.h + toolbar;
         }
     }
     else {
@@ -1404,7 +1416,7 @@ void Session::getWindowDimensions(int& x, int& y,
                      SDL_GetError());
 
         width = m_StreamConfig.width;
-        height = m_StreamConfig.height;
+        height = m_StreamConfig.height + toolbar;
     }
 
     x = y = SDL_WINDOWPOS_CENTERED_DISPLAY(displayIndex);
@@ -1931,7 +1943,7 @@ void Session::exec()
     m_InputHandler->setWindow(m_Window);
 
 #ifdef Q_OS_WIN32
-    // LocalRDP: floating menu button over the stream window
+    // LocalRDP: toolbar at the top of the stream window
     {
         // Connection to LocalRDP Agent on the PC: same identity Moonlight uses with
         // Sunshine, and only the PC certificate pinned at pairing is accepted.
@@ -2124,6 +2136,7 @@ void Session::exec()
             case SDL_CODE_TOGGLE_STREAM_MENU:
             case SDL_CODE_STREAM_MENU_ACTION:
             case SDL_CODE_STREAM_MENU_DISMISSED:
+            case SDL_CODE_LOCALRDP_TOOLBAR:
 #ifdef Q_OS_WIN32
                 if (m_StreamMenu != nullptr) {
                     m_StreamMenu->handleUserEvent(event.user);

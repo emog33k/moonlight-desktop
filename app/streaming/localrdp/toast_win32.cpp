@@ -57,7 +57,7 @@ void ToastWindow::hide()
     }
 }
 
-void ToastWindow::show(const QString& text, const QRect& anchor, const QRect& area, int durationMs)
+void ToastWindow::show(const QString& text, QPoint topCenter, const QRect& area, int durationMs)
 {
     if (m_Hwnd == nullptr) {
         return;
@@ -97,9 +97,9 @@ void ToastWindow::show(const QString& text, const QRect& anchor, const QRect& ar
     Gdiplus::SolidBrush fg(Gdiplus::Color(255, 0xEE, 0xEE, 0xEE));
     g.DrawString(wtext.c_str(), -1, &font, Gdiplus::PointF((Gdiplus::REAL)padX, (Gdiplus::REAL)padY), &fg);
 
-    // Next to the button, on the side facing into the window, kept inside it
-    int x = anchor.center().x() < area.center().x() ? anchor.right() + 1 + padX : anchor.left() - padX - w;
-    int y = anchor.center().y() - h / 2;
+    // Centered below the point, kept inside the window
+    int x = topCenter.x() - w / 2;
+    int y = topCenter.y();
     x = qBound(area.left(), x, qMax(area.left(), area.left() + area.width() - w));
     y = qBound(area.top(), y, qMax(area.top(), area.top() + area.height() - h));
 

@@ -42,10 +42,6 @@ int main(int argc, char* argv[])
         failures += runTest(&t);
     }
     {
-        TestButtonPlacement t;
-        failures += runTest(&t);
-    }
-    {
         TestMenuLayout t;
         failures += runTest(&t);
     }
@@ -95,6 +91,10 @@ int main(int argc, char* argv[])
     }
     {
         TestVideoArea t;
+        failures += runTest(&t);
+    }
+    {
+        TestToolbarLayout t;
         failures += runTest(&t);
     }
     std::printf("LOCALRDP TESTS: %s\n", failures == 0 ? "ALL PASSED" : "FAILED");

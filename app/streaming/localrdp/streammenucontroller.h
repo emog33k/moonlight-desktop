@@ -4,6 +4,7 @@
 #include "streammenuhost.h"
 
 #include <QPoint>
+#include <QRect>
 #include <QString>
 
 #include <functional>
@@ -15,14 +16,18 @@ struct HWND__;
 
 namespace LocalRdp {
 
-class FloatingButtonWindow;
 class GdiplusSession;
 class StreamMenuWindow;
 class ToastWindow;
+class ToolbarWindow;
 
-// Owns the floating button and the menu for one stream window.
+// Owns the toolbar, its dropdown menu and the notices for one stream window.
 // Lives on the session's SDL thread; create after the SDL window exists and
 // destroy before the SDL window is destroyed.
+//
+// In a window the toolbar sits in a strip above the video (the renderers and
+// the mouse code leave that strip out, see videoarea.h); in full screen it
+// hides and shows at the top edge of the screen.
 class StreamMenuController
 {
 public:
@@ -34,42 +39,55 @@ public:
 
     void handleWindowEvent(const SDL_WindowEvent& event);
 
-    // While the menu is open it uses Esc, arrows, Enter/Space and swallows other
+    // While a menu is open it uses Esc, arrows, Enter/Space and swallows other
     // keys so they don't reach the PC. Returns true if the event was used here.
     // Ctrl+Alt+Shift combos always pass through (the menu hotkey among them).
     bool handleKeyEvent(const SDL_KeyboardEvent& event);
 
-    // Opens the menu next to the button, or closes it if it is open.
+    // Hotkey: opens the full menu under the toolbar, or closes any open menu.
     void toggleMenu();
     bool isMenuOpen() const;
 
-    // Session loop hands back SDL_CODE_TOGGLE_STREAM_MENU / SDL_CODE_STREAM_MENU_* events.
+    // Session loop hands back the SDL_CODE_TOGGLE_STREAM_MENU / SDL_CODE_STREAM_MENU_* /
+    // SDL_CODE_LOCALRDP_TOOLBAR events.
     void handleUserEvent(const SDL_UserEvent& event);
 
-    // In full screen the button hides until the pointer comes near it, so no
-    // overlay sits on top of the stream (keeps DWM independent flip possible).
-    void setAutoHideButton(bool autoHide);
-    void setCursorProviderForTests(std::function<QPoint()> provider);
-
-    // A short notice next to the button (e.g. after sending files to the PC).
+    // A short notice under the toolbar (e.g. after sending files to the PC).
     void showToast(const QString& text, int durationMs = 4000);
-    // Clicking the button brings the stream window to the front (on by default;
-    // UI tests turn it off so they never take focus from the user).
+    // Pressing a toolbar section brings the stream window to the front (on by
+    // default; UI tests turn it off so they never take focus from the user).
     void setBringToFrontOnClick(bool enabled) { m_BringToFrontOnClick = enabled; }
 
+    // Full screen layout (the controller follows the SDL window by itself; tests
+    // use this to avoid covering the screen).
+    void setFullscreenLayout(bool fullscreen);
+    void setCursorProviderForTests(std::function<QPoint()> provider);
+    // Screen rect of a toolbar button (index into toolbarButtons()); empty if hidden or no room.
+    QRect toolbarButtonRect(int index) const;
+
 private:
-    void openMenu();
+    static constexpr int kNoMenu = -2;
+    static constexpr int kFullMenu = -1;
+
+    void showMenu(int button);
     void closeMenu(bool restoreCapture);
+    void onToolbar(int button, bool hover);
     void onAction(StreamAction action, int param);
     void onDismissed();
+    bool onMenuOutside(QPoint screen, bool press);
+    void updateLayout();
 
     SDL_Window* m_Window;
     StreamMenuHost* m_Host;
     HWND__* m_Hwnd = nullptr;
     std::unique_ptr<GdiplusSession> m_Gdiplus;
-    std::unique_ptr<FloatingButtonWindow> m_Button;
+    std::unique_ptr<ToolbarWindow> m_Toolbar;
     std::unique_ptr<StreamMenuWindow> m_Menu;
     std::unique_ptr<ToastWindow> m_Toast;
+    // Which menu is open: kNoMenu, kFullMenu or a toolbar button index.
+    int m_MenuButton = kNoMenu;
+    // Last toolbar button the pointer moved onto while a menu was open (posted once).
+    int m_LastHoverPosted = -1;
     // We released the game-mode mouse capture to show the menu and owe it back.
     bool m_CaptureReleased = false;
     // We lifted "keep the cursor inside the window" while the menu is open.

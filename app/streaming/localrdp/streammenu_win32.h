@@ -1,6 +1,5 @@
 #pragma once
 
-#include "buttonplacement.h"
 #include "menulayout.h"
 #include "streammenumodel.h"
 
@@ -33,10 +32,17 @@ public:
     StreamMenuWindow(const StreamMenuWindow&) = delete;
     StreamMenuWindow& operator=(const StreamMenuWindow&) = delete;
 
-    void show(const QRect& buttonScreenRect, Edge buttonEdge, const QVector<MenuItem>& items);
+    // Opens (or, if already open, replaces) the panel next to the button.
+    void show(const QRect& buttonScreenRect, Edge buttonEdge, const QVector<MenuItem>& items, int gap = 6);
     // Closes without calling any callback.
     void close();
     bool isOpen() const { return m_Open; }
+
+    // Pointer moves and presses outside the panel while it is open (screen
+    // coordinates), e.g. over the toolbar. Returning true from a press closes the
+    // menu without onDismissed (the handler takes over). Runs inside the window
+    // procedure: post only.
+    void setOutsideHandler(std::function<bool(QPoint, bool)> handler) { m_OnOutside = std::move(handler); }
 
     // Keyboard navigation
     void moveHighlight(int dir);
@@ -57,6 +63,7 @@ private:
     HWND m_Hwnd = nullptr;
     std::function<void(StreamAction, int)> m_OnAction;
     std::function<void()> m_OnDismissed;
+    std::function<bool(QPoint, bool)> m_OnOutside;
 
     QVector<MenuItem> m_Items;
     MenuLayout m_Layout;

@@ -1,0 +1,88 @@
+#include "toolbarlayout.h"
+
+#include <cmath>
+
+namespace LocalRdp {
+
+QVector<ToolbarButton> toolbarButtons()
+{
+    using K = ToolbarButton::Kind;
+    auto section = [](MenuSection s, wchar_t icon, const QString& label) {
+        ToolbarButton b{ K::Section };
+        b.section = s;
+        b.icon = icon;
+        b.label = label;
+        return b;
+    };
+    auto action = [](StreamAction a, wchar_t icon) {
+        ToolbarButton b{ K::Action };
+        b.action = a;
+        b.icon = icon;
+        b.rightSide = true;
+        return b;
+    };
+    return {
+        section(MenuSection::Mouse, 0xE962, QStringLiteral("Мышь")),
+        section(MenuSection::Keyboard, 0xE765, QStringLiteral("Клавиатура")),
+        section(MenuSection::Clipboard, 0xE77F, QStringLiteral("Буфер")),
+        section(MenuSection::Screen, 0xE7F4, QStringLiteral("Экран")),
+        section(MenuSection::Pc, 0xE977, QStringLiteral("ПК")),
+        action(StreamAction::ToggleFullscreen, 0xE740),
+        action(StreamAction::Minimize, 0xE921),
+        action(StreamAction::Disconnect, 0xE711),
+    };
+}
+
+ToolbarLayout layoutToolbar(const QVector<ToolbarButton>& buttons, int width, double scale,
+                            const std::function<int(const QString&)>& textWidth)
+{
+    auto px = [scale](int v) { return (int)std::lround(v * scale); };
+
+    ToolbarLayout l;
+    const int height = px(kToolbarBaseHeight);
+    l.size = QSize(qMax(0, width), height);
+    l.rects.resize(buttons.size());
+
+    // Right group, laid out from the right edge so disconnect is always there
+    const int iconButtonWidth = px(46);
+    int x = width;
+    for (int i = buttons.size() - 1; i >= 0; i--) {
+        if (!buttons[i].rightSide) {
+            continue;
+        }
+        x -= iconButtonWidth;
+        l.rects[i] = QRect(x, 0, iconButtonWidth, height);
+    }
+    const int rightStart = x;
+
+    // Left group: icon + label; a button that would reach the right group is dropped
+    const int pad = px(10), iconWidth = px(16), iconGap = px(6), spacing = px(2);
+    int left = px(4);
+    for (int i = 0; i < buttons.size(); i++) {
+        if (buttons[i].rightSide) {
+            continue;
+        }
+        int w = pad * 2 + iconWidth;
+        if (!buttons[i].label.isEmpty()) {
+            w += iconGap + textWidth(buttons[i].label);
+        }
+        if (left + w > rightStart - spacing) {
+            break;
+        }
+        l.rects[i] = QRect(left, 0, w, height);
+        left += w + spacing;
+    }
+    return l;
+}
+
+int hitTestToolbar(const ToolbarLayout& layout, QPoint local)
+{
+    for (int i = 0; i < layout.rects.size(); i++) {
+        if (!layout.rects[i].isEmpty() && layout.rects[i].contains(local)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+}

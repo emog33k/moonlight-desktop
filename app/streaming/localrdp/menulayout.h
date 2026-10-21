@@ -1,6 +1,5 @@
 #pragma once
 
-#include "buttonplacement.h"
 #include "streammenumodel.h"
 
 #include <QPoint>
@@ -12,6 +11,9 @@
 // window only draws what this computes.
 
 namespace LocalRdp {
+
+// Side of the anchor (a toolbar button) the menu opens from.
+enum class Edge { Left = 0, Right = 1, Top = 2, Bottom = 3 };
 
 struct MenuLayout {
     QSize size;               // whole panel

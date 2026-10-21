@@ -191,7 +191,7 @@ SOURCES += \
     streaming/input/keyboard.cpp \
     streaming/input/mouse.cpp \
     streaming/input/reltouch.cpp \
-    streaming/localrdp/buttonplacement.cpp \
+    streaming/localrdp/toolbarlayout.cpp \
     streaming/localrdp/menulayout.cpp \
     streaming/localrdp/videoarea.cpp \
     streaming/localrdp/streammenumodel.cpp \
@@ -232,7 +232,7 @@ HEADERS += \
     cli/startstream.h \
     settings/streamingpreferences.h \
     streaming/input/input.h \
-    streaming/localrdp/buttonplacement.h \
+    streaming/localrdp/toolbarlayout.h \
     streaming/localrdp/menulayout.h \
     streaming/localrdp/videoarea.h \
     streaming/localrdp/streammenuhost.h \
@@ -416,7 +416,7 @@ win32 {
         streaming/localrdp/toast_win32.cpp \
         streaming/localrdp/agentclient.cpp \
         streaming/localrdp/sessionmenuhost.cpp \
-        streaming/localrdp/floatingbutton_win32.cpp \
+        streaming/localrdp/toolbar_win32.cpp \
         streaming/localrdp/streammenu_win32.cpp \
         streaming/localrdp/streammenucontroller.cpp \
         streaming/localrdp/win32canvas.cpp
@@ -434,7 +434,7 @@ win32 {
         streaming/localrdp/agentclient.h \
         streaming/localrdp/sessionmenuhost.h \
         streaming/localrdp/streamevents.h \
-        streaming/localrdp/floatingbutton_win32.h \
+        streaming/localrdp/toolbar_win32.h \
         streaming/localrdp/streammenu_win32.h \
         streaming/localrdp/streammenucontroller.h \
         streaming/localrdp/win32canvas.h

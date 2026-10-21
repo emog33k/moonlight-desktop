@@ -1,6 +1,7 @@
 #pragma once
 
 #include "streaming/localrdp/streammenuhost.h"
+#include "streaming/localrdp/streammenumodel.h"
 #include "SDL_compat.h"
 
 namespace LocalRdp { class StreamMenuController; }
@@ -53,23 +54,41 @@ void sendMouse(HWND hwnd, UINT msg, QPoint screenPos);
 void saveScreenshot(const QRect& rect, const QString& name);
 }
 
-class TestFloatingButton : public QObject
+class TestToolbar : public QObject
 {
     Q_OBJECT
 private slots:
     void init();
     void cleanup();
-    void defaultSpotRightEdge();
-    void followsWindowMoveAndResize();
+    void spansTopOfClientArea();
+    void videoInsetFollowsMode();
+    void followsWindowResize();
     void hiddenWhileMinimized();
-    void smallMoveIsClick();
-    void dragSnapsToEdgeAndPersists();
-    void dragDoesNotClick();
-    void controllerDestroyRemovesButton();
+    void sectionPressOpensItsDropdown();
+    void pressSameSectionAgainCloses();
+    void hoverOtherSectionSwitches();
+    void actionButtonRunsOnRelease();
+    void actionReleasedElsewhereDoesNothing();
+    void disconnectWhileMenuOpen();
+    void hotkeyMenuOpensUnderToolbar();
+    void autoHidesInFullscreen();
+    void toastBelowToolbar();
+    void destroyRemovesToolbar();
+    void screenshots();
 
 private:
+    HWND toolbarHwnd();
+    HWND menuHwnd();
+    bool menuShown();
+    QRect buttonRect(int index);
+    int buttonIndex(LocalRdp::StreamAction action);
+    int sectionIndex(LocalRdp::MenuSection section);
+
     QTemporaryDir* m_SettingsDir = nullptr;
     SDL_Window* m_Window = nullptr;
+    HWND m_Owner = nullptr;
+    FakeHost* m_Host = nullptr;
+    LocalRdp::StreamMenuController* m_Controller = nullptr;
 };
 
 namespace LocalRdp { class StreamMenuController; }
@@ -80,9 +99,8 @@ class TestStreamMenu : public QObject
 private slots:
     void init();
     void cleanup();
-    void opensNextToButton();
+    void opensUnderToolbar();
     void toggleTwiceCloses();
-    void buttonClickOpensMenu();
     void clickItemPerformsActionAndCloses();
     void clickHeaderKeepsOpen();
     void clickOutsideClosesWithoutAction();
@@ -100,7 +118,6 @@ private slots:
     void actionRunsFromEventLoopNotWndProc();
     void pointerLockSuspendedWhileOpen();
     void openingFromBackgroundActivatesStream();
-    void buttonAutoHidesInFullscreen();
     void toastShowsThenHides();
     void displayItemCarriesIndex();
 

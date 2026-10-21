@@ -1,4 +1,4 @@
-# UI tests for the LocalRDP floating button and menu (real Win32 windows over a
+# UI tests for the LocalRDP toolbar and menu (real Win32 windows over a
 # real SDL window, driven with synthetic mouse messages; the user's cursor is not touched).
 QT += testlib
 QT -= gui
@@ -14,15 +14,14 @@ LIBS += -L$$PWD/../../libs/windows/lib/x64 -lSDL2 gdiplus.lib user32.lib gdi32.l
 
 SOURCES += \
     main.cpp \
-    tst_floatingbutton.cpp \
+    tst_toolbar.cpp \
     tst_streammenu.cpp \
-    $$APP/streaming/localrdp/buttonplacement.cpp \
     $$APP/streaming/localrdp/menulayout.cpp \
     $$APP/streaming/localrdp/streammenu_win32.cpp \
     $$APP/streaming/localrdp/toast_win32.cpp \
     $$APP/streaming/localrdp/streammenumodel.cpp \
     $$APP/streaming/localrdp/win32canvas.cpp \
-    $$APP/streaming/localrdp/floatingbutton_win32.cpp \
+    $$APP/streaming/localrdp/toolbar_win32.cpp     $$APP/streaming/localrdp/toolbarlayout.cpp     $$APP/streaming/localrdp/videoarea.cpp \
     $$APP/streaming/localrdp/streammenucontroller.cpp
 
 HEADERS += \
