@@ -113,6 +113,7 @@ void TestStreamMenu::buttonClickOpensMenu()
     const QPoint c = UiTest::windowScreenRect(button).center();
     UiTest::sendMouse(button, WM_LBUTTONDOWN, c);
     UiTest::sendMouse(button, WM_LBUTTONUP, c);
+    deliverMenuEvents(*m_Controller);
     QVERIFY(m_Controller->isMenuOpen());
 }
 
@@ -120,6 +121,7 @@ void TestStreamMenu::clickItemPerformsActionAndCloses()
 {
     m_Controller->toggleMenu();
     click(itemCenterOnScreen(StreamAction::ToggleStats));
+    deliverMenuEvents(*m_Controller);
     QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::ToggleStats }));
     QVERIFY(!m_Controller->isMenuOpen());
 }
@@ -158,6 +160,7 @@ void TestStreamMenu::arrowsAndEnterActivate()
     QVERIFY(m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_DOWN, SDLK_DOWN)));
     QVERIFY(m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_DOWN, SDLK_DOWN)));
     QVERIFY(m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_RETURN, SDLK_RETURN)));
+    deliverMenuEvents(*m_Controller);
     // 1st actionable: desktop mode, 2nd: game mode
     QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::SetGameMouseMode }));
     QVERIFY(!m_Controller->isMenuOpen());
@@ -175,10 +178,6 @@ void TestStreamMenu::otherKeysConsumedWhileOpen()
 {
     m_Controller->toggleMenu();
     QVERIFY(m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_A, SDLK_a)));
-    SDL_KeyboardEvent up = keyDown(SDL_SCANCODE_A, SDLK_a);
-    up.type = SDL_KEYUP;
-    up.state = SDL_RELEASED;
-    QVERIFY(m_Controller->handleKeyEvent(up));
     QVERIFY(m_Controller->isMenuOpen());
 }
 
@@ -198,6 +197,7 @@ void TestStreamMenu::disconnectDoesNotRecapture()
     m_Host->captureActive = true;
     m_Controller->toggleMenu();
     click(itemCenterOnScreen(StreamAction::Disconnect));
+    deliverMenuEvents(*m_Controller);
     QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::Disconnect }));
     QCOMPARE(m_Host->captureChanges, QVector<bool>({ false }));
 }
@@ -230,4 +230,104 @@ void TestStreamMenu::destroyWhileOpenRemovesEverything()
     m_Controller = nullptr;
     QVERIFY(UiTest::findOwnedWindow(m_Owner, kMenuClass) == nullptr);
     QVERIFY(UiTest::findOwnedWindow(m_Owner, kButtonClass) == nullptr);
+}
+
+void TestStreamMenu::keyUpsPassThroughWhileOpen()
+{
+    // Releases always reach the PC, so nothing pressed before/around the menu can stick there
+    m_Controller->toggleMenu();
+    SDL_KeyboardEvent up = keyDown(SDL_SCANCODE_LSHIFT, SDLK_LSHIFT);
+    up.type = SDL_KEYUP;
+    up.state = SDL_RELEASED;
+    QVERIFY(!m_Controller->handleKeyEvent(up));
+    QVERIFY(m_Controller->isMenuOpen());
+}
+
+void TestStreamMenu::repeatedSpaceDoesNotActivate()
+{
+    m_Controller->toggleMenu();
+    m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_DOWN, SDLK_DOWN));
+    SDL_KeyboardEvent repeat = keyDown(SDL_SCANCODE_SPACE, SDLK_SPACE);
+    repeat.repeat = 1; // Space still held after Ctrl+Alt+Shift+Space opened the menu
+    QVERIFY(m_Controller->handleKeyEvent(repeat));
+    deliverMenuEvents(*m_Controller);
+    QVERIFY(m_Host->performed.isEmpty());
+    QVERIFY(m_Controller->isMenuOpen());
+}
+
+void TestStreamMenu::actionRunsFromEventLoopNotWndProc()
+{
+    m_Controller->toggleMenu();
+    click(itemCenterOnScreen(StreamAction::ToggleFullscreen));
+    // Not run inside the window procedure (that is inside SDL's event pump)...
+    QVERIFY(m_Host->performed.isEmpty());
+    // ...but when the session loop hands the posted event back
+    deliverMenuEvents(*m_Controller);
+    QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::ToggleFullscreen }));
+}
+
+void TestStreamMenu::pointerLockSuspendedWhileOpen()
+{
+    m_Host->state.pointerLocked = true;
+    m_Controller->toggleMenu();
+    QCOMPARE(m_Host->pointerLockSuspends, QVector<bool>({ true }));
+    m_Controller->toggleMenu();
+    QCOMPARE(m_Host->pointerLockSuspends, QVector<bool>({ true, false }));
+}
+
+void TestStreamMenu::openingFromBackgroundActivatesStream()
+{
+    // Another window of ours is in front; clicking the button must bring the stream
+    // forward so the menu's mouse capture and keyboard work as expected.
+    SDL_Window* other = UiTest::createStreamWindow(50, 50, 300, 200);
+    HWND otherHwnd = UiTest::hwndOf(other);
+    SetForegroundWindow(otherHwnd);
+    UiTest::pump(100);
+    if (GetForegroundWindow() != otherHwnd) {
+        // Windows only lets a process take the foreground after real user input.
+        // With synthetic messages that holds only when the test itself is in front.
+        SDL_DestroyWindow(other);
+        QSKIP("Test process cannot own the foreground here (another app is active); "
+              "covered by the real-stream check instead");
+    }
+
+    HWND button = UiTest::findOwnedWindow(m_Owner, kButtonClass);
+    const QPoint c = UiTest::windowScreenRect(button).center();
+    UiTest::sendMouse(button, WM_LBUTTONDOWN, c);
+    UiTest::sendMouse(button, WM_LBUTTONUP, c);
+    deliverMenuEvents(*m_Controller);
+
+    QVERIFY(m_Controller->isMenuOpen());
+    QCOMPARE(GetForegroundWindow(), m_Owner);
+    m_Controller->toggleMenu();
+    SDL_DestroyWindow(other);
+}
+
+void TestStreamMenu::buttonAutoHidesInFullscreen()
+{
+    HWND button = UiTest::findOwnedWindow(m_Owner, kButtonClass);
+    const QRect r = UiTest::windowScreenRect(button);
+    QPoint cursor = r.center() + QPoint(-400, 0);
+    m_Controller->setCursorProviderForTests([&]() { return cursor; });
+
+    m_Controller->setAutoHideButton(true);
+    UiTest::pump(1400);
+    QVERIFY(!IsWindowVisible(button));        // pointer far away: hidden
+
+    cursor = r.center() + QPoint(r.width() / 2 + 10, 0); // within the hot zone next to it
+    UiTest::pump(300);
+    QVERIFY(IsWindowVisible(button));
+
+    cursor = r.center() + QPoint(-400, 0);
+    UiTest::pump(1400);
+    QVERIFY(!IsWindowVisible(button));
+
+    m_Controller->toggleMenu();               // menu open: button stays
+    UiTest::pump(1400);
+    QVERIFY(IsWindowVisible(button));
+    m_Controller->toggleMenu();
+
+    m_Controller->setAutoHideButton(false);
+    UiTest::pump(300);
+    QVERIFY(IsWindowVisible(button));
 }

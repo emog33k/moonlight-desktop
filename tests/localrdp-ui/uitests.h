@@ -3,6 +3,8 @@
 #include "streaming/localrdp/streammenuhost.h"
 #include "SDL_compat.h"
 
+namespace LocalRdp { class StreamMenuController; }
+
 #include <QObject>
 #include <QRect>
 #include <QTemporaryDir>
@@ -26,7 +28,13 @@ public:
     void performAction(LocalRdp::StreamAction action) override { performed << action; }
     bool isCaptureActive() override { return captureActive; }
     void setCaptureActive(bool active) override { captureActive = active; captureChanges << active; }
+    QVector<bool> pointerLockSuspends;
+    void suspendPointerLock(bool suspended) override { pointerLockSuspends << suspended; }
 };
+
+// Runs menu actions the way the session loop does: SDL_USEREVENTs posted by the
+// controller are handed back to it.
+void deliverMenuEvents(LocalRdp::StreamMenuController& controller, int ms = 100);
 
 // Shared helpers: an SDL window standing in for the stream window.
 namespace UiTest {
@@ -86,6 +94,12 @@ private slots:
     void desktopModeKeepsCapture();
     void minimizeClosesMenu();
     void destroyWhileOpenRemovesEverything();
+    void keyUpsPassThroughWhileOpen();
+    void repeatedSpaceDoesNotActivate();
+    void actionRunsFromEventLoopNotWndProc();
+    void pointerLockSuspendedWhileOpen();
+    void openingFromBackgroundActivatesStream();
+    void buttonAutoHidesInFullscreen();
 
 private:
     HWND menuHwnd();

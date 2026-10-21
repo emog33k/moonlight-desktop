@@ -3,7 +3,14 @@
 #include "SDL_compat.h"
 #include "streammenuhost.h"
 
+#include <QPoint>
+
+#include <functional>
 #include <memory>
+
+#include "streamevents.h"
+
+struct HWND__;
 
 namespace LocalRdp {
 
@@ -34,6 +41,14 @@ public:
     void toggleMenu();
     bool isMenuOpen() const;
 
+    // Session loop hands back SDL_CODE_TOGGLE_STREAM_MENU / SDL_CODE_STREAM_MENU_* events.
+    void handleUserEvent(const SDL_UserEvent& event);
+
+    // In full screen the button hides until the pointer comes near it, so no
+    // overlay sits on top of the stream (keeps DWM independent flip possible).
+    void setAutoHideButton(bool autoHide);
+    void setCursorProviderForTests(std::function<QPoint()> provider);
+
 private:
     void openMenu();
     void closeMenu(bool restoreCapture);
@@ -42,11 +57,14 @@ private:
 
     SDL_Window* m_Window;
     StreamMenuHost* m_Host;
+    HWND__* m_Hwnd = nullptr;
     std::unique_ptr<GdiplusSession> m_Gdiplus;
     std::unique_ptr<FloatingButtonWindow> m_Button;
     std::unique_ptr<StreamMenuWindow> m_Menu;
     // We released the game-mode mouse capture to show the menu and owe it back.
     bool m_CaptureReleased = false;
+    // We lifted "keep the cursor inside the window" while the menu is open.
+    bool m_PointerLockSuspended = false;
 };
 
 }

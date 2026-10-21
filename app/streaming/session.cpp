@@ -2047,9 +2047,11 @@ void Session::exec()
                                                     (DualSenseOutputReport *)event.user.data2);
                 break;
             case SDL_CODE_TOGGLE_STREAM_MENU:
+            case SDL_CODE_STREAM_MENU_ACTION:
+            case SDL_CODE_STREAM_MENU_DISMISSED:
 #ifdef Q_OS_WIN32
                 if (m_StreamMenu != nullptr) {
-                    m_StreamMenu->toggleMenu();
+                    m_StreamMenu->handleUserEvent(event.user);
                 }
 #endif
                 break;

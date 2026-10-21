@@ -27,8 +27,17 @@ public:
 
     // Moves the button to its saved spot inside the owner's current client area.
     void reposition();
+    // Follows the stream window (hidden while it is minimized).
     void setVisible(bool visible);
     bool isVisible() const { return m_Visible; }
+
+    // Auto-hide (used in full screen): the button only shows while the pointer is
+    // near its spot, and hides again a second after the pointer leaves.
+    void setAutoHide(bool autoHide);
+    // While the menu is open the button never auto-hides.
+    void setKeepVisible(bool keep);
+    // Where the pointer is (GetCursorPos by default; tests substitute it).
+    void setCursorProvider(std::function<QPoint()> provider);
 
     // Where the button is on screen (used to place the menu next to it).
     QRect screenRect() const;
@@ -47,6 +56,8 @@ private:
     int margin() const;
     void render();
     void moveTo(QPoint topLeft);
+    void applyVisibility();
+    void onAutoHideTimer();
 
     HWND m_Owner;
     HWND m_Hwnd = nullptr;
@@ -56,7 +67,13 @@ private:
     ButtonPlacement m_Placement;
     QPoint m_TopLeft;
     int m_Size = 0;
-    bool m_Visible = false;
+    bool m_Visible = false;          // the stream window is shown (not minimized)
+    bool m_AutoHide = false;
+    bool m_KeepVisible = false;
+    bool m_NearPointer = true;       // auto-hide: pointer recently near the button
+    unsigned long long m_LastNearTick = 0;
+    bool m_Shown = false;            // actual window state
+    std::function<QPoint()> m_CursorProvider;
     bool m_Hover = false;
     bool m_Pressed = false;
     bool m_Dragging = false;

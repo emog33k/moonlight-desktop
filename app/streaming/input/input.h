@@ -5,9 +5,7 @@
 #include "streaming/localrdp/streamactions.h"
 #include "streaming/localrdp/streammenuhost.h"
 
-// LocalRDP: SDL_USEREVENT code asking the session to open/close the in-stream menu
-// (other codes live in session.cpp and video/decoder.h)
-#define SDL_CODE_TOGGLE_STREAM_MENU 106
+#include "streaming/localrdp/streamevents.h"
 
 #include "SDL_compat.h"
 
@@ -151,6 +149,8 @@ public:
     bool isSystemKeyCaptureActive();
 
     void setCaptureActive(bool active) override;
+
+    void suspendPointerLock(bool suspended) override;
 
     bool isMouseInVideoRegion(int mouseX, int mouseY, int windowWidth = -1, int windowHeight = -1);
 

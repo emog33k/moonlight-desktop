@@ -12,6 +12,11 @@ static const int kBaseSize = 40;   // px at 96 DPI
 static const int kBaseMargin = 8;  // px at 96 DPI
 static const BYTE kIdleAlpha = 128;
 static const BYTE kActiveAlpha = 255;
+static const UINT_PTR kAutoHideTimer = 1;
+static const UINT kAutoHidePollMs = 100;
+static const ULONGLONG kAutoHideDelayMs = 1000;
+static const int kHotZoneBase = 24; // px around the button at 96 DPI
+
 
 // Only one stream (and so one button) exists at a time; the WinEvent hook
 // callback has no user pointer, so it finds the button through this.
@@ -61,7 +66,7 @@ FloatingButtonWindow::FloatingButtonWindow(HWND owner, std::function<void()> onC
                                      WINEVENT_OUTOFCONTEXT);
 
     reposition();
-    setVisible(!IsIconic(owner));
+    setVisible(true);
 }
 
 FloatingButtonWindow::~FloatingButtonWindow()
@@ -73,6 +78,7 @@ FloatingButtonWindow::~FloatingButtonWindow()
         s_Instance = nullptr;
     }
     if (m_Hwnd != nullptr) {
+        KillTimer(m_Hwnd, kAutoHideTimer);
         SetWindowLongPtrW(m_Hwnd, GWLP_USERDATA, 0);
         DestroyWindow(m_Hwnd);
     }
@@ -140,13 +146,79 @@ void FloatingButtonWindow::setVisible(bool visible)
     if (m_Hwnd == nullptr) {
         return;
     }
-    m_Visible = visible;
-    if (visible) {
+    // Never show over a minimized window (e.g. a stream that starts minimized)
+    m_Visible = visible && !IsIconic(m_Owner);
+    applyVisibility();
+}
+
+void FloatingButtonWindow::applyVisibility()
+{
+    const bool show = m_Visible && (!m_AutoHide || m_KeepVisible || m_NearPointer || m_Pressed);
+    if (show) {
         reposition();
-        ShowWindow(m_Hwnd, SW_SHOWNOACTIVATE);
+        if (!m_Shown) {
+            ShowWindow(m_Hwnd, SW_SHOWNOACTIVATE);
+        }
+    }
+    else if (m_Shown) {
+        ShowWindow(m_Hwnd, SW_HIDE);
+    }
+    m_Shown = show;
+}
+
+void FloatingButtonWindow::setAutoHide(bool autoHide)
+{
+    if (m_Hwnd == nullptr || autoHide == m_AutoHide) {
+        return;
+    }
+    m_AutoHide = autoHide;
+    if (autoHide) {
+        m_NearPointer = true;
+        m_LastNearTick = GetTickCount64();
+        SetTimer(m_Hwnd, kAutoHideTimer, kAutoHidePollMs, nullptr);
     }
     else {
-        ShowWindow(m_Hwnd, SW_HIDE);
+        KillTimer(m_Hwnd, kAutoHideTimer);
+    }
+    applyVisibility();
+}
+
+void FloatingButtonWindow::setKeepVisible(bool keep)
+{
+    m_KeepVisible = keep;
+    if (keep) {
+        m_LastNearTick = GetTickCount64();
+    }
+    applyVisibility();
+}
+
+void FloatingButtonWindow::setCursorProvider(std::function<QPoint()> provider)
+{
+    m_CursorProvider = std::move(provider);
+}
+
+void FloatingButtonWindow::onAutoHideTimer()
+{
+    QPoint cursor;
+    if (m_CursorProvider) {
+        cursor = m_CursorProvider();
+    }
+    else {
+        POINT pt;
+        GetCursorPos(&pt);
+        cursor = QPoint(pt.x, pt.y);
+    }
+
+    const int zone = (int)(kHotZoneBase * dpiScaleForWindow(m_Owner) + 0.5);
+    const bool pointerClose = screenRect().adjusted(-zone, -zone, zone, zone).contains(cursor);
+    const ULONGLONG now = GetTickCount64();
+    if (pointerClose) {
+        m_LastNearTick = now;
+    }
+    const bool wasNear = m_NearPointer;
+    m_NearPointer = pointerClose || (now - m_LastNearTick) < kAutoHideDelayMs;
+    if (m_NearPointer != wasNear) {
+        applyVisibility();
     }
 }
 
@@ -210,6 +282,13 @@ LRESULT FloatingButtonWindow::handleMessage(UINT msg, WPARAM wParam, LPARAM lPar
     case WM_MOUSEACTIVATE:
         // Keep keyboard focus on the stream
         return MA_NOACTIVATE;
+
+    case WM_TIMER:
+        if (wParam == kAutoHideTimer) {
+            onAutoHideTimer();
+            return 0;
+        }
+        break;
 
     case WM_SETCURSOR:
         SetCursor(LoadCursor(nullptr, IDC_HAND));

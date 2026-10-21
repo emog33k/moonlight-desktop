@@ -134,8 +134,9 @@ void SdlInputHandler::handleMouseMotionEvent(SDL_MouseMotionEvent* event)
         dst.w = windowWidth;
         dst.h = windowHeight;
 
-        // Use the stream and window sizes to determine the video region
-        StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
+        // LocalRDP: lock to the whole window, not just the video area, so the
+        // floating menu button (which may sit in a black bar) stays reachable.
+        (void)src;
 
         mouseInVideoRegion = isMouseInVideoRegion(x, y, windowWidth, windowHeight);
 
@@ -305,8 +306,9 @@ void SdlInputHandler::updatePointerRegionLock()
         dst.x = dst.y = 0;
         SDL_GetWindowSize(m_Window, &dst.w, &dst.h);
 
-        // Use the stream and window sizes to determine the video region
-        StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
+        // LocalRDP: lock to the whole window, not just the video area, so the
+        // floating menu button (which may sit in a black bar) stays reachable.
+        (void)src;
 
         // SDL 2.0.18 lets us lock the cursor to a specific region
         SDL_SetWindowMouseRect(m_Window, &dst);
@@ -326,5 +328,22 @@ void SdlInputHandler::updatePointerRegionLock()
 #else
         SDL_SetWindowGrab(m_Window, SDL_FALSE);
 #endif
+    }
+}
+
+void SdlInputHandler::suspendPointerLock(bool suspended)
+{
+    if (suspended) {
+        // Let the cursor reach the in-stream menu; the setting itself is unchanged
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+        SDL_SetWindowMouseRect(m_Window, nullptr);
+#elif SDL_VERSION_ATLEAST(2, 0, 15)
+        SDL_SetWindowMouseGrab(m_Window, SDL_FALSE);
+#else
+        SDL_SetWindowGrab(m_Window, SDL_FALSE);
+#endif
+    }
+    else {
+        updatePointerRegionLock();
     }
 }

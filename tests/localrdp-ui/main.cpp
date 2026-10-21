@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QTest>
 
+#include "streaming/localrdp/streammenucontroller.h"
 #include "streaming/localrdp/win32canvas.h"
 
 #include <SDL_syswm.h>
@@ -113,6 +114,21 @@ void sendMouse(HWND hwnd, UINT msg, QPoint screenPos)
     SendMessageW(hwnd, msg, keys, MAKELPARAM((short)pt.x, (short)pt.y));
 }
 
+}
+
+void deliverMenuEvents(LocalRdp::StreamMenuController& controller, int ms)
+{
+    QElapsedTimer t;
+    t.start();
+    while (t.elapsed() < ms) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_USEREVENT) {
+                controller.handleUserEvent(e.user);
+            }
+        }
+        SDL_Delay(5);
+    }
 }
 
 // Runs one test class, writing its log to <exe dir>/results/<class>.txt and echoing it.

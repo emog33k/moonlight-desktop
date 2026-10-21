@@ -17,6 +17,10 @@ public:
     // Mouse capture (game mode hides and locks the cursor); the menu releases it while open.
     virtual bool isCaptureActive() = 0;
     virtual void setCaptureActive(bool active) = 0;
+
+    // "Keep the cursor inside the window" would clip the cursor away from parts of
+    // the menu; the menu lifts that limit while open (without changing the setting).
+    virtual void suspendPointerLock(bool suspended) = 0;
 };
 
 }
