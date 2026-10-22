@@ -364,3 +364,11 @@ private slots:
     void neverConnectedIsQuiet();
     void pcLockChanges();
 };
+
+class TestWindowMemory : public QObject
+{
+    Q_OBJECT
+private slots:
+    void roundTripPerPc();
+    void fitsDisplays();
+};

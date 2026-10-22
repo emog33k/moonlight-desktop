@@ -27,6 +27,7 @@
 #include "localrdp/sdlcursor.h"
 #include "localrdp/streamvolume.h"
 #include "localrdp/agentnotices.h"
+#include "localrdp/windowmemory.h"
 #include "backend/identitymanager.h"
 #endif
 
@@ -1928,6 +1929,31 @@ void Session::exec()
 #endif
     }
 
+#ifdef Q_OS_WIN32
+    // LocalRDP: open where the window was last time for this PC (if it still
+    // fits on the monitors there are now)
+    if (!m_IsFullScreen) {
+        if (auto placement = LocalRdp::loadWindowPlacement(m_Computer->uuid)) {
+            QVector<QRect> screens;
+            for (int i = 0; i < SDL_GetNumVideoDisplays(); i++) {
+                SDL_Rect r;
+                if (SDL_GetDisplayUsableBounds(i, &r) == 0) {
+                    screens << QRect(r.x, r.y, r.w, r.h);
+                }
+            }
+            if (LocalRdp::placementFits(placement->rect, screens)) {
+                x = placement->rect.x();
+                y = placement->rect.y();
+                width = placement->rect.width();
+                height = placement->rect.height();
+                if (placement->maximized) {
+                    defaultWindowFlags |= SDL_WINDOW_MAXIMIZED;
+                }
+            }
+        }
+    }
+#endif
+
     // We use only the computer name on macOS to match Apple conventions where the
     // app name is featured in the menu bar and the document name is in the title bar.
 #ifdef Q_OS_DARWIN
@@ -2562,6 +2588,28 @@ DispatchDeferredCleanup:
     StreamUtils::exitAsyncLoggingMode();
 
 #ifdef Q_OS_WIN32
+    // LocalRDP: remember where the window was for the next stream to this PC
+    if (m_Window != nullptr) {
+        const Uint32 flags = SDL_GetWindowFlags(m_Window);
+        if (!(flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MINIMIZED))) {
+            LocalRdp::WindowPlacement placement;
+            if (flags & SDL_WINDOW_MAXIMIZED) {
+                // Keep the normal size from before; just open maximized again
+                placement = LocalRdp::loadWindowPlacement(m_Computer->uuid).value_or(LocalRdp::WindowPlacement());
+                placement.maximized = true;
+            }
+            else {
+                int wx, wy, ww, wh;
+                SDL_GetWindowPosition(m_Window, &wx, &wy);
+                SDL_GetWindowSize(m_Window, &ww, &wh);
+                placement.rect = QRect(wx, wy, ww, wh);
+            }
+            if (placement.rect.isValid()) {
+                LocalRdp::saveWindowPlacement(m_Computer->uuid, placement);
+            }
+        }
+    }
+
     // LocalRDP: remove the toolbar/menu first so nothing is left on screen
     delete m_StreamMenu;
     m_StreamMenu = nullptr;

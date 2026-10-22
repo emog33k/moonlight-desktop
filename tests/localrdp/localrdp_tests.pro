@@ -38,6 +38,8 @@ SOURCES += \
     tst_screennudge.cpp \
     tst_streamvolume.cpp \
     tst_agentnotices.cpp \
+    tst_windowmemory.cpp \
+    ../../app/streaming/localrdp/windowmemory.cpp \
     ../../app/streaming/localrdp/agentnotices.cpp \
     ../../app/streaming/localrdp/streamvolume.cpp \
     ../../localrdp/agent/screennudge_win32.cpp \
