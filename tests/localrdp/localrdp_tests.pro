@@ -41,6 +41,8 @@ SOURCES += \
     tst_windowmemory.cpp \
     tst_reconnect.cpp \
     tst_pairingpins.cpp \
+    tst_forkupdate.cpp \
+    ../../app/streaming/localrdp/forkupdate.cpp \
     ../../app/streaming/localrdp/pairingpins.cpp \
     ../../app/streaming/localrdp/reconnect.cpp \
     ../../app/streaming/localrdp/windowmemory.cpp \

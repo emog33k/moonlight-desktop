@@ -1,9 +1,15 @@
-# LocalRDP Agent: background program on the PC (no window), see main.cpp.
+# Moonlight Desktop Agent: background program on the host (no window), see main.cpp.
 QT = core network
 CONFIG += c++17 windows
 CONFIG -= console app_bundle
 TEMPLATE = app
-TARGET = LocalRdpAgent
+TARGET = MoonlightDesktopAgent
+# File properties (Task Manager shows the description)
+VERSION = 1.0.0
+QMAKE_TARGET_DESCRIPTION = Moonlight Desktop Agent
+QMAKE_TARGET_PRODUCT = Moonlight Desktop
+QMAKE_TARGET_COPYRIGHT = GPLv3
+RC_ICONS = ../../app/moonlight.ico
 
 INCLUDEPATH += ../../app
 # Track dependencies on our own headers only. With headers outside this folder,

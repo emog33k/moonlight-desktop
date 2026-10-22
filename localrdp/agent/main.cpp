@@ -124,9 +124,12 @@ static void powerAction(const QString& what)
     }
 }
 
+// The name the user sees: folders, log. Same as in scripts\install-agent.ps1.
+static const char* const kAgentName = "Moonlight Desktop Agent";
+
 static QString programDataDir()
 {
-    return QDir::fromNativeSeparators(qEnvironmentVariable("ProgramData", "C:/ProgramData")) + "/LocalRDP Agent";
+    return QDir::fromNativeSeparators(qEnvironmentVariable("ProgramData", "C:/ProgramData")) + "/" + kAgentName;
 }
 
 static QString sunshineConfigDir()
@@ -201,7 +204,7 @@ int main(int argc, char* argv[])
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
     QCoreApplication app(argc, argv);
-    QCoreApplication::setApplicationName("LocalRDP Agent");
+    QCoreApplication::setApplicationName(kAgentName);
     const QStringList args = app.arguments();
 
     // Diagnostics: print the monitor list the laptop would get, then exit
@@ -216,7 +219,7 @@ int main(int argc, char* argv[])
                              argValue(args, "--out", programDataDir()));
     }
 
-    const QString logDir = QDir::fromNativeSeparators(qEnvironmentVariable("LOCALAPPDATA")) + "/LocalRDP Agent";
+    const QString logDir = QDir::fromNativeSeparators(qEnvironmentVariable("LOCALAPPDATA")) + "/" + kAgentName;
     QDir().mkpath(logDir);
     s_LogPath = logDir + "/agent.log";
 
@@ -301,7 +304,7 @@ int main(int argc, char* argv[])
     if (!server.listen()) {
         listenRetry.start();
     }
-    writeLog("LocalRDP Agent started");
+    writeLog(QString(kAgentName) + " started");
 
     const int rc = app.exec();
     ReleaseMutex(mutex);

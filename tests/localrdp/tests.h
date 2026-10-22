@@ -390,6 +390,16 @@ private slots:
     void onlyAfterItWasRunning();
 };
 
+class TestForkUpdate : public QObject
+{
+    Q_OBJECT
+private slots:
+    void newerReleaseOffered();
+    void sameOrOlderNotOffered();
+    void draftsAndPrereleasesIgnored();
+    void malformedIgnored();
+};
+
 class TestPairingPins : public QObject
 {
     Q_OBJECT

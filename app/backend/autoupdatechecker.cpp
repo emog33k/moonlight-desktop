@@ -1,4 +1,5 @@
 #include "autoupdatechecker.h"
+#include "streaming/localrdp/forkupdate.h"
 
 #include <QNetworkReply>
 #include <QJsonDocument>
@@ -43,9 +44,14 @@ void AutoUpdateChecker::start()
     QT_WARNING_POP
 #endif
 
-    // We'll get a callback when this is finished
-    QUrl url("https://moonlight-stream.org/updates/qt.json");
+    // We'll get a callback when this is finished.
+    // Moonlight Desktop: this fork's releases, not upstream's manifest (that would
+    // offer a Moonlight without this fork's features)
+    QUrl url(QString::fromLatin1(LocalRdp::kForkLatestReleaseUrl));
     QNetworkRequest request(url);
+    // GitHub's API refuses requests without one
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("MoonlightDesktop/" DESKTOP_VERSION_STR));
+    request.setRawHeader("Accept", "application/vnd.github+json");
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
 #else
@@ -113,6 +119,16 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
     m_Nam->deleteLater();
     m_Nam = nullptr;
 
+    if (reply->error() == QNetworkReply::NoError) {
+        // Moonlight Desktop: GitHub's "latest release" answer, compared with our version
+        const QByteArray body = reply->read(1024 * 1024);
+        reply->deleteLater();
+        if (const auto update = LocalRdp::forkUpdateFrom(body, QStringLiteral(DESKTOP_VERSION_STR))) {
+            qDebug() << "Moonlight Desktop update available:" << update->version;
+            emit onUpdateAvailable(update->version, update->url);
+        }
+        return;
+    }
     if (reply->error() == QNetworkReply::NoError) {
         QTextStream stream(reply);
 

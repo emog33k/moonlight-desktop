@@ -197,6 +197,7 @@ SOURCES += \
     streaming/localrdp/streamvolume.cpp \
     streaming/localrdp/reconnect.cpp \
     streaming/localrdp/pairingpins.cpp \
+    streaming/localrdp/forkupdate.cpp \
     streaming/localrdp/streammenumodel.cpp \
     streaming/session.cpp \
     streaming/audio/audio.cpp \
@@ -241,6 +242,7 @@ HEADERS += \
     streaming/localrdp/streamvolume.h \
     streaming/localrdp/reconnect.h \
     streaming/localrdp/pairingpins.h \
+    streaming/localrdp/forkupdate.h \
     streaming/localrdp/streammenuhost.h \
     streaming/localrdp/streamactions.h \
     streaming/localrdp/streammenumodel.h \
@@ -649,3 +651,5 @@ macx {
 
 VERSION = "$$cat(version.txt)"
 DEFINES += VERSION_STR=\\\"$$cat(version.txt)\\\"
+# Moonlight Desktop's own version (update check, installers)
+DEFINES += DESKTOP_VERSION_STR=\\\"$$cat(desktop-version.txt)\\\"
