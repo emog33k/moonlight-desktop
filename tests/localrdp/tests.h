@@ -39,6 +39,7 @@ private slots:
     void quickKeyCombos();
     void doubleCursorFixOnlyWhenActive();
     void soundSection();
+    void pcLockedShownInPcMenu();
 };
 
 class TestMenuLayout : public QObject
@@ -115,6 +116,7 @@ private slots:
     void noClipboardWhilePcLocked();
     void replacedThenSilentDropStillLocks();
     void refreshScreensAfterSwitch();
+    void pcLockStateReported();
     void cursorAndSunshineAfterHello();
 };
 
@@ -141,6 +143,7 @@ private slots:
     void silentServerRetried();
     void laptopClipboardAgeAcrossStreams();
     void switchingMonitorRefreshesPcScreens();
+    void pcLockReachesClient();
 };
 
 class TestSessionMenuHost : public QObject
@@ -347,4 +350,14 @@ private slots:
     void shortScaled();
     void fullAndZero();
     void sharedSetting();
+};
+
+class TestAgentNotices : public QObject
+{
+    Q_OBJECT
+private slots:
+    void firstConnectIsQuiet();
+    void lostAndBack();
+    void neverConnectedIsQuiet();
+    void pcLockChanges();
 };

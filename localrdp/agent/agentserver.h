@@ -80,6 +80,7 @@ private:
     void sendDisplays(bool onlyIfChanged);
     void sendCursor(bool onlyIfChanged);
     void checkSessionLock();
+    void sendPcState();
 
     AgentConfig m_Config;
     QSslServer* m_Server;

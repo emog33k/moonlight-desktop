@@ -26,6 +26,7 @@
 #include "localrdp/cursorsync.h"
 #include "localrdp/sdlcursor.h"
 #include "localrdp/streamvolume.h"
+#include "localrdp/agentnotices.h"
 #include "backend/identitymanager.h"
 #endif
 
@@ -2239,6 +2240,14 @@ void Session::exec()
             case SDL_CODE_LOCALRDP_AGENT_CHANGED:
                 m_AgentEventPending = false;
                 localRdpUpdateCursor();
+#ifdef Q_OS_WIN32
+                if (m_AgentClient != nullptr && m_StreamMenu != nullptr) {
+                    const QString notice = m_AgentNotices.update(m_AgentClient->status(), m_AgentClient->pcLocked());
+                    if (!notice.isEmpty()) {
+                        m_StreamMenu->showToast(notice);
+                    }
+                }
+#endif
                 break;
             case SDL_CODE_LOCALRDP_FILES_PICKED:
             {

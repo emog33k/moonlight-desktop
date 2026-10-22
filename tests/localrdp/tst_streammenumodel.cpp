@@ -353,3 +353,15 @@ void TestStreamMenuModel::soundSection()
     QCOMPARE(findByAction(items, StreamAction::ToggleStreamAudio)->checked, false);
     QCOMPARE(findByAction(items, StreamAction::VolumeUp)->enabled, true);
 }
+
+void TestStreamMenuModel::pcLockedShownInPcMenu()
+{
+    StreamState s;
+    s.agentStatus = AgentStatus::Connected;
+    s.pcLocked = true;
+    bool shown = false;
+    for (const MenuItem& i : buildSectionMenu(MenuSection::Pc, s)) {
+        shown |= i.kind == MenuItemKind::Status && i.label.contains("заблокирован");
+    }
+    QVERIFY(shown);
+}

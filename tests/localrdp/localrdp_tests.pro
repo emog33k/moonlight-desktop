@@ -37,6 +37,8 @@ SOURCES += \
     tst_agentidentity.cpp \
     tst_screennudge.cpp \
     tst_streamvolume.cpp \
+    tst_agentnotices.cpp \
+    ../../app/streaming/localrdp/agentnotices.cpp \
     ../../app/streaming/localrdp/streamvolume.cpp \
     ../../localrdp/agent/screennudge_win32.cpp \
     ../../app/localrdp-shared/agentidentity.cpp \

@@ -448,3 +448,37 @@ void TestAgentServer::refreshScreensAfterSwitch()
     conn.send(MsgType::RefreshScreens);
     QTRY_COMPARE_WITH_TIMEOUT(nudges.load(), 3, 3000);
 }
+
+void TestAgentServer::pcLockStateReported()
+{
+    std::atomic<bool> locked { false };
+    AgentConfig config;
+    config.useSystemClipboard = false;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.isSessionLocked = [&locked]() { return locked.load(); };
+    config.lockPollMs = 30;
+    AgentServer server(config);
+    QVERIFY(server.listen());
+    QSslSocket* socket = connectPinned("127.0.0.1", server.port(), testCert("client1"), testKey("client1"), testCert("server"));
+    QSignalSpy encrypted(socket, &QSslSocket::encrypted);
+    QVERIFY(encrypted.wait(5000));
+    PeerConnection conn(socket);
+    QSignalSpy frames(&conn, &PeerConnection::frameReceived);
+    conn.send(MsgType::Hello, jsonPayload(hello()));
+    QVERIFY(waitForType(frames, MsgType::PcState));
+    auto lastLocked = [&frames]() {
+        int value = -1;
+        for (const auto& args : frames) {
+            const Frame f = args.at(0).value<Frame>();
+            if (f.type == MsgType::PcState) value = parseJsonPayload(f.payload)->value("locked").toBool() ? 1 : 0;
+        }
+        return value;
+    };
+    QCOMPARE(lastLocked(), 0);
+    locked = true;
+    QTRY_COMPARE_WITH_TIMEOUT(lastLocked(), 1, 3000);
+}

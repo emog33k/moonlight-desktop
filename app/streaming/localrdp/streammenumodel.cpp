@@ -187,7 +187,8 @@ QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
     case MenuSection::Pc:
         return {
             header(QStringLiteral("ПК")),
-            status(agentStatusText(s.agentStatus)),
+            status(agentStatusText(s.agentStatus) +
+                   (s.agentStatus == AgentStatus::Connected && s.pcLocked ? QStringLiteral(", ПК заблокирован") : QString())),
             disabledUnless(item(K::Command, QStringLiteral("Заблокировать ПК"), QString(), A::LockPc),
                            s.agentStatus == AgentStatus::Connected),
             item(K::Check, QStringLiteral("Блокировать ПК при отключении"), QString(), A::ToggleLockOnDisconnect, s.lockOnDisconnect),

@@ -416,6 +416,7 @@ win32 {
         localrdp-shared/hostdisplays.cpp \
         localrdp-shared/cursorshape.cpp \
         streaming/localrdp/cursorsync.cpp \
+        streaming/localrdp/agentnotices.cpp \
         streaming/localrdp/sdlcursor.cpp \
         localrdp-shared/protocol.cpp \
         localrdp-shared/trust.cpp \
@@ -438,6 +439,7 @@ win32 {
         localrdp-shared/hostdisplays.h \
         localrdp-shared/cursorshape.h \
         streaming/localrdp/cursorsync.h \
+        streaming/localrdp/agentnotices.h \
         streaming/localrdp/sdlcursor.h \
         localrdp-shared/protocol.h \
         localrdp-shared/trust.h \

@@ -430,3 +430,23 @@ void TestAgentClient::switchingMonitorRefreshesPcScreens()
     QCOMPARE(input.params, QVector<int>({ 1 })); // Ctrl+Alt+Shift+F2 still goes to Sunshine
     QTRY_COMPARE_WITH_TIMEOUT(nudges.load(), 3, 3000);
 }
+
+void TestAgentClient::pcLockReachesClient()
+{
+    std::atomic<bool> locked { true };
+    AgentConfig config;
+    config.useSystemClipboard = false;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.isSessionLocked = [&locked]() { return locked.load(); };
+    config.lockPollMs = 30;
+    AgentServer server(config);
+    QVERIFY(server.listen());
+    auto client = makeClient(server.port());
+    QTRY_COMPARE_WITH_TIMEOUT(client->pcLocked(), true, 5000);
+    locked = false;
+    QTRY_COMPARE_WITH_TIMEOUT(client->pcLocked(), false, 3000);
+}

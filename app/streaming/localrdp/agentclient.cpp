@@ -20,6 +20,7 @@ static const char* const kClipTimeKey = "localrdp/clip/lastcopiedat";
 
 // What the worker reports back to AgentClient (called on the worker's thread).
 struct AgentClientEvents {
+    std::function<void(bool)> pcLocked;
     std::function<void(const DisplayList&)> displays;
     std::function<void(const QString&)> sunshine;
     std::function<void(const CursorState&)> cursor;
@@ -228,6 +229,13 @@ private:
                 }
             }
             break;
+        case MsgType::PcState:
+            if (m_Ready) {
+                if (auto state = parseJsonPayload(frame.payload)) {
+                    m_Events.pcLocked(state->value("locked").toBool());
+                }
+            }
+            break;
         case MsgType::CursorHidden:
         case MsgType::CursorDefault:
             if (m_Ready) {
@@ -378,6 +386,11 @@ AgentClient::AgentClient(const QString& host, const QSslCertificate& clientCert,
         notifyChange();
     };
     events.statusChanged = [this]() { notifyChange(); };
+    events.pcLocked = [this](bool locked) {
+        if (m_PcLocked.exchange(locked) != locked) {
+            notifyChange();
+        }
+    };
     m_Worker = new AgentClientWorker(m_Status, m_Clipboard.get(), events, host, clientCert, clientKey,
                                      pinnedServer, port, retryMs, pingMs, pongTimeoutMs);
     m_SendTarget = m_Worker;

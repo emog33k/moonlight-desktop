@@ -197,6 +197,7 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
             if (m_Config.readCursor) {
                 m_CursorTimer.start(m_Config.cursorPollMs);
             }
+            sendPcState();
         }
         break;
     case MsgType::Ping:
@@ -323,6 +324,14 @@ void AgentServer::checkSessionLock()
     m_PcLocked = locked;
     emit message(locked ? "PC locked: clipboard sharing paused" : "PC unlocked: clipboard sharing resumed");
     m_Clipboard->setEnabled(!locked);
+    sendPcState();
+}
+
+void AgentServer::sendPcState()
+{
+    if (m_Config.isSessionLocked && m_Session && m_SessionReady) {
+        m_Session->send(MsgType::PcState, jsonPayload(QJsonObject{ { "locked", m_PcLocked } }));
+    }
 }
 
 void AgentServer::lockNow(const char* reason)

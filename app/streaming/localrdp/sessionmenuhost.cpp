@@ -27,6 +27,7 @@ StreamState SessionMenuHost::queryState()
     state.currentDisplay = m_CurrentDisplay;
     if (m_Agent) {
         state.displays = m_Agent->displays();
+        state.pcLocked = m_Agent->pcLocked();
         // Until the user picks one, the monitor Sunshine started on
         if (m_CurrentDisplay < 0) {
             state.currentDisplay = m_Agent->initialDisplay();

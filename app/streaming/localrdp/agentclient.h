@@ -62,6 +62,9 @@ public:
     // The monitor Sunshine started the stream on (-1 if unknown).
     int initialDisplay() const;
 
+    // Whether the PC's Windows session is locked (as the agent last said).
+    bool pcLocked() const { return m_PcLocked; }
+
     // Identifies the running Sunshine (from the agent); empty until known.
     QString sunshineInstance() const;
     // The PC's latest cursor, if it changed since the last call.
@@ -85,6 +88,7 @@ private:
     std::optional<Proto::CursorState> m_Cursor;
     std::function<void()> m_OnChange;
     bool m_UseSystemClipboard = true;
+    std::atomic<bool> m_PcLocked { false };
     void notifyChange();
     AgentClientWorker* m_SendTarget = nullptr;
 };

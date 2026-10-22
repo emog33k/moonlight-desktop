@@ -5,6 +5,10 @@
 
 #include <atomic>
 
+#ifdef Q_OS_WIN32
+#include "localrdp/agentnotices.h"
+#endif
+
 #include <Limelight.h>
 #include <opus_multistream.h>
 #include "settings/streamingpreferences.h"
@@ -276,6 +280,9 @@ private:
     LocalRdp::CursorSync* m_CursorSync;
     std::atomic<bool> m_AgentEventPending;
     int m_LocalRdpGeneration; // this stream's number (see s_LocalRdpGeneration)
+#ifdef Q_OS_WIN32
+    LocalRdp::AgentNotices m_AgentNotices;
+#endif
     QStringList m_DroppedFiles; // collected between SDL_DROPBEGIN and SDL_DROPCOMPLETE
     int m_MouseEmulationRefCount;
     int m_FlushingWindowEventsRef;

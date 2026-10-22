@@ -64,6 +64,7 @@ struct StreamState {
     bool localCursorVisible = false;
     bool localCursorShapes = true;
     bool cursorSyncActive = false; // the AnyDesk-style cursor is on right now
+    bool pcLocked = false;         // the PC's Windows session is locked (from the agent)
     bool streamAudio = true;       // the PC's sound plays on the laptop
     int streamVolume = 100;        // percent
     bool pointerLocked = false;
