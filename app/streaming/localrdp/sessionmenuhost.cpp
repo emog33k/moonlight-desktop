@@ -3,6 +3,8 @@
 #include "settings/streamingpreferences.h"
 #include "streamvolume.h"
 
+#include <QDateTime>
+
 namespace LocalRdp {
 
 SessionMenuHost::SessionMenuHost(StreamMenuHost* input, StreamingPreferences* prefs, AgentClient* agent,
@@ -23,6 +25,10 @@ StreamState SessionMenuHost::queryState()
     state.localCursorShapes = m_Prefs->localCursorShapes;
     state.cursorSyncActive = m_CursorSyncActive ? m_CursorSyncActive() : false;
     state.streamAudio = m_Prefs->streamAudio;
+    if (m_PowerConfirm != PowerConfirm::None && QDateTime::currentMSecsSinceEpoch() - m_PowerConfirmSince > 5000) {
+        m_PowerConfirm = PowerConfirm::None;
+    }
+    state.powerConfirm = m_PowerConfirm;
     state.streamVolume = m_Prefs->streamVolume;
     state.currentDisplay = m_CurrentDisplay;
     if (m_Agent) {
@@ -85,6 +91,25 @@ void SessionMenuHost::performAction(StreamAction action, int param)
         m_Prefs->saveInputPrefs();
         setStreamAudio(m_Prefs->streamAudio, m_Prefs->streamVolume);
         break;
+    case StreamAction::RebootPc:
+    case StreamAction::ShutdownPc:
+    {
+        const PowerConfirm wanted = action == StreamAction::RebootPc ? PowerConfirm::Reboot : PowerConfirm::Shutdown;
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (m_PowerConfirm == wanted && now - m_PowerConfirmSince <= 5000) {
+            m_PowerConfirm = PowerConfirm::None;
+            if (m_Agent) {
+                m_Agent->powerAction(wanted == PowerConfirm::Reboot ? QStringLiteral("reboot") : QStringLiteral("shutdown"));
+                toast(wanted == PowerConfirm::Reboot ? QStringLiteral("ПК перезагружается…")
+                                                     : QStringLiteral("ПК выключается…"));
+            }
+        }
+        else {
+            m_PowerConfirm = wanted;
+            m_PowerConfirmSince = now;
+        }
+        break;
+    }
     case StreamAction::FixDoubleCursor:
         if (m_FixDoubleCursor) {
             m_FixDoubleCursor();

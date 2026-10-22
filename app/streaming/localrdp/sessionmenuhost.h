@@ -48,6 +48,8 @@ private:
     std::function<bool()> m_CursorSyncActive;
     std::function<void()> m_FixDoubleCursor;
     std::function<void(const QString&)> m_Toast;
+    PowerConfirm m_PowerConfirm = PowerConfirm::None;
+    qint64 m_PowerConfirmSince = 0; // the confirmation is valid for a few seconds
     void toast(const QString& text) { if (m_Toast) m_Toast(text); }
 };
 

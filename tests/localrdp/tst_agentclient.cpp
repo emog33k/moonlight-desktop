@@ -450,3 +450,34 @@ void TestAgentClient::pcLockReachesClient()
     locked = false;
     QTRY_COMPARE_WITH_TIMEOUT(client->pcLocked(), false, 3000);
 }
+
+void TestAgentClient::rebootNeedsTwoClicks()
+{
+    QStringList done;
+    AgentConfig config;
+    config.useSystemClipboard = false;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.powerAction = [&done](const QString& what) { done << what; };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+    auto client = makeClient(server.port());
+    QTRY_COMPARE_WITH_TIMEOUT(client->status(), AgentStatus::Connected, 5000);
+
+    MenuInput input;
+    SessionMenuHost host(&input, StreamingPreferences::get(), client.get());
+    host.performAction(StreamAction::RebootPc);
+    QCOMPARE(host.queryState().powerConfirm, PowerConfirm::Reboot); // asks again
+    QTest::qWait(300);
+    QVERIFY(done.isEmpty());
+    host.performAction(StreamAction::ShutdownPc); // the other one: starts over
+    QCOMPARE(host.queryState().powerConfirm, PowerConfirm::Shutdown);
+    host.performAction(StreamAction::RebootPc);
+    QCOMPARE(host.queryState().powerConfirm, PowerConfirm::Reboot);
+    host.performAction(StreamAction::RebootPc);  // confirmed
+    QCOMPARE(host.queryState().powerConfirm, PowerConfirm::None);
+    QTRY_COMPARE_WITH_TIMEOUT(done, QStringList({ "reboot" }), 3000);
+}

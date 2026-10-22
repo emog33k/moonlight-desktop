@@ -32,8 +32,13 @@ enum class StreamAction {
     ToggleStreamAudio,       // the PC's sound on the laptop on/off (the PC keeps its sound)
     VolumeUp,                // +10 %
     VolumeDown,              // -10 %
+    RebootPc,                // asks once more, then restarts the PC (via the agent)
+    ShutdownPc,              // asks once more, then shuts the PC down (via the agent)
     Count // not an action: number of actions
 };
+
+// A restart/shutdown waiting for its second click
+enum class PowerConfirm { None, Reboot, Shutdown };
 
 // Key combinations the "Действия" menu sends to the PC (see quickKeyCombo()).
 enum class QuickKeys {
@@ -65,6 +70,7 @@ struct StreamState {
     bool localCursorShapes = true;
     bool cursorSyncActive = false; // the AnyDesk-style cursor is on right now
     bool pcLocked = false;         // the PC's Windows session is locked (from the agent)
+    PowerConfirm powerConfirm = PowerConfirm::None;
     bool streamAudio = true;       // the PC's sound plays on the laptop
     int streamVolume = 100;        // percent
     bool pointerLocked = false;

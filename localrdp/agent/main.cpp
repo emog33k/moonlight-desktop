@@ -104,6 +104,26 @@ static bool sessionLocked()
     return locked;
 }
 
+// Restart or shut down Windows (the user's right to do so has to be switched on
+// for the process first). Applications get the usual chance to close.
+static void powerAction(const QString& what)
+{
+    HANDLE token = nullptr;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) {
+        TOKEN_PRIVILEGES tp = {};
+        tp.PrivilegeCount = 1;
+        tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+        if (LookupPrivilegeValueW(nullptr, SE_SHUTDOWN_NAME, &tp.Privileges[0].Luid)) {
+            AdjustTokenPrivileges(token, FALSE, &tp, 0, nullptr, nullptr);
+        }
+        CloseHandle(token);
+    }
+    const UINT how = what == QLatin1String("reboot") ? EWX_REBOOT : (EWX_SHUTDOWN | EWX_POWEROFF);
+    if (!ExitWindowsEx(how | EWX_FORCEIFHUNG, SHTDN_REASON_MAJOR_OTHER | SHTDN_REASON_FLAG_PLANNED)) {
+        writeLog(QString("could not %1 the PC (error %2)").arg(what).arg(GetLastError()));
+    }
+}
+
 static QString programDataDir()
 {
     return QDir::fromNativeSeparators(qEnvironmentVariable("ProgramData", "C:/ProgramData")) + "/LocalRDP Agent";
@@ -247,6 +267,7 @@ int main(int argc, char* argv[])
     config.lockWorkstation = []() { LockWorkStation(); };
     config.isSessionLocked = &sessionLocked;
     config.refreshScreens = &nudgeScreens;
+    config.powerAction = &powerAction;
     CursorWatcher cursorWatcher;
     config.readCursor = [&cursorWatcher]() { return cursorWatcher.read(); };
     config.sunshineInstance = &sunshineInstance;

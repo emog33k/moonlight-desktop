@@ -47,6 +47,8 @@ public:
     void lockNow();
     // After a monitor switch: the agent makes Sunshine send a fresh frame
     void refreshScreens();
+    // "reboot" or "shutdown" the PC
+    void powerAction(const QString& what);
     void setLockOnDisconnect(bool enabled);
     // Tell the agent the user is ending the stream on purpose (before destroying).
     void sayGoodbye();

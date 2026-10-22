@@ -201,7 +201,8 @@ void TestStreamMenuModel::sectionsSplit()
     QCOMPARE(actionsOf(buildSectionMenu(MenuSection::Clipboard, s)),
              QVector<StreamAction>({ StreamAction::ToggleClipboardSync, StreamAction::SendFilesToPc }));
     QCOMPARE(actionsOf(buildSectionMenu(MenuSection::Pc, s)),
-             QVector<StreamAction>({ StreamAction::LockPc, StreamAction::ToggleLockOnDisconnect }));
+             QVector<StreamAction>({ StreamAction::LockPc, StreamAction::ToggleLockOnDisconnect,
+                                     StreamAction::RebootPc, StreamAction::ShutdownPc }));
     QCOMPARE(actionsOf(buildSectionMenu(MenuSection::Session, s)),
              QVector<StreamAction>({ StreamAction::Minimize, StreamAction::Disconnect, StreamAction::DisconnectAndExit }));
     const QVector<StreamAction> screen = actionsOf(buildSectionMenu(MenuSection::Screen, s));
@@ -249,6 +250,7 @@ void TestStreamMenuModel::toolbarPcMenuEndsWithSession()
     const StreamState s;
     const QVector<MenuItem> pc = buildToolbarMenu(MenuSection::Pc, s);
     QCOMPARE(actionsOf(pc), QVector<StreamAction>({ StreamAction::LockPc, StreamAction::ToggleLockOnDisconnect,
+                                                    StreamAction::RebootPc, StreamAction::ShutdownPc,
                                                     StreamAction::Minimize, StreamAction::Disconnect,
                                                     StreamAction::DisconnectAndExit }));
     QCOMPARE(actionsOf(buildToolbarMenu(MenuSection::Mouse, s)), actionsOf(buildSectionMenu(MenuSection::Mouse, s)));
@@ -364,4 +366,22 @@ void TestStreamMenuModel::pcLockedShownInPcMenu()
         shown |= i.kind == MenuItemKind::Status && i.label.contains("заблокирован");
     }
     QVERIFY(shown);
+}
+
+void TestStreamMenuModel::powerItems()
+{
+    StreamState s;
+    s.agentStatus = AgentStatus::Connected;
+    QVector<MenuItem> items = buildSectionMenu(MenuSection::Pc, s);
+    const MenuItem* reboot = findByAction(items, StreamAction::RebootPc);
+    const MenuItem* shutdown = findByAction(items, StreamAction::ShutdownPc);
+    QVERIFY(reboot && shutdown);
+    QVERIFY(reboot->enabled && reboot->keepOpen);
+    QCOMPARE(reboot->label, QString("Перезагрузить ПК…"));
+    s.powerConfirm = PowerConfirm::Reboot;
+    items = buildSectionMenu(MenuSection::Pc, s);
+    QVERIFY(findByAction(items, StreamAction::RebootPc)->label.contains("ещё раз"));
+    QCOMPARE(findByAction(items, StreamAction::ShutdownPc)->label, QString("Выключить ПК…"));
+    s.agentStatus = AgentStatus::NotFound;
+    QCOMPARE(findByAction(buildSectionMenu(MenuSection::Pc, s), StreamAction::RebootPc)->enabled, false);
 }

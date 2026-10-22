@@ -40,6 +40,7 @@ private slots:
     void doubleCursorFixOnlyWhenActive();
     void soundSection();
     void pcLockedShownInPcMenu();
+    void powerItems();
 };
 
 class TestMenuLayout : public QObject
@@ -117,6 +118,7 @@ private slots:
     void replacedThenSilentDropStillLocks();
     void refreshScreensAfterSwitch();
     void pcLockStateReported();
+    void powerActionsOnlyKnownOnes();
     void cursorAndSunshineAfterHello();
 };
 
@@ -144,6 +146,7 @@ private slots:
     void laptopClipboardAgeAcrossStreams();
     void switchingMonitorRefreshesPcScreens();
     void pcLockReachesClient();
+    void rebootNeedsTwoClicks();
 };
 
 class TestSessionMenuHost : public QObject

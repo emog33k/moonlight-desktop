@@ -482,3 +482,29 @@ void TestAgentServer::pcLockStateReported()
     locked = true;
     QTRY_COMPARE_WITH_TIMEOUT(lastLocked(), 1, 3000);
 }
+
+void TestAgentServer::powerActionsOnlyKnownOnes()
+{
+    QStringList done;
+    AgentConfig config;
+    config.useSystemClipboard = false;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.powerAction = [&done](const QString& what) { done << what; };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+    QSslSocket* socket = connectPinned("127.0.0.1", server.port(), testCert("client1"), testKey("client1"), testCert("server"));
+    QSignalSpy encrypted(socket, &QSslSocket::encrypted);
+    QVERIFY(encrypted.wait(5000));
+    PeerConnection conn(socket);
+    QSignalSpy frames(&conn, &PeerConnection::frameReceived);
+    conn.send(MsgType::PowerAction, jsonPayload(QJsonObject{ { "action", "reboot" } })); // before Hello: ignored
+    conn.send(MsgType::Hello, jsonPayload(hello()));
+    QVERIFY(waitForType(frames, MsgType::HelloAck));
+    conn.send(MsgType::PowerAction, jsonPayload(QJsonObject{ { "action", "format c:" } }));
+    conn.send(MsgType::PowerAction, jsonPayload(QJsonObject{ { "action", "shutdown" } }));
+    QTRY_COMPARE_WITH_TIMEOUT(done, QStringList({ "shutdown" }), 3000);
+}

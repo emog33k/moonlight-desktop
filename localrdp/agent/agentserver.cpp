@@ -206,6 +206,17 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
     case MsgType::LockNow:
         lockNow("requested from the laptop");
         break;
+    case MsgType::PowerAction:
+        if (conn == m_Session && m_SessionReady && m_Config.powerAction) {
+            if (auto o = parseJsonPayload(frame.payload)) {
+                const QString what = o->value("action").toString();
+                if (what == QLatin1String("reboot") || what == QLatin1String("shutdown")) {
+                    emit message("PC " + what + " requested from the laptop");
+                    m_Config.powerAction(what);
+                }
+            }
+        }
+        break;
     case MsgType::RefreshScreens:
         if (conn == m_Session && m_SessionReady && m_Config.refreshScreens) {
             // At most one round at a time, whatever the laptop sends

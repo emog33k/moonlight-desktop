@@ -51,6 +51,8 @@ struct AgentConfig {
     // after switching to another monitor, waits for something to change).
     // Done at each of refreshDelaysMs after the laptop asks.
     std::function<void()> refreshScreens;
+    // Restarts or shuts the PC down ("reboot" / "shutdown"); only these two words.
+    std::function<void(const QString&)> powerAction;
     QVector<int> refreshDelaysMs { 300, 800, 1500 };
 };
 

@@ -46,7 +46,7 @@ HEADERS += \
     ../../app/localrdp-shared/trust.h \
     ../../app/localrdp-shared/peerconnection.h
 
-LIBS += crypt32.lib user32.lib ole32.lib shell32.lib uuid.lib dxgi.lib gdi32.lib wtsapi32.lib
+LIBS += crypt32.lib user32.lib ole32.lib shell32.lib uuid.lib dxgi.lib gdi32.lib wtsapi32.lib advapi32.lib
 # OpenSSL (agent certificate for the installer): the same copy Moonlight builds with
 INCLUDEPATH += $$PWD/../../libs/windows/include/x64
 LIBS += -L$$PWD/../../libs/windows/lib/x64 -llibcrypto

@@ -34,6 +34,15 @@ static MenuItem keys(const QString& label, QuickKeys k, const QString& shortcut)
     return m;
 }
 
+// Restart/shutdown: the first click only asks again (the menu stays open)
+static MenuItem power(const QString& label, const QString& confirmLabel, StreamAction action, bool confirming, bool enabled)
+{
+    MenuItem m = { MenuItemKind::Command, confirming ? confirmLabel : label, QString(), action, false };
+    m.keepOpen = true;
+    m.enabled = enabled;
+    return m;
+}
+
 static MenuItem disabledUnless(MenuItem item, bool enabled)
 {
     item.enabled = enabled;
@@ -192,6 +201,10 @@ QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
             disabledUnless(item(K::Command, QStringLiteral("Заблокировать ПК"), QString(), A::LockPc),
                            s.agentStatus == AgentStatus::Connected),
             item(K::Check, QStringLiteral("Блокировать ПК при отключении"), QString(), A::ToggleLockOnDisconnect, s.lockOnDisconnect),
+            power(QStringLiteral("Перезагрузить ПК…"), QStringLiteral("Нажмите ещё раз: перезагрузить ПК"),
+                  A::RebootPc, s.powerConfirm == PowerConfirm::Reboot, s.agentStatus == AgentStatus::Connected),
+            power(QStringLiteral("Выключить ПК…"), QStringLiteral("Нажмите ещё раз: выключить ПК"),
+                  A::ShutdownPc, s.powerConfirm == PowerConfirm::Shutdown, s.agentStatus == AgentStatus::Connected),
         };
     case MenuSection::Session:
         return {

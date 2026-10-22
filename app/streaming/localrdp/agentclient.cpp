@@ -102,6 +102,13 @@ public:
         }
     }
 
+    void powerAction(const QString& what)
+    {
+        if (m_Conn && m_Ready) {
+            m_Conn->send(MsgType::PowerAction, jsonPayload(QJsonObject{ { "action", what } }));
+        }
+    }
+
     void setLockOnDisconnect(bool enabled)
     {
         m_LockOnDisconnect = enabled;
@@ -434,6 +441,11 @@ qint64 laptopClipboardCopyTime(quint32 currentSeq, quint32 storedSeq, qint64 sto
 void AgentClient::lockNow()
 {
     QMetaObject::invokeMethod(m_Worker, [w = m_Worker]() { w->lockNow(); }, Qt::QueuedConnection);
+}
+
+void AgentClient::powerAction(const QString& what)
+{
+    QMetaObject::invokeMethod(m_Worker, [w = m_Worker, what]() { w->powerAction(what); }, Qt::QueuedConnection);
 }
 
 void AgentClient::refreshScreens()

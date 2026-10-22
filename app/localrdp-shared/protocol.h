@@ -24,6 +24,7 @@ enum class MsgType : quint8 {
     SetLockOnDisconnect = 11,
     RefreshScreens = 12,   // laptop -> agent: after a monitor switch, make Sunshine send a new frame
     PcState = 13,          // agent -> laptop: {"locked": bool} after Hello and on change
+    PowerAction = 14,      // laptop -> agent: {"action": "reboot" | "shutdown"}
 
     ClipOffer = 20,
     ClipRequest = 21,
