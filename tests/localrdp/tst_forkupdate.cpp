@@ -21,6 +21,12 @@ void TestForkUpdate::newerReleaseOffered()
     QVERIFY(u);
     QCOMPARE(u->version, QString("1.1.0"));
     QCOMPARE(u->url, QString("https://github.com/emog33k/moonlight-desktop/releases/tag/v1.1.0"));
+    // Our tags: "desktop-v1.2.0" (plain "v1.0.0" for the first release)
+    const auto prefixed = forkUpdateFrom(release("desktop-v1.2.0"), "1.1.0");
+    QVERIFY(prefixed);
+    QCOMPARE(prefixed->version, QString("1.2.0"));
+    QVERIFY(!forkUpdateFrom(release("desktop-v1.1.0"), "1.1.0"));
+    QVERIFY(!forkUpdateFrom(release("other-v9.0.0"), "1.1.0"));
     // Tag without the "v", more parts than ours
     QVERIFY(forkUpdateFrom(release("1.0.0.1"), "1.0.0"));
     QVERIFY(forkUpdateFrom(release("v1.10.0"), "1.9.3"));

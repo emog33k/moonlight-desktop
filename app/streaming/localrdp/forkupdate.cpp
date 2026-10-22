@@ -48,7 +48,12 @@ std::optional<ForkUpdate> forkUpdateFrom(const QByteArray& latestReleaseJson, co
         return std::nullopt;
     }
 
+    // Our tags are "desktop-v1.2.0" (upstream Moonlight's own "v1.x" tags are
+    // different releases); the first release was plain "v1.0.0"
     QString version = o.value("tag_name").toString();
+    if (version.startsWith(QLatin1String("desktop-"))) {
+        version.remove(0, 8);
+    }
     if (version.startsWith('v') || version.startsWith('V')) {
         version.remove(0, 1);
     }
