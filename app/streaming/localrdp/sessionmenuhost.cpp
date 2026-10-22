@@ -83,13 +83,12 @@ void SessionMenuHost::performAction(StreamAction action, int param)
         }
         break;
     case StreamAction::ToggleStreamAudio:
-    case StreamAction::VolumeUp:
-    case StreamAction::VolumeDown:
+    case StreamAction::SetVolume:
         if (action == StreamAction::ToggleStreamAudio) {
             m_Prefs->streamAudio = !m_Prefs->streamAudio;
         }
         else {
-            m_Prefs->streamVolume = qBound(0, m_Prefs->streamVolume + (action == StreamAction::VolumeUp ? 10 : -10), 100);
+            m_Prefs->streamVolume = qBound(0, param, 100);
         }
         m_Prefs->saveInputPrefs();
         setStreamAudio(m_Prefs->streamAudio, m_Prefs->streamVolume);

@@ -223,6 +223,7 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
             const qint64 now = QDateTime::currentMSecsSinceEpoch();
             if (now - m_LastRefresh >= 250) {
                 m_LastRefresh = now;
+                emit message("monitor switched on the laptop: refreshing the screens");
                 for (int delay : m_Config.refreshDelaysMs) {
                     QTimer::singleShot(delay, this, [this]() { m_Config.refreshScreens(); });
                 }

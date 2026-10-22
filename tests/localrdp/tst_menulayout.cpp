@@ -115,3 +115,19 @@ void TestMenuLayout::statusRowAndDisabledItems()
     QCOMPARE(nextActionable(items, -1, +1), 2);
     QCOMPARE(nextActionable(items, 2, +1), 2); // the only enabled item
 }
+
+void TestMenuLayout::sliderValueFromPosition()
+{
+    const QRect row(6, 40, 368, 30);
+    const QPair<int, int> track = sliderTrack(row, 1.0);
+    QVERIFY(track.first > row.left() && track.second < row.right() && track.first < track.second);
+    QCOMPARE(sliderValueAt(row, 1.0, track.first), 0);
+    QCOMPARE(sliderValueAt(row, 1.0, track.second), 100);
+    QCOMPARE(sliderValueAt(row, 1.0, (track.first + track.second) / 2), 50);
+    QCOMPARE(sliderValueAt(row, 1.0, row.left() - 50), 0);   // past the ends: clamped
+    QCOMPARE(sliderValueAt(row, 1.0, row.right() + 50), 100);
+    // A slider row is something you can click
+    QVector<MenuItem> items = { { MenuItemKind::Slider, "Громкость", QString(), StreamAction::SetVolume, false } };
+    const MenuLayout l = layoutMenu(items, 1.0);
+    QCOMPARE(hitTestMenu(l, items, l.itemRects[0].center()), 0);
+}

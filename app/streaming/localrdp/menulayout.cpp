@@ -14,7 +14,8 @@ static bool isActionable(const MenuItem& item)
 {
     return item.enabled && (item.kind == MenuItemKind::Radio ||
            item.kind == MenuItemKind::Check ||
-           item.kind == MenuItemKind::Command);
+           item.kind == MenuItemKind::Command ||
+           item.kind == MenuItemKind::Slider);
 }
 
 MenuLayout layoutMenu(const QVector<MenuItem>& items, double scale)
@@ -45,6 +46,22 @@ MenuLayout layoutMenu(const QVector<MenuItem>& items, double scale)
     }
     layout.size = QSize(width, y + pad);
     return layout;
+}
+
+QPair<int, int> sliderTrack(const QRect& itemRect, double scale)
+{
+    // Label on the left, value ("70%") on the right
+    return qMakePair(itemRect.left() + scaled(120, scale), itemRect.right() - scaled(56, scale));
+}
+
+int sliderValueAt(const QRect& itemRect, double scale, int x)
+{
+    const QPair<int, int> track = sliderTrack(itemRect, scale);
+    if (track.second <= track.first) {
+        return 0;
+    }
+    const double v = (double)(x - track.first) * 100.0 / (track.second - track.first);
+    return qBound(0, (int)std::lround(v), 100);
 }
 
 int hitTestMenu(const MenuLayout& layout, const QVector<MenuItem>& items, QPoint local)

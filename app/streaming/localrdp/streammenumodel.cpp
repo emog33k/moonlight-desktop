@@ -176,17 +176,13 @@ QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
     case MenuSection::Sound:
     {
         MenuItem onOff = item(K::Check, QStringLiteral("Звук включён"), QString(), A::ToggleStreamAudio, s.streamAudio);
-        MenuItem up = disabledUnless(item(K::Command, QStringLiteral("Громче"), QStringLiteral("+10%"), A::VolumeUp),
-                                     s.streamVolume < 100);
-        MenuItem down = disabledUnless(item(K::Command, QStringLiteral("Тише"), QStringLiteral("−10%"), A::VolumeDown),
-                                       s.streamVolume > 0);
-        onOff.keepOpen = up.keepOpen = down.keepOpen = true;
+        MenuItem volume = item(K::Slider, QStringLiteral("Громкость"), QString(), A::SetVolume);
+        volume.param = s.streamVolume;
+        onOff.keepOpen = volume.keepOpen = true;
         return {
             header(QStringLiteral("Звук с ПК")),
             onOff,
-            status(QStringLiteral("Громкость: %1%").arg(s.streamVolume)),
-            up,
-            down,
+            volume,
         };
     }
     case MenuSection::Actions:

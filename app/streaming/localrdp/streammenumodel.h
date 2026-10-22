@@ -10,7 +10,7 @@
 namespace LocalRdp {
 
 // Status: a line of text (not clickable).
-enum class MenuItemKind { Header, Radio, Check, Command, Separator, Status };
+enum class MenuItemKind { Header, Radio, Check, Command, Separator, Status, Slider };
 
 struct MenuItem {
     MenuItemKind kind;
@@ -19,7 +19,7 @@ struct MenuItem {
     std::optional<StreamAction> action; // empty for headers and separators
     bool checked = false;
     bool enabled = true;                // disabled items are grey and do nothing
-    int param = 0;                      // e.g. display index for SwitchDisplay
+    int param = 0;                      // e.g. display index for SwitchDisplay; a slider's value (0..100)
     bool keepOpen = false;              // choosing it leaves the menu open (e.g. volume steps)
 };
 

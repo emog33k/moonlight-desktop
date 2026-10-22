@@ -67,6 +67,7 @@ void StreamMenuWindow::show(const QRect& buttonScreenRect, Edge buttonEdge, cons
     m_Layout = layoutMenu(m_Items, m_Scale);
     m_Highlight = -1;
     m_PressedIndex = -1;
+    m_SliderDrag = -1;
 
     MONITORINFO mi = { sizeof(mi) };
     GetMonitorInfoW(MonitorFromWindow(m_Owner, MONITOR_DEFAULTTONEAREST), &mi);
@@ -109,10 +110,35 @@ void StreamMenuWindow::dismiss()
     }
 }
 
+bool StreamMenuWindow::nudgeHighlightedSlider(int delta)
+{
+    if (!m_Open || m_Highlight < 0 || m_Highlight >= m_Items.size() || m_Items[m_Highlight].kind != MenuItemKind::Slider) {
+        return false;
+    }
+    setSliderValue(m_Highlight, m_Items[m_Highlight].param + delta);
+    return true;
+}
+
+void StreamMenuWindow::setSliderValue(int index, int value)
+{
+    value = qBound(0, value, 100);
+    if (index < 0 || index >= m_Items.size() || !m_Items[index].action || m_Items[index].param == value) {
+        return;
+    }
+    m_Items[index].param = value;
+    render();
+    if (m_OnAction) {
+        m_OnAction(*m_Items[index].action, value);
+    }
+}
+
 void StreamMenuWindow::activate(int index)
 {
     if (index < 0 || index >= m_Items.size() || !m_Items[index].action) {
         return;
+    }
+    if (m_Items[index].kind == MenuItemKind::Slider) {
+        return; // changed by dragging or Left/Right, not by Enter
     }
     const StreamAction action = *m_Items[index].action;
     const int param = m_Items[index].param;
@@ -236,6 +262,40 @@ void StreamMenuWindow::render()
             g.DrawLine(&line, rf.X + 8 * s, y, rf.X + rf.Width - 8 * s, y);
             break;
         }
+        case MenuItemKind::Slider:
+        {
+            if (i == m_Highlight) {
+                Gdiplus::GraphicsPath hl;
+                roundRect(hl, rf.X, rf.Y + 1, rf.Width, rf.Height - 2, 5 * s);
+                Gdiplus::SolidBrush hlBrush(Gdiplus::Color(0x18, 255, 255, 255));
+                g.FillPath(&hlBrush, &hl);
+            }
+            const std::wstring label = wide(item.label);
+            Gdiplus::RectF lr(rf.X + markerW, rf.Y, 120 * s - markerW, rf.Height);
+            g.DrawString(label.c_str(), -1, &labelFont, lr, &leftFmt, &labelBrush);
+
+            const QPair<int, int> track = sliderTrack(r, m_Scale);
+            const Gdiplus::REAL x0 = (Gdiplus::REAL)track.first, x1 = (Gdiplus::REAL)track.second;
+            const Gdiplus::REAL cy = rf.Y + rf.Height / 2;
+            const Gdiplus::REAL knobX = x0 + (x1 - x0) * item.param / 100.0f;
+            Gdiplus::Pen rail(Gdiplus::Color(255, 0x4A, 0x4A, 0x52), 4 * s);
+            rail.SetStartCap(Gdiplus::LineCapRound);
+            rail.SetEndCap(Gdiplus::LineCapRound);
+            g.DrawLine(&rail, x0, cy, x1, cy);
+            if (item.param > 0) {
+                Gdiplus::Pen fill(Gdiplus::Color(255, 0x4F, 0x9B, 0xFF), 4 * s);
+                fill.SetStartCap(Gdiplus::LineCapRound);
+                fill.SetEndCap(Gdiplus::LineCapRound);
+                g.DrawLine(&fill, x0, cy, knobX, cy);
+            }
+            Gdiplus::SolidBrush knob(Gdiplus::Color(255, 0xEE, 0xEE, 0xEE));
+            g.FillEllipse(&knob, knobX - 7 * s, cy - 7 * s, 14 * s, 14 * s);
+
+            const std::wstring value = wide(QStringLiteral("%1%").arg(item.param));
+            Gdiplus::RectF vr(rf.X, rf.Y, rf.Width - textPad, rf.Height);
+            g.DrawString(value.c_str(), -1, &shortcutFont, vr, &rightFmt, &shortcutBrush);
+            break;
+        }
         default:
         {
             if (i == m_Highlight && item.enabled) {
@@ -308,6 +368,12 @@ LRESULT StreamMenuWindow::handleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
         return MA_NOACTIVATE;
 
     case WM_MOUSEMOVE:
+        if (m_Open && m_SliderDrag >= 0) {
+            const QPoint local = localPointFromLParam(lParam);
+            setSliderValue(m_SliderDrag, sliderValueAt(m_Layout.itemRects[m_SliderDrag], m_Scale, local.x()));
+            SetCursor(LoadCursor(nullptr, IDC_ARROW));
+            return 0;
+        }
         if (m_Open) {
             const QPoint local = localPointFromLParam(lParam);
             const bool inside = containsLocal(local);
@@ -339,11 +405,21 @@ LRESULT StreamMenuWindow::handleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
             }
             else {
                 m_PressedIndex = hitTestMenu(m_Layout, m_Items, local);
+                if (msg == WM_LBUTTONDOWN && m_PressedIndex >= 0 && m_Items[m_PressedIndex].kind == MenuItemKind::Slider) {
+                    // Press on a slider: jump there and follow the mouse
+                    m_SliderDrag = m_PressedIndex;
+                    m_PressedIndex = -1;
+                    setSliderValue(m_SliderDrag, sliderValueAt(m_Layout.itemRects[m_SliderDrag], m_Scale, local.x()));
+                }
             }
         }
         return 0;
 
     case WM_LBUTTONUP:
+        if (m_SliderDrag >= 0) {
+            m_SliderDrag = -1;
+            return 0;
+        }
         if (m_Open) {
             const QPoint local = localPointFromLParam(lParam);
             const int index = containsLocal(local) ? hitTestMenu(m_Layout, m_Items, local) : -1;

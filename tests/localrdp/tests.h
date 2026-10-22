@@ -58,6 +58,7 @@ private slots:
     void menuAboveBottomEdgeButton();
     void menuKeptInsideWorkArea();
     void statusRowAndDisabledItems();
+    void sliderValueFromPosition();
 };
 
 class TestProtocol : public QObject

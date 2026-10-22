@@ -258,7 +258,9 @@ void StreamMenuController::onAction(StreamAction action, int param)
     // again with the new state
     if (isMenuOpen() && m_MenuButton != kNoMenu) {
         m_Host->performAction(action, param);
-        showMenu(m_MenuButton);
+        if (action != StreamAction::SetVolume) { // the slider already shows its new value
+            showMenu(m_MenuButton);
+        }
         return;
     }
 
@@ -307,7 +309,10 @@ bool StreamMenuController::handleKeyEvent(const SDL_KeyboardEvent& event)
         break;
     case SDL_SCANCODE_LEFT:
     case SDL_SCANCODE_RIGHT:
-        // Along the toolbar, like a menu bar
+        // A highlighted slider moves; otherwise along the toolbar, like a menu bar
+        if (m_Menu->nudgeHighlightedSlider(event.keysym.scancode == SDL_SCANCODE_LEFT ? -5 : +5)) {
+            break;
+        }
         if (m_MenuButton != kNoMenu) {
             showMenu(sectionButton(m_MenuButton, event.keysym.scancode == SDL_SCANCODE_LEFT ? -1 : +1));
         }

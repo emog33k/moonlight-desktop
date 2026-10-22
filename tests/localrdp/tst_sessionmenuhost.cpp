@@ -183,17 +183,17 @@ void TestSessionMenuHost::soundActions()
     QCOMPARE(host.queryState().streamAudio, true);
     QCOMPARE(host.queryState().streamVolume, 100);
 
-    host.performAction(StreamAction::VolumeDown);
-    host.performAction(StreamAction::VolumeDown);
+    host.performAction(StreamAction::SetVolume, 80);
     QCOMPARE(host.queryState().streamVolume, 80);
     QCOMPARE(streamVolume(), 80); // what the audio thread uses
     host.performAction(StreamAction::ToggleStreamAudio);
     QCOMPARE(host.queryState().streamAudio, false);
     QCOMPARE(streamAudioOn(), false);
-    for (int i = 0; i < 15; i++) {
-        host.performAction(StreamAction::VolumeUp);
-    }
+    host.performAction(StreamAction::SetVolume, 150);
     QCOMPARE(host.queryState().streamVolume, 100);
+    host.performAction(StreamAction::SetVolume, -3);
+    QCOMPARE(host.queryState().streamVolume, 0);
+    host.performAction(StreamAction::SetVolume, 100);
     QVERIFY(input.performed.isEmpty());
 
     // Remembered

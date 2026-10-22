@@ -377,20 +377,40 @@ void TestStreamMenu::captureNotRestoredWithoutFocus()
     QCOMPARE(m_Host->captureChanges, QVector<bool>({ false }));
 }
 
-void TestStreamMenu::volumeItemKeepsMenuOpen()
+void TestStreamMenu::volumeSlider()
 {
     m_Host->state.streamVolume = 70;
-    openMenuWith(StreamAction::VolumeDown);
-    click(itemCenterOnScreen(StreamAction::VolumeDown));
+    openMenuWith(StreamAction::SetVolume);
+    const QVector<MenuItem> items = buildToolbarMenu(MenuSection::Sound, m_Host->state);
+    const MenuLayout layout = layoutMenu(items, 1.0);
+    int row = -1;
+    for (int i = 0; i < items.size(); i++) {
+        if (items[i].kind == MenuItemKind::Slider) row = i;
+    }
+    QVERIFY(row >= 0);
+    const QPoint origin = UiTest::windowScreenRect(menuHwnd()).topLeft();
+    const QRect rect = layout.itemRects[row];
+    const QPair<int, int> track = sliderTrack(rect, 1.0);
+    const int y = origin.y() + rect.center().y();
+    auto at = [&](int percent) { return QPoint(origin.x() + track.first + (track.second - track.first) * percent / 100, y); };
+
+    // Click at a quarter: 25 %
+    UiTest::sendMouse(menuHwnd(), WM_MOUSEMOVE, at(25));
+    UiTest::sendMouse(menuHwnd(), WM_LBUTTONDOWN, at(25));
+    deliverMenuEvents(*m_Controller, 50);
+    QVERIFY(m_Host->performed.contains(StreamAction::SetVolume));
+    QVERIFY(qAbs(m_Host->params.last() - 25) <= 1);
+    // Drag to three quarters
+    UiTest::sendMouse(menuHwnd(), WM_MOUSEMOVE, at(75));
+    UiTest::sendMouse(menuHwnd(), WM_LBUTTONUP, at(75));
     deliverMenuEvents(*m_Controller);
-    QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::VolumeDown }));
-    QVERIFY(m_Controller->isMenuOpen()); // a few clicks in a row without reopening
-    click(itemCenterOnScreen(StreamAction::VolumeDown));
+    QVERIFY(qAbs(m_Host->params.last() - 75) <= 1);
+    QVERIFY(m_Controller->isMenuOpen()); // stays open
+    // Arrow keys move it in 5 % steps while it is highlighted
+    const int before = m_Host->params.last();
+    QVERIFY(m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_RIGHT, SDLK_RIGHT)));
     deliverMenuEvents(*m_Controller);
-    QCOMPARE(m_Host->performed.size(), 2);
+    QCOMPARE(m_Host->params.last(), qMin(100, before + 5));
     QVERIFY(m_Controller->isMenuOpen());
-    // The on/off switch keeps it open too (the volume may come next)
-    click(itemCenterOnScreen(StreamAction::ToggleStreamAudio));
-    deliverMenuEvents(*m_Controller);
-    QVERIFY(m_Controller->isMenuOpen());
+    QCOMPARE(UiTest::windowScreenRect(menuHwnd()).topLeft(), origin); // still the Sound menu
 }

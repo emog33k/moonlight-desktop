@@ -48,12 +48,14 @@ struct AgentConfig {
     std::function<bool()> isSessionLocked;
     int lockPollMs = 1000;
     // Touches every monitor so the screen capture gets a new frame (Sunshine,
-    // after switching to another monitor, waits for something to change).
-    // Done at each of refreshDelaysMs after the laptop asks.
+    // after switching to another monitor, waits for something to change; its
+    // capture and encoder restart take about a second, and a frame that comes
+    // in while they restart is lost). Done at each of refreshDelaysMs after
+    // the laptop asks.
     std::function<void()> refreshScreens;
     // Restarts or shuts the PC down ("reboot" / "shutdown"); only these two words.
     std::function<void(const QString&)> powerAction;
-    QVector<int> refreshDelaysMs { 300, 800, 1500 };
+    QVector<int> refreshDelaysMs { 200, 500, 800, 1100, 1500, 2000, 2500, 3000 };
 };
 
 // TLS server for the paired laptop. Only a client whose certificate is paired and

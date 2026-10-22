@@ -30,8 +30,7 @@ enum class StreamAction {
     SendKeys,                // param = QuickKeys: a key combination on the PC
     FixDoubleCursor,         // Sunshine's cursor still shows next to ours: toggle it once
     ToggleStreamAudio,       // the PC's sound on the laptop on/off (the PC keeps its sound)
-    VolumeUp,                // +10 %
-    VolumeDown,              // -10 %
+    SetVolume,               // param = 0..100 (the volume slider)
     RebootPc,                // asks once more, then restarts the PC (via the agent)
     ShutdownPc,              // asks once more, then shuts the PC down (via the agent)
     SetQuality,              // param = qualityPresets() index; the stream reconnects

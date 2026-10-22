@@ -47,6 +47,8 @@ public:
     // Keyboard navigation
     void moveHighlight(int dir);
     void activateHighlighted();
+    // Left/Right on a highlighted slider move it by delta (true if there is one)
+    bool nudgeHighlightedSlider(int delta);
 
 private:
     static LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -56,6 +58,7 @@ private:
     void setHighlight(int index);
     void activate(int index);
     void dismiss();
+    void setSliderValue(int index, int value);
     QPoint localPointFromLParam(LPARAM lParam) const;
     bool containsLocal(QPoint local) const;
 
@@ -72,6 +75,7 @@ private:
     bool m_Open = false;
     int m_Highlight = -1;
     int m_PressedIndex = -1;
+    int m_SliderDrag = -1; // slider being dragged
 };
 
 }

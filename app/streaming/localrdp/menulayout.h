@@ -2,6 +2,7 @@
 
 #include "streammenumodel.h"
 
+#include <QPair>
 #include <QPoint>
 #include <QRect>
 #include <QSize>
@@ -26,6 +27,10 @@ MenuLayout layoutMenu(const QVector<MenuItem>& items, double scale);
 
 // Index of the enabled actionable item (radio/check/command) under a panel-relative point, or -1.
 int hitTestMenu(const MenuLayout& layout, const QVector<MenuItem>& items, QPoint local);
+
+// A slider row's track (x from, x to) and the value (0..100) at x.
+QPair<int, int> sliderTrack(const QRect& itemRect, double scale);
+int sliderValueAt(const QRect& itemRect, double scale, int x);
 
 // Next actionable item after `from` in direction dir (+1 down, -1 up), wrapping around.
 // from = -1 starts before the first item. Returns -1 if there is none.
