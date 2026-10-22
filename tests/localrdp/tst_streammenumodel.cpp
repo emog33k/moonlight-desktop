@@ -235,3 +235,14 @@ void TestStreamMenuModel::displaysUnknownGivesGeneric()
     }
     QCOMPARE(labels, QStringList({ "Монитор 1", "Монитор 2", "Монитор 3", "Монитор 4" }));
 }
+
+void TestStreamMenuModel::toolbarPcMenuEndsWithSession()
+{
+    // The toolbar has no "session" dropdown: its items sit at the end of "ПК"
+    const StreamState s;
+    const QVector<MenuItem> pc = buildToolbarMenu(MenuSection::Pc, s);
+    QCOMPARE(actionsOf(pc), QVector<StreamAction>({ StreamAction::LockPc, StreamAction::ToggleLockOnDisconnect,
+                                                    StreamAction::Minimize, StreamAction::Disconnect,
+                                                    StreamAction::DisconnectAndExit }));
+    QCOMPARE(actionsOf(buildToolbarMenu(MenuSection::Mouse, s)), actionsOf(buildSectionMenu(MenuSection::Mouse, s)));
+}

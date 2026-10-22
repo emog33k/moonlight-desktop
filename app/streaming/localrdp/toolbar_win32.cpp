@@ -13,6 +13,7 @@ static const UINT kTimerMs = 100;
 static const ULONGLONG kHideDelayMs = 700;
 static const ULONGLONG kShowOnEnterMs = 1500; // after entering full screen, so people see it exists
 static const int kEdgeZone = 2;               // px at the top of the screen that reveal it
+static const ULONGLONG kEdgeDwellMs = 300;    // ...after resting there this long (not a flick past)
 
 // Only one stream (and so one toolbar) exists at a time; the WinEvent hook
 // callback has no user pointer, so it finds the toolbar through this.
@@ -132,9 +133,11 @@ int ToolbarWindow::buttonAtScreen(QPoint screen) const
     return hitTestToolbar(m_Layout, screen - m_TopLeft);
 }
 
-void ToolbarWindow::relayout(int width)
+void ToolbarWindow::relayout(int width, bool compact)
 {
     m_Scale = dpiScaleForWindow(m_Owner);
+    m_LayoutForWidth = width;
+    m_LayoutCompact = compact;
 
     // Measure labels with the same font the window draws them in
     HDC screen = GetDC(nullptr);
@@ -147,7 +150,7 @@ void ToolbarWindow::relayout(int width)
             Gdiplus::RectF measured;
             g.MeasureString(w.c_str(), -1, &font, Gdiplus::PointF(0, 0), &measured);
             return (int)(measured.Width + 0.99f);
-        });
+        }, compact);
     }
     ReleaseDC(nullptr, screen);
 }
@@ -158,11 +161,14 @@ void ToolbarWindow::reposition()
         return;
     }
     const QRect client = ownerClientScreenRect();
-    const bool sizeChanged = client.width() != m_Layout.size.width() ||
+    const bool sizeChanged = client.width() != m_LayoutForWidth || m_Fullscreen != m_LayoutCompact ||
                              dpiScaleForWindow(m_Owner) != m_Scale;
-    m_TopLeft = client.topLeft();
     if (sizeChanged) {
-        relayout(client.width());
+        // Full screen: a compact bar in the middle; in a window: the whole width
+        relayout(client.width(), m_Fullscreen);
+    }
+    m_TopLeft = client.topLeft() + QPoint((client.width() - m_Layout.size.width()) / 2, 0);
+    if (sizeChanged) {
         render(); // new size needs a new bitmap; also moves the window
     }
     else {
@@ -192,7 +198,9 @@ void ToolbarWindow::setFullscreen(bool fullscreen)
         m_PointerNear = true;
         m_LastNearTick = GetTickCount64() + (kShowOnEnterMs - kHideDelayMs);
     }
-    render(); // a little translucent in full screen
+    m_EdgeSince = 0;
+    reposition(); // compact in full screen, full width in a window
+    render();     // a little translucent in full screen
     applyVisibility();
 }
 
@@ -257,16 +265,26 @@ void ToolbarWindow::onTimer()
     const QPoint cursor = cursorPos();
     const QRect client = ownerClientScreenRect();
     const int zone = (int)(kEdgeZone * m_Scale + 0.5);
-    const bool atEdge = cursor.x() >= client.left() && cursor.x() <= client.right() &&
+    // Only above the bar itself (it sits in the middle), and only after resting
+    // there: flicking to a corner of the PC's screen never brings it out.
+    const QRect bar(m_TopLeft, m_Layout.size);
+    const bool atEdge = cursor.x() >= bar.left() && cursor.x() <= bar.right() &&
                         cursor.y() >= client.top() && cursor.y() < client.top() + zone;
-    const bool onStrip = m_Shown && QRect(m_TopLeft, m_Layout.size).contains(cursor);
+    const bool onStrip = m_Shown && bar.contains(cursor);
 
     const ULONGLONG now = GetTickCount64();
-    if (atEdge || onStrip) {
+    if (!atEdge) {
+        m_EdgeSince = 0;
+    }
+    else if (m_EdgeSince == 0) {
+        m_EdgeSince = now;
+    }
+    const bool rested = atEdge && now - m_EdgeSince >= kEdgeDwellMs;
+    if (rested || onStrip) {
         m_LastNearTick = now;
     }
     const bool wasNear = m_PointerNear;
-    m_PointerNear = atEdge || onStrip || now < m_LastNearTick || now - m_LastNearTick < kHideDelayMs;
+    m_PointerNear = rested || onStrip || now < m_LastNearTick || now - m_LastNearTick < kHideDelayMs;
     if (m_PointerNear != wasNear) {
         applyVisibility();
     }

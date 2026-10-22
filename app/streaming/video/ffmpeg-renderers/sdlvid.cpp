@@ -243,9 +243,9 @@ void SdlRenderer::renderOverlay(Overlay::OverlayType type)
                 m_OverlayRects[type].y = viewportRect.h - newSurface->h;
             }
             else if (type == Overlay::OverlayDebug) {
-                // Top left
+                // Top left (LocalRDP: below the toolbar)
                 m_OverlayRects[type].x = 0;
-                m_OverlayRects[type].y = 0;
+                m_OverlayRects[type].y = LocalRdp::videoTopInset();
             }
 
             m_OverlayRects[type].w = newSurface->w;

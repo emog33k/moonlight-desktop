@@ -35,8 +35,9 @@ struct ToolbarLayout {
 };
 
 // textWidth(label) measures a label in pixels (the window passes GDI+ measuring).
+// compact (full screen): only as wide as the buttons need, at most `width`.
 ToolbarLayout layoutToolbar(const QVector<ToolbarButton>& buttons, int width, double scale,
-                            const std::function<int(const QString&)>& textWidth);
+                            const std::function<int(const QString&)>& textWidth, bool compact = false);
 
 // Index of the button under a toolbar-relative point, or -1.
 int hitTestToolbar(const ToolbarLayout& layout, QPoint local);

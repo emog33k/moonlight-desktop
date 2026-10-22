@@ -665,9 +665,9 @@ void DXVA2Renderer::notifyOverlayUpdated(Overlay::OverlayType type)
         renderRect.y = m_DisplayHeight - newSurface->h;
     }
     else if (type == Overlay::OverlayDebug) {
-        // Top left
+        // Top left (LocalRDP: below the toolbar)
         renderRect.x = 0;
-        renderRect.y = 0;
+        renderRect.y = LocalRdp::videoTopInset();
     }
 
     renderRect.w = newSurface->w;

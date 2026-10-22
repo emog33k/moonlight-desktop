@@ -77,7 +77,7 @@ private slots:
     void hoverOtherSectionSwitches();
     void actionButtonRunsOnRelease();
     void actionReleasedElsewhereDoesNothing();
-    void disconnectWhileMenuOpen();
+    void actionButtonWhileMenuOpenOnlyCloses();
     void hotkeyMenuOpensUnderToolbar();
     void autoHidesInFullscreen();
     void toastBelowToolbar();
@@ -128,12 +128,18 @@ private slots:
     void openingFromBackgroundActivatesStream();
     void toastShowsThenHides();
     void displayItemCarriesIndex();
+    void leftRightMoveAlongToolbar();
+    void captureNotRestoredWithoutFocus();
 
 private:
     HWND menuHwnd();
     bool menuShown();
+    // Opens the toolbar dropdown that holds this action
+    void openMenuWith(LocalRdp::StreamAction action);
     QPoint itemCenterOnScreen(LocalRdp::StreamAction action);
     void click(QPoint screenPos);
+    LocalRdp::MenuSection m_OpenSection = LocalRdp::MenuSection::Mouse;
+    bool m_Focused = true;
 
     QTemporaryDir* m_SettingsDir = nullptr;
     SDL_Window* m_Window = nullptr;

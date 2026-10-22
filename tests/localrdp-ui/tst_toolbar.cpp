@@ -213,21 +213,25 @@ void TestToolbar::actionReleasedElsewhereDoesNothing()
     QVERIFY(m_Host->performed.isEmpty());
 }
 
-void TestToolbar::disconnectWhileMenuOpen()
+void TestToolbar::actionButtonWhileMenuOpenOnlyCloses()
 {
-    m_Host->state.absoluteMouse = false;
-    m_Host->captureActive = true;
+    // A press on Disconnect while a dropdown is open closes the dropdown; it
+    // does not disconnect (that needs its own click)
     UiTest::sendMouse(toolbarHwnd(), WM_LBUTTONDOWN, buttonRect(sectionIndex(MenuSection::Pc)).center());
     deliverMenuEvents(*m_Controller);
     QVERIFY(m_Controller->isMenuOpen());
 
     const QPoint disconnect = buttonRect(buttonIndex(StreamAction::Disconnect)).center();
     UiTest::sendMouse(menuHwnd(), WM_LBUTTONDOWN, disconnect);
+    UiTest::sendMouse(menuHwnd(), WM_LBUTTONUP, disconnect);
+    deliverMenuEvents(*m_Controller);
+    QVERIFY(m_Host->performed.isEmpty());
+    QVERIFY(!m_Controller->isMenuOpen());
+
+    UiTest::sendMouse(toolbarHwnd(), WM_LBUTTONDOWN, disconnect);
+    UiTest::sendMouse(toolbarHwnd(), WM_LBUTTONUP, disconnect);
     deliverMenuEvents(*m_Controller);
     QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::Disconnect }));
-    QVERIFY(!m_Controller->isMenuOpen());
-    // Leaving: the game-mode capture released for the menu is not taken back
-    QCOMPARE(m_Host->captureChanges, QVector<bool>({ false }));
 }
 
 void TestToolbar::hotkeyMenuOpensUnderToolbar()
@@ -236,7 +240,7 @@ void TestToolbar::hotkeyMenuOpensUnderToolbar()
     QVERIFY(m_Controller->isMenuOpen());
     const QRect toolbar = UiTest::windowScreenRect(toolbarHwnd());
     const QRect menu = UiTest::windowScreenRect(menuHwnd());
-    QCOMPARE(menu.size(), layoutMenu(buildStreamMenu(m_Host->state), 1.0).size);
+    QCOMPARE(menu.size(), layoutMenu(buildToolbarMenu(MenuSection::Mouse, m_Host->state), 1.0).size);
     QVERIFY(menu.top() > toolbar.bottom());
     m_Controller->toggleMenu();
     QVERIFY(!m_Controller->isMenuOpen());
@@ -251,12 +255,22 @@ void TestToolbar::autoHidesInFullscreen()
     m_Controller->setFullscreenLayout(true);
     HWND toolbar = toolbarHwnd();
     QVERIFY(IsWindowVisible(toolbar)); // shown for a moment so people know it is there
+    // Compact and centred: the screen's top corners stay free
+    const QRect bar = UiTest::windowScreenRect(toolbar);
+    QVERIFY(bar.width() < client.width());
+    QVERIFY(qAbs(bar.center().x() - client.center().x()) <= 1);
     UiTest::pump(1900);
     QVERIFY(!IsWindowVisible(toolbar));
 
-    cursor = QPoint(client.center().x(), client.top()); // top edge of the screen
-    UiTest::pump(300);
-    QVERIFY(IsWindowVisible(toolbar));
+    cursor = QPoint(client.right(), client.top()); // top-right corner (closing a PC window)
+    UiTest::pump(800);
+    QVERIFY(!IsWindowVisible(toolbar));
+
+    cursor = QPoint(client.center().x(), client.top()); // top edge above the bar...
+    UiTest::pump(120);
+    QVERIFY(!IsWindowVisible(toolbar));                 // ...a flick past does nothing
+    UiTest::pump(500);
+    QVERIFY(IsWindowVisible(toolbar));                  // resting there brings it out
 
     cursor = QPoint(client.center().x(), client.top() + 10); // on the toolbar: stays
     UiTest::pump(1200);

@@ -34,6 +34,9 @@ void TestStreamMenu::init()
     m_Host = new FakeHost();
     m_Controller = new StreamMenuController(m_Window, m_Host);
     m_Controller->setBringToFrontOnClick(qEnvironmentVariableIsSet("LOCALRDP_UI_FOREGROUND"));
+    m_Focused = true;
+    m_Controller->setFocusProviderForTests([this]() { return m_Focused; });
+    m_OpenSection = MenuSection::Mouse;
 }
 
 void TestStreamMenu::cleanup()
@@ -60,9 +63,29 @@ bool TestStreamMenu::menuShown()
     return menu != nullptr && IsWindowVisible(menu);
 }
 
+void TestStreamMenu::openMenuWith(StreamAction action)
+{
+    const QVector<ToolbarButton> buttons = toolbarButtons();
+    for (int i = 0; i < buttons.size(); i++) {
+        if (buttons[i].kind != ToolbarButton::Kind::Section) {
+            continue;
+        }
+        for (const MenuItem& item : buildToolbarMenu(buttons[i].section, m_Host->state)) {
+            if (item.action && *item.action == action) {
+                HWND toolbar = UiTest::findOwnedWindow(m_Owner, kToolbarClass);
+                UiTest::sendMouse(toolbar, WM_LBUTTONDOWN, m_Controller->toolbarButtonRect(i).center());
+                deliverMenuEvents(*m_Controller);
+                m_OpenSection = buttons[i].section;
+                return;
+            }
+        }
+    }
+    QFAIL("no toolbar dropdown holds this action");
+}
+
 QPoint TestStreamMenu::itemCenterOnScreen(StreamAction action)
 {
-    const QVector<MenuItem> items = buildStreamMenu(m_Host->state);
+    const QVector<MenuItem> items = buildToolbarMenu(m_OpenSection, m_Host->state);
     const MenuLayout layout = layoutMenu(items, 1.0);
     const QPoint origin = UiTest::windowScreenRect(menuHwnd()).topLeft();
     for (int i = 0; i < items.size(); i++) {
@@ -87,12 +110,13 @@ void TestStreamMenu::opensUnderToolbar()
     QVERIFY(m_Controller->isMenuOpen());
     QVERIFY(menuShown());
 
+    // The hotkey opens the first dropdown (Мышь), right under its button
     const QRect toolbar = UiTest::windowScreenRect(UiTest::findOwnedWindow(m_Owner, kToolbarClass));
     const QRect menu = UiTest::windowScreenRect(menuHwnd());
-    QCOMPARE(menu.size(), layoutMenu(buildStreamMenu(m_Host->state), 1.0).size);
+    QCOMPARE(menu.size(), layoutMenu(buildToolbarMenu(MenuSection::Mouse, m_Host->state), 1.0).size);
     QVERIFY(menu.top() > toolbar.bottom());
     QVERIFY(menu.top() <= toolbar.bottom() + 3);
-    QVERIFY(qAbs(menu.left() - toolbar.left()) <= 6);
+    QCOMPARE(menu.left(), m_Controller->toolbarButtonRect(0).left());
 
     UiTest::pump(100);
     UiTest::saveScreenshot(menu.united(toolbar).adjusted(-10, -10, 10, 10), "menu-open");
@@ -108,7 +132,7 @@ void TestStreamMenu::toggleTwiceCloses()
 
 void TestStreamMenu::clickItemPerformsActionAndCloses()
 {
-    m_Controller->toggleMenu();
+    openMenuWith(StreamAction::ToggleStats);
     click(itemCenterOnScreen(StreamAction::ToggleStats));
     deliverMenuEvents(*m_Controller);
     QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::ToggleStats }));
@@ -118,7 +142,7 @@ void TestStreamMenu::clickItemPerformsActionAndCloses()
 void TestStreamMenu::clickHeaderKeepsOpen()
 {
     m_Controller->toggleMenu();
-    const MenuLayout layout = layoutMenu(buildStreamMenu(m_Host->state), 1.0);
+    const MenuLayout layout = layoutMenu(buildToolbarMenu(MenuSection::Mouse, m_Host->state), 1.0);
     const QPoint header = UiTest::windowScreenRect(menuHwnd()).topLeft() + layout.itemRects[0].center();
     click(header);
     QVERIFY(m_Host->performed.isEmpty());
@@ -184,7 +208,7 @@ void TestStreamMenu::disconnectDoesNotRecapture()
 {
     m_Host->state.absoluteMouse = false;
     m_Host->captureActive = true;
-    m_Controller->toggleMenu();
+    openMenuWith(StreamAction::Disconnect);
     click(itemCenterOnScreen(StreamAction::Disconnect));
     deliverMenuEvents(*m_Controller);
     QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::Disconnect }));
@@ -246,7 +270,7 @@ void TestStreamMenu::repeatedSpaceDoesNotActivate()
 
 void TestStreamMenu::actionRunsFromEventLoopNotWndProc()
 {
-    m_Controller->toggleMenu();
+    openMenuWith(StreamAction::ToggleFullscreen);
     click(itemCenterOnScreen(StreamAction::ToggleFullscreen));
     // Not run inside the window procedure (that is inside SDL's event pump)...
     QVERIFY(m_Host->performed.isEmpty());
@@ -311,8 +335,8 @@ void TestStreamMenu::toastShowsThenHides()
 
 void TestStreamMenu::displayItemCarriesIndex()
 {
-    m_Controller->toggleMenu();
-    const QVector<MenuItem> items = buildStreamMenu(m_Host->state);
+    openMenuWith(StreamAction::SwitchDisplay);
+    const QVector<MenuItem> items = buildToolbarMenu(MenuSection::Screen, m_Host->state);
     const MenuLayout layout = layoutMenu(items, 1.0);
     const QPoint origin = UiTest::windowScreenRect(menuHwnd()).topLeft();
     int third = -1, seen = 0;
@@ -324,4 +348,31 @@ void TestStreamMenu::displayItemCarriesIndex()
     deliverMenuEvents(*m_Controller);
     QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::SwitchDisplay }));
     QCOMPARE(m_Host->params, QVector<int>({ 2 }));
+}
+
+void TestStreamMenu::leftRightMoveAlongToolbar()
+{
+    m_Controller->toggleMenu(); // Мышь
+    QCOMPARE(UiTest::windowScreenRect(menuHwnd()).left(), m_Controller->toolbarButtonRect(0).left());
+    QVERIFY(m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_RIGHT, SDLK_RIGHT)));
+    QCOMPARE(UiTest::windowScreenRect(menuHwnd()).left(), m_Controller->toolbarButtonRect(1).left());
+    QVERIFY(m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_LEFT, SDLK_LEFT)));
+    QVERIFY(m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_LEFT, SDLK_LEFT))); // wraps to the last section (ПК)
+    const QRect menu = UiTest::windowScreenRect(menuHwnd());
+    QCOMPARE(menu.size(), layoutMenu(buildToolbarMenu(MenuSection::Pc, m_Host->state), 1.0).size);
+    QVERIFY(m_Controller->isMenuOpen());
+    QVERIFY(m_Host->performed.isEmpty());
+}
+
+void TestStreamMenu::captureNotRestoredWithoutFocus()
+{
+    // Game mode, menu open, then the user Alt+Tabs away: the menu closes but the
+    // mouse is not grabbed again by a window that is not in front
+    m_Host->state.absoluteMouse = false;
+    m_Host->captureActive = true;
+    m_Controller->toggleMenu();
+    QCOMPARE(m_Host->captureChanges, QVector<bool>({ false }));
+    m_Focused = false;
+    m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_ESCAPE, SDLK_ESCAPE));
+    QCOMPARE(m_Host->captureChanges, QVector<bool>({ false }));
 }

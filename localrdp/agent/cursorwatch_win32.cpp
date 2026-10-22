@@ -1,5 +1,7 @@
 #include "cursorwatch_win32.h"
 
+#include <QCryptographicHash>
+#include <QDateTime>
 #include <QVector>
 
 #include <cstring>
@@ -64,15 +66,23 @@ CursorImage captureCursorImage(HCURSOR cursor)
         w = bm.bmWidth;
         h = bm.bmHeight / 2;
     }
-    const int hotX = (int)info.xHotspot, hotY = (int)info.yHotspot;
+    int hotX = (int)info.xHotspot, hotY = (int)info.yHotspot;
     if (info.hbmColor != nullptr) {
         DeleteObject(info.hbmColor);
     }
     if (info.hbmMask != nullptr) {
         DeleteObject(info.hbmMask);
     }
-    if (w < 1 || h < 1 || w > kMaxCursorSide || h > kMaxCursorSide) {
+    if (w < 1 || h < 1 || w > 4096 || h > 4096) {
         return image;
+    }
+    if (w > kMaxCursorSide || h > kMaxCursorSide) {
+        // Very large (accessibility) pointers: drawn scaled down to what we send
+        const double scale = (double)kMaxCursorSide / qMax(w, h);
+        hotX = (int)(hotX * scale);
+        hotY = (int)(hotY * scale);
+        w = qBound(1, (int)(w * scale + 0.5), kMaxCursorSide);
+        h = qBound(1, (int)(h * scale + 0.5), kMaxCursorSide);
     }
 
     // On black a pixel shows as color*alpha, on white as color*alpha + 255*(1-alpha):
@@ -167,12 +177,30 @@ CursorState CursorWatcher::read()
         return state;
     }
 
-    if (cursor != m_Cursor) {
+    // Drawn again when the cursor changes, and once a second anyway: a program
+    // can change a cursor's picture without changing the handle (or reuse a
+    // handle), and pointer size/colour can be changed in Settings.
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (cursor != m_Cursor || now - m_CapturedAt >= 1000) {
+        const CursorImage image = captureCursorImage(cursor);
+        if (image.width == 0) {
+            m_Cursor = nullptr; // not remembered: tried again next time
+            return state;       // Default: a plain arrow
+        }
         m_Cursor = cursor;
-        m_Shape = CursorState();
-        m_Shape.image = captureCursorImage(cursor);
-        m_Shape.kind = m_Shape.image.width > 0 ? CursorKind::Shape : CursorKind::Default;
-        m_Shape.key = (quint64)(quintptr)cursor;
+        m_CapturedAt = now;
+        QCryptographicHash hash(QCryptographicHash::Sha1);
+        hash.addData(image.bgra);
+        hash.addData(QByteArray::number(image.width) + 'x' + QByteArray::number(image.height) + '@' +
+                     QByteArray::number(image.hotX) + ',' + QByteArray::number(image.hotY));
+        quint64 key = 0;
+        memcpy(&key, hash.result().constData(), sizeof(key));
+        if (key != m_Shape.key || m_Shape.kind != CursorKind::Shape) {
+            m_Shape = CursorState();
+            m_Shape.kind = CursorKind::Shape;
+            m_Shape.image = image;
+            m_Shape.key = key;
+        }
     }
     return m_Shape;
 }

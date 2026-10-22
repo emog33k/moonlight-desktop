@@ -34,9 +34,19 @@ QVector<ToolbarButton> toolbarButtons()
 }
 
 ToolbarLayout layoutToolbar(const QVector<ToolbarButton>& buttons, int width, double scale,
-                            const std::function<int(const QString&)>& textWidth)
+                            const std::function<int(const QString&)>& textWidth, bool compact)
 {
     auto px = [scale](int v) { return (int)std::lround(v * scale); };
+
+    if (compact) {
+        // Natural width: the left group, a gap, the right group
+        int natural = px(4) + px(24);
+        for (const ToolbarButton& b : buttons) {
+            natural += b.rightSide ? px(46)
+                                   : px(10) * 2 + px(16) + (b.label.isEmpty() ? 0 : px(6) + textWidth(b.label)) + px(2);
+        }
+        width = qMin(width, natural);
+    }
 
     ToolbarLayout l;
     const int height = px(kToolbarBaseHeight);

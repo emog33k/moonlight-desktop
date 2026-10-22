@@ -70,7 +70,7 @@ private:
 
     QRect ownerClientScreenRect() const;
     QPoint cursorPos() const;
-    void relayout(int width);
+    void relayout(int width, bool compact);
     void render();
     void applyVisibility();
     void onTimer();
@@ -90,6 +90,9 @@ private:
     bool m_KeepVisible = false;
     bool m_PointerNear = false;  // full screen: pointer at the top edge or on the strip lately
     unsigned long long m_LastNearTick = 0;
+    unsigned long long m_EdgeSince = 0; // full screen: pointer resting at the top edge since
+    int m_LayoutForWidth = -1;   // client width the layout was made for
+    bool m_LayoutCompact = false;
     bool m_Shown = false;
     std::function<QPoint()> m_CursorProvider;
     std::function<AgentStatus()> m_StatusProvider;

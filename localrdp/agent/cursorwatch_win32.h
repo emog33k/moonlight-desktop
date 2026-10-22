@@ -13,11 +13,12 @@ namespace LocalRdp {
 
 // Draws a cursor into straight-alpha BGRA pixels. Cursors that invert the
 // screen (the text I-beam) come out black with a light outline so they stay
-// visible. Width 0 if the cursor cannot be drawn or is larger than kMaxCursorSide.
+// visible; ones larger than kMaxCursorSide are scaled down. Width 0 if the
+// cursor cannot be drawn.
 Proto::CursorImage captureCursorImage(HCURSOR cursor);
 
 // The PC's current cursor (GetCursorInfo). Cheap to call often: the image is
-// only drawn again when the cursor changes.
+// only drawn again when the cursor changes, and once a second as a check.
 class CursorWatcher
 {
 public:
@@ -30,7 +31,8 @@ public:
 private:
     std::function<bool(HCURSOR*, bool*)> m_Source;
     HCURSOR m_Cursor = nullptr;
-    Proto::CursorState m_Shape;
+    qint64 m_CapturedAt = 0;
+    Proto::CursorState m_Shape; // key: hash of the picture
 };
 
 }

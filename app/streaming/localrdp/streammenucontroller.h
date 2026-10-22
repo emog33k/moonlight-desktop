@@ -44,7 +44,8 @@ public:
     // Ctrl+Alt+Shift combos always pass through (the menu hotkey among them).
     bool handleKeyEvent(const SDL_KeyboardEvent& event);
 
-    // Hotkey: opens the full menu under the toolbar, or closes any open menu.
+    // Hotkey: opens the toolbar's first dropdown (Left/Right move between them),
+    // or closes any open menu.
     void toggleMenu();
     bool isMenuOpen() const;
 
@@ -62,14 +63,16 @@ public:
     // use this to avoid covering the screen).
     void setFullscreenLayout(bool fullscreen);
     void setCursorProviderForTests(std::function<QPoint()> provider);
+    // Whether the stream window has keyboard focus (tests: theirs never does)
+    void setFocusProviderForTests(std::function<bool()> provider) { m_FocusProvider = std::move(provider); }
     // Screen rect of a toolbar button (index into toolbarButtons()); empty if hidden or no room.
     QRect toolbarButtonRect(int index) const;
 
 private:
-    static constexpr int kNoMenu = -2;
-    static constexpr int kFullMenu = -1;
+    static constexpr int kNoMenu = -1;
 
     void showMenu(int button);
+    int sectionButton(int from, int step) const; // next section button from `from`, wrapping
     void closeMenu(bool restoreCapture);
     void onToolbar(int button, bool hover);
     void onAction(StreamAction action, int param);
@@ -93,6 +96,7 @@ private:
     // We lifted "keep the cursor inside the window" while the menu is open.
     bool m_PointerLockSuspended = false;
     bool m_BringToFrontOnClick = true;
+    std::function<bool()> m_FocusProvider;
 };
 
 }

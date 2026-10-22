@@ -96,8 +96,23 @@ void StreamMenuController::toggleMenu()
         closeMenu(true);
     }
     else {
-        showMenu(kFullMenu);
+        showMenu(sectionButton(-1, +1));
     }
+}
+
+int StreamMenuController::sectionButton(int from, int step) const
+{
+    if (!m_Toolbar) {
+        return kNoMenu;
+    }
+    const int count = m_Toolbar->buttons().size();
+    for (int i = 1; i <= count; i++) {
+        const int index = ((from + i * step) % count + count) % count;
+        if (m_Toolbar->buttons()[index].kind == ToolbarButton::Kind::Section) {
+            return index;
+        }
+    }
+    return kNoMenu;
 }
 
 void StreamMenuController::showMenu(int button)
@@ -121,21 +136,19 @@ void StreamMenuController::showMenu(int button)
     // In full screen this also brings the toolbar out
     m_Toolbar->setKeepVisible(true);
 
-    QRect anchor;
-    QVector<MenuItem> items;
-    if (button >= 0 && button < m_Toolbar->buttons().size()) {
-        anchor = m_Toolbar->buttonScreenRect(button);
-        items = buildSectionMenu(m_Toolbar->buttons()[button].section, state);
+    if (button < 0 || button >= m_Toolbar->buttons().size()) {
+        return;
     }
+    QRect anchor = m_Toolbar->buttonScreenRect(button);
     if (anchor.isEmpty()) {
-        button = kFullMenu;
+        // No room for this button (very narrow window): under the toolbar's left end
         const QRect client = clientScreenRect(m_Hwnd);
-        const int pad = (int)(4 * dpiScaleForWindow(m_Hwnd) + 0.5);
-        anchor = QRect(client.x() + pad, client.y(), 1, m_Toolbar->isShown() ? m_Toolbar->height() : 1);
-        items = buildStreamMenu(state);
+        anchor = QRect(client.x() + (int)(4 * dpiScaleForWindow(m_Hwnd) + 0.5), client.y(), 1,
+                       m_Toolbar->isShown() ? m_Toolbar->height() : 1);
     }
+    const QVector<MenuItem> items = buildToolbarMenu(m_Toolbar->buttons()[button].section, state);
 
-    m_Toolbar->setActiveButton(button >= 0 ? button : -1);
+    m_Toolbar->setActiveButton(button);
     m_Menu->show(anchor, Edge::Top, items, 1);
     m_MenuButton = button;
     m_LastHoverPosted = button;
@@ -156,7 +169,11 @@ void StreamMenuController::closeMenu(bool restoreCapture)
         m_Host->suspendPointerLock(false);
         m_PointerLockSuspended = false;
     }
-    if (m_CaptureReleased && restoreCapture) {
+    // Not when the stream window lost focus meanwhile (Alt+Tab with the menu
+    // open): upstream releases the capture on focus loss too
+    const bool focused = m_FocusProvider ? m_FocusProvider()
+                                         : (SDL_GetWindowFlags(m_Window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+    if (m_CaptureReleased && restoreCapture && focused) {
         m_Host->setCaptureActive(true);
     }
     m_CaptureReleased = false;
@@ -170,8 +187,10 @@ bool StreamMenuController::onMenuOutside(QPoint screen, bool press)
     }
     const int index = m_Toolbar->buttonAtScreen(screen);
     if (press) {
-        if (index < 0) {
-            return false; // an ordinary click outside: the menu dismisses itself
+        if (index < 0 || m_Toolbar->buttons()[index].kind != ToolbarButton::Kind::Section) {
+            // An ordinary click outside, or on an action button (Disconnect...):
+            // only closes the menu; actions need their own click
+            return false;
         }
         postUserEvent(SDL_CODE_LOCALRDP_TOOLBAR, index, 0);
         return true;
@@ -280,6 +299,13 @@ bool StreamMenuController::handleKeyEvent(const SDL_KeyboardEvent& event)
         break;
     case SDL_SCANCODE_UP:
         m_Menu->moveHighlight(-1);
+        break;
+    case SDL_SCANCODE_LEFT:
+    case SDL_SCANCODE_RIGHT:
+        // Along the toolbar, like a menu bar
+        if (m_MenuButton != kNoMenu) {
+            showMenu(sectionButton(m_MenuButton, event.keysym.scancode == SDL_SCANCODE_LEFT ? -1 : +1));
+        }
         break;
     case SDL_SCANCODE_DOWN:
         m_Menu->moveHighlight(+1);

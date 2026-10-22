@@ -126,6 +126,16 @@ QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
     return {};
 }
 
+QVector<MenuItem> buildToolbarMenu(MenuSection section, const StreamState& s)
+{
+    QVector<MenuItem> items = buildSectionMenu(section, s);
+    if (section == MenuSection::Pc) {
+        items << separator();
+        items += buildSectionMenu(MenuSection::Session, s);
+    }
+    return items;
+}
+
 QVector<MenuItem> buildStreamMenu(const StreamState& s)
 {
     QVector<MenuItem> all;

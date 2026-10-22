@@ -33,6 +33,7 @@ private slots:
     void sectionsSplit();
     void displaysListed();
     void displaysUnknownGivesGeneric();
+    void toolbarPcMenuEndsWithSession();
 };
 
 class TestMenuLayout : public QObject
@@ -256,6 +257,7 @@ private slots:
     void leftToRightAndRightAligned();
     void narrowWindowKeepsRightButtons();
     void scalesWithDpi();
+    void compactForFullScreen();
     void hitTest();
 };
 
@@ -280,6 +282,7 @@ private slots:
     void capturesSystemArrow();
     void invertingCursorVisible();
     void watcherReportsChangesOnly();
+    void largeCursorScaledDown();
 };
 
 class TestCursorSync : public QObject
@@ -292,7 +295,9 @@ private slots:
     void rememberedAcrossStreams();
     void sunshineRestartStartsShown();
     void gameModeShowsSunshineCursor();
-    void agentLostShowsSunshineCursor();
+    void agentLostKeepsLocalArrow();
+    void recordsArePerPc();
+    void notStartedWithoutAgent();
     void settingOffNeverToggles();
     void unknownSunshineNoToggle();
     void pcCursorForwardedWhileActive();

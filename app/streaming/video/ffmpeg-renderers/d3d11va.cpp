@@ -1192,9 +1192,9 @@ bool D3D11VARenderer::createOverlayVertexBuffer(Overlay::OverlayType type, int w
         renderRect.y = 0;
     }
     else if (type == Overlay::OverlayDebug) {
-        // Top left
+        // Top left (LocalRDP: below the toolbar)
         renderRect.x = 0;
-        renderRect.y = m_DisplayHeight - height;
+        renderRect.y = m_DisplayHeight - height - LocalRdp::videoTopInset();
     }
 
     renderRect.w = width;

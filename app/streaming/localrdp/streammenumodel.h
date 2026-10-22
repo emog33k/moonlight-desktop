@@ -25,10 +25,15 @@ struct MenuItem {
 // The toolbar's buttons, left to right; Session holds the right-hand buttons.
 enum class MenuSection { Mouse, Keyboard, Clipboard, Screen, Pc, Session };
 
-// One toolbar button's dropdown.
+// One section's items.
 QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& state);
 
-// Everything in one menu (Ctrl+Alt+Shift+Space, e.g. in full screen).
+// What a toolbar button opens: its section; "ПК" also ends with the session
+// items (minimize, disconnect, disconnect and close), as there is no separate
+// session dropdown.
+QVector<MenuItem> buildToolbarMenu(MenuSection section, const StreamState& state);
+
+// Every item of every section in one list (the complete set, e.g. for checks).
 QVector<MenuItem> buildStreamMenu(const StreamState& state);
 
 }

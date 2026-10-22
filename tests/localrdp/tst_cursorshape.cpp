@@ -163,3 +163,43 @@ void TestCursorShape::watcherReportsChangesOnly()
     watcher.setSourceForTests([](HCURSOR*, bool*) { return false; }); // e.g. lock screen
     QCOMPARE(watcher.read().kind, CursorKind::Default);
 }
+
+void TestCursorShape::largeCursorScaledDown()
+{
+    // Accessibility pointers can be bigger than we send: scaled, not dropped
+    const int side = 300;
+    BITMAPINFO bi = {};
+    bi.bmiHeader.biSize = sizeof(bi.bmiHeader);
+    bi.bmiHeader.biWidth = side;
+    bi.bmiHeader.biHeight = -side;
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    void* bits = nullptr;
+    HDC screen = GetDC(nullptr);
+    HBITMAP color = CreateDIBSection(screen, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    ReleaseDC(nullptr, screen);
+    QVERIFY(color != nullptr);
+    quint32* px = (quint32*)bits;
+    for (int i = 0; i < side * side; i++) {
+        px[i] = 0xFF2060A0; // opaque
+    }
+    HBITMAP mask = CreateBitmap(side, side, 1, 1, nullptr);
+    ICONINFO ii = {};
+    ii.fIcon = FALSE;
+    ii.xHotspot = 150;
+    ii.yHotspot = 30;
+    ii.hbmColor = color;
+    ii.hbmMask = mask;
+    HCURSOR cursor = (HCURSOR)CreateIconIndirect(&ii);
+    DeleteObject(color);
+    DeleteObject(mask);
+    QVERIFY(cursor != nullptr);
+
+    const CursorImage c = captureCursorImage(cursor);
+    DestroyCursor(cursor);
+    QCOMPARE(c.width, kMaxCursorSide);
+    QCOMPARE(c.height, kMaxCursorSide);
+    QVERIFY(qAbs(c.hotX - 128) <= 1);
+    QVERIFY(qAbs(c.hotY - 26) <= 1);
+    QVERIFY(opaquePixels(c) > kMaxCursorSide * kMaxCursorSide / 2);
+}

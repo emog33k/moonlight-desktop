@@ -28,6 +28,13 @@
 #endif
 
 #ifdef Q_OS_WIN32
+// LocalRDP: whether the "send files to PC" dialog is open, and
+// a number for each stream so a late pick never goes to the next one
+static std::atomic<bool> s_LocalRdpPickerOpen { false };
+static std::atomic<int> s_LocalRdpGeneration { 0 };
+#endif
+
+#ifdef Q_OS_WIN32
 // Scaling the icon down on Win32 looks dreadful, so render at lower res
 #define ICON_SIZE 32
 #else
@@ -594,6 +601,7 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_CursorHost(nullptr),
       m_CursorSync(nullptr),
       m_AgentEventPending(false),
+      m_LocalRdpGeneration(0),
       m_MouseEmulationRefCount(0),
       m_FlushingWindowEventsRef(0),
       m_ShouldExit(false),
@@ -1976,19 +1984,28 @@ void Session::exec()
         m_AgentClient->setLockOnDisconnect(m_Preferences->lockOnDisconnect);
         m_AgentClient->setClipboardSync(m_Preferences->clipboardSync);
     }
+    m_LocalRdpGeneration = ++s_LocalRdpGeneration;
     m_MenuHost = new LocalRdp::SessionMenuHost(m_InputHandler, m_Preferences, m_AgentClient, [this]() {
         SDL_SysWMinfo info;
         SDL_VERSION(&info.version);
         HWND owner = SDL_GetWindowWMInfo(m_Window, &info) ? info.info.win.window : nullptr;
-        LocalRdp::pickFilesAsync(owner, QStringLiteral("Отправить файлы на ПК"), [](QStringList paths) {
+        // One dialog at a time (the toolbar stays clickable while it is open)
+        if (s_LocalRdpPickerOpen.exchange(true)) {
+            return;
+        }
+        const int generation = m_LocalRdpGeneration;
+        LocalRdp::pickFilesAsync(owner, QStringLiteral("Отправить файлы на ПК"), [generation](QStringList paths) {
+            s_LocalRdpPickerOpen = false;
             if (paths.isEmpty()) {
                 return;
             }
-            // Back to the stream loop (we are on the dialog's thread here)
+            // Back to the stream loop (we are on the dialog's thread here). The
+            // generation lets a later stream ignore files picked in this one.
             SDL_Event event = {};
             event.type = SDL_USEREVENT;
             event.user.code = SDL_CODE_LOCALRDP_FILES_PICKED;
             event.user.data1 = new QStringList(paths);
+            event.user.data2 = (void*)(intptr_t)generation;
             if (SDL_PushEvent(&event) <= 0) {
                 delete (QStringList*)event.user.data1;
             }
@@ -2000,7 +2017,7 @@ void Session::exec()
     m_CursorHost = new LocalRdp::SdlCursorHost(
         [this]() { m_InputHandler->sendHostShortcut(0x4E /* N: Sunshine's cursor on/off */); },
         [this](int visibility) { m_InputHandler->setCursorVisibilityOverride(visibility); });
-    m_CursorSync = new LocalRdp::CursorSync(m_CursorHost);
+    m_CursorSync = new LocalRdp::CursorSync(m_CursorHost, m_Computer->uuid);
     m_InputHandler->setMouseModeChangedHandler([this]() { localRdpUpdateCursor(); });
     m_MenuHost->setCursorShapesChangedHandler([this](bool) { localRdpUpdateCursor(); });
     m_AgentClient->setChangeHandler([this]() {
@@ -2203,7 +2220,9 @@ void Session::exec()
             case SDL_CODE_LOCALRDP_FILES_PICKED:
             {
                 QStringList* paths = (QStringList*)event.user.data1;
-                localRdpSendFiles(*paths);
+                if ((int)(intptr_t)event.user.data2 == m_LocalRdpGeneration) {
+                    localRdpSendFiles(*paths);
+                }
                 delete paths;
                 break;
             }

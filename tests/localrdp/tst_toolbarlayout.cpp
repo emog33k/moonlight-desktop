@@ -69,3 +69,21 @@ void TestToolbarLayout::hitTest()
     QCOMPARE(hitTestToolbar(l, QPoint(640, 10)), -1);
     QCOMPARE(hitTestToolbar(l, QPoint(10, 200)), -1);
 }
+
+void TestToolbarLayout::compactForFullScreen()
+{
+    // Full screen: only as wide as its buttons (then centred by the window), so the
+    // screen's top-right corner is not a Disconnect button
+    const QVector<ToolbarButton> b = toolbarButtons();
+    const ToolbarLayout wide = layoutToolbar(b, 1920, 1.0, fixedWidth);
+    const ToolbarLayout compact = layoutToolbar(b, 1920, 1.0, fixedWidth, true);
+    QVERIFY(compact.size.width() < 1000);
+    QCOMPARE(compact.size.height(), wide.size.height());
+    for (int i = 0; i < b.size(); i++) {
+        QVERIFY(!compact.rects[i].isEmpty());
+        QVERIFY(compact.rects[i].right() < compact.size.width());
+    }
+    QCOMPARE(compact.rects.last().right(), compact.size.width() - 1);
+    // Never wider than the screen
+    QVERIFY(layoutToolbar(b, 300, 1.0, fixedWidth, true).size.width() <= 300);
+}

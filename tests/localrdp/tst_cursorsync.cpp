@@ -101,16 +101,59 @@ void TestCursorSync::gameModeShowsSunshineCursor()
     QCOMPARE(host.toggles, 3);
 }
 
-void TestCursorSync::agentLostShowsSunshineCursor()
+void TestCursorSync::agentLostKeepsLocalArrow()
 {
     FakeCursorHost host;
     CursorSync sync(&host);
     sync.update(true, true, true, "1234");
-    // The agent dropped: no PC cursor information, so the video cursor comes back
+    // The agent dropped (often because the whole connection is going down): no
+    // key is sent into a stream that may be dead; the laptop shows a plain arrow
     sync.update(true, true, false, QString());
-    QVERIFY(!sync.isActive());
+    QVERIFY(sync.isActive());
+    QCOMPARE(host.toggles, 1);
+    QCOMPARE(host.shown.last(), CursorKind::Default);
+    // Back: the PC's cursor again
+    CursorState hiddenCursor;
+    hiddenCursor.kind = CursorKind::Hidden;
+    sync.setPcCursor(hiddenCursor);
+    sync.update(true, true, true, "1234");
+    QCOMPARE(host.toggles, 1);
+    QCOMPARE(host.shown.last(), CursorKind::Hidden);
+    // The user switches to game mode: Sunshine's cursor is needed again
+    sync.update(true, false, false, QString());
     QCOMPARE(host.toggles, 2);
     QCOMPARE(host.restores, 1);
+}
+
+void TestCursorSync::recordsArePerPc()
+{
+    {
+        FakeCursorHost host;
+        CursorSync sync(&host, "pc-a");
+        sync.update(true, true, true, "1");
+        QCOMPARE(host.toggles, 1);
+    }
+    {
+        FakeCursorHost host;
+        CursorSync sync(&host, "pc-b");
+        sync.update(true, true, true, "2");
+        QCOMPARE(host.toggles, 1);
+    }
+    // Back to the first PC, same Sunshine run: still hidden there
+    FakeCursorHost host;
+    CursorSync sync(&host, "pc-a");
+    sync.update(true, true, true, "1");
+    QCOMPARE(host.toggles, 0);
+}
+
+void TestCursorSync::notStartedWithoutAgent()
+{
+    FakeCursorHost host;
+    CursorSync sync(&host);
+    sync.update(true, true, false, QString());
+    QVERIFY(!sync.isActive());
+    QCOMPARE(host.toggles, 0);
+    QVERIFY(host.shown.isEmpty());
 }
 
 void TestCursorSync::settingOffNeverToggles()

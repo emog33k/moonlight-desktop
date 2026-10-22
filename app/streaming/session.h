@@ -275,6 +275,7 @@ private:
     LocalRdp::SdlCursorHost* m_CursorHost;
     LocalRdp::CursorSync* m_CursorSync;
     std::atomic<bool> m_AgentEventPending;
+    int m_LocalRdpGeneration; // this stream's number (see s_LocalRdpGeneration)
     QStringList m_DroppedFiles; // collected between SDL_DROPBEGIN and SDL_DROPCOMPLETE
     int m_MouseEmulationRefCount;
     int m_FlushingWindowEventsRef;

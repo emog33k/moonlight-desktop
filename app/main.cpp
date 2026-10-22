@@ -13,6 +13,8 @@
 #include <QElapsedTimer>
 #include <QTemporaryFile>
 #include <QRegularExpression>
+#include <QDir>
+#include <QFileInfo>
 
 #ifdef Q_OS_UNIX
 #include <sys/socket.h>
@@ -421,6 +423,20 @@ void configureSignalHandlers()
 int main(int argc, char *argv[])
 {
     SDL_SetMainReady();
+
+#ifdef Q_OS_WIN32
+    // LocalRDP: the bundled OpenSSL would otherwise look for its config and
+    // modules in the folder it was built in (a path on drive D: of the build
+    // machine), which any user of this PC could create.
+    {
+        wchar_t exePath[MAX_PATH * 2] = {};
+        GetModuleFileNameW(nullptr, exePath, (DWORD)(sizeof(exePath) / sizeof(exePath[0])) - 1);
+        const QString appDir = QDir::toNativeSeparators(QFileInfo(QString::fromWCharArray(exePath)).absolutePath());
+        qputenv("OPENSSL_CONF", (appDir + "\\openssl-none.cnf").toLocal8Bit());
+        qputenv("OPENSSL_MODULES", appDir.toLocal8Bit());
+        qputenv("OPENSSL_ENGINES", appDir.toLocal8Bit());
+    }
+#endif
 
     // Set the app version for the QCommandLineParser's showVersion() command
     QCoreApplication::setApplicationVersion(VERSION_STR);
