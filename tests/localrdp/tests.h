@@ -41,6 +41,7 @@ private slots:
     void soundSection();
     void pcLockedShownInPcMenu();
     void powerItems();
+    void qualityPresetsInScreenMenu();
 };
 
 class TestMenuLayout : public QObject
@@ -166,6 +167,7 @@ private slots:
     void quickActions();
     void doubleCursorFixForwarded();
     void soundActions();
+    void qualityChangeReconnects();
 };
 
 class TestClipMessages : public QObject

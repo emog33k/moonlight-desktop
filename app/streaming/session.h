@@ -113,6 +113,9 @@ public:
     Q_INVOKABLE void start();
     Q_INVOKABLE void interrupt();
     Q_PROPERTY(QStringList launchWarnings MEMBER m_LaunchWarnings NOTIFY launchWarningsChanged);
+    // LocalRDP: this stream ended to start again with new settings (quality presets)
+    Q_PROPERTY(bool restartRequested MEMBER m_RestartRequested CONSTANT);
+    Q_INVOKABLE Session* createRestartSession();
 
     static
     void getDecoderInfo(SDL_Window* window,
@@ -280,6 +283,7 @@ private:
     LocalRdp::CursorSync* m_CursorSync;
     std::atomic<bool> m_AgentEventPending;
     int m_LocalRdpGeneration; // this stream's number (see s_LocalRdpGeneration)
+    bool m_RestartRequested = false;
 #ifdef Q_OS_WIN32
     LocalRdp::AgentNotices m_AgentNotices;
 #endif

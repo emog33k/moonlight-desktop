@@ -43,7 +43,7 @@ void TestStreamMenuModel::headersInOrder()
             headers << item.label;
         }
     }
-    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Монитор ПК", "Экран", "Звук с ПК",
+    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Монитор ПК", "Экран", "Качество (стрим переподключится)", "Звук с ПК",
                                     "Снимок экрана", "Буфер обмена", "Клавиши на ПК", "ПК" }));
 }
 
@@ -113,6 +113,7 @@ void TestStreamMenuModel::everyActionAppearsOnce()
         const int expected = notInMenu.contains(a) ? 0
                            : a == StreamAction::SwitchDisplay ? 4
                            : a == StreamAction::SendKeys ? (int)QuickKeys::Count
+                           : a == StreamAction::SetQuality ? qualityPresets().size()
                            : 1;
         QVERIFY2(counts[i] == expected, qPrintable(QString("action %1 appears %2 times").arg(i).arg(counts[i])));
     }
@@ -384,4 +385,27 @@ void TestStreamMenuModel::powerItems()
     QCOMPARE(findByAction(items, StreamAction::ShutdownPc)->label, QString("Выключить ПК…"));
     s.agentStatus = AgentStatus::NotFound;
     QCOMPARE(findByAction(buildSectionMenu(MenuSection::Pc, s), StreamAction::RebootPc)->enabled, false);
+}
+
+void TestStreamMenuModel::qualityPresetsInScreenMenu()
+{
+    const QVector<QualityPreset> presets = qualityPresets();
+    QCOMPARE(presets.size(), 3);
+    StreamState s;
+    s.bitrateKbps = presets[1].kbps;
+    s.fps = presets[1].fps;
+    QVector<MenuItem> radios;
+    for (const MenuItem& i : buildSectionMenu(MenuSection::Screen, s)) {
+        if (i.action && *i.action == StreamAction::SetQuality) radios << i;
+    }
+    QCOMPARE(radios.size(), 3);
+    QCOMPARE(radios[0].param, 0);
+    QCOMPARE(radios[1].checked, true); // the current one
+    QCOMPARE(radios[0].checked, false);
+    QVERIFY(radios[0].label.contains(presets[0].name));
+    // Own settings that match no preset: none marked
+    s.bitrateKbps = 12345;
+    for (const MenuItem& i : buildSectionMenu(MenuSection::Screen, s)) {
+        if (i.action && *i.action == StreamAction::SetQuality) QVERIFY(!i.checked);
+    }
 }

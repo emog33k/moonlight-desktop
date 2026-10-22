@@ -2,6 +2,7 @@
 #include "settings/streamingpreferences.h"
 #include "streaming/localrdp/sessionmenuhost.h"
 #include "streaming/localrdp/streamvolume.h"
+#include "streaming/localrdp/streammenumodel.h"
 
 #include <QSettings>
 #include <QTemporaryDir>
@@ -202,4 +203,31 @@ void TestSessionMenuHost::soundActions()
     QCOMPARE(prefs->streamAudio, false);
     QCOMPARE(prefs->streamVolume, 100);
     host.performAction(StreamAction::ToggleStreamAudio);
+}
+
+void TestSessionMenuHost::qualityChangeReconnects()
+{
+    FakeInput input;
+    StreamingPreferences* prefs = StreamingPreferences::get();
+    SessionMenuHost host(&input, prefs, nullptr);
+    int restarts = 0;
+    host.setRestartHandler([&restarts]() { restarts++; });
+    const QVector<QualityPreset> presets = qualityPresets();
+    prefs->bitrateKbps = presets[0].kbps;
+    prefs->fps = presets[0].fps;
+
+    host.performAction(StreamAction::SetQuality, 0); // already that: nothing
+    QCOMPARE(restarts, 0);
+    const int width = prefs->width;
+    prefs->width = 1234; // a one-off override must not be saved along
+    host.performAction(StreamAction::SetQuality, 2);
+    QCOMPARE(restarts, 1);
+    QCOMPARE(prefs->bitrateKbps, presets[2].kbps);
+    QCOMPARE(prefs->fps, presets[2].fps);
+    prefs->reload();
+    QCOMPARE(prefs->bitrateKbps, presets[2].kbps); // remembered
+    QCOMPARE(prefs->fps, presets[2].fps);
+    QCOMPARE(prefs->width, width);
+    host.performAction(StreamAction::SetQuality, 99); // unknown: nothing
+    QCOMPARE(restarts, 1);
 }

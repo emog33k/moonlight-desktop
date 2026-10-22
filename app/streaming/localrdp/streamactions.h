@@ -34,6 +34,7 @@ enum class StreamAction {
     VolumeDown,              // -10 %
     RebootPc,                // asks once more, then restarts the PC (via the agent)
     ShutdownPc,              // asks once more, then shuts the PC down (via the agent)
+    SetQuality,              // param = qualityPresets() index; the stream reconnects
     Count // not an action: number of actions
 };
 
@@ -71,6 +72,8 @@ struct StreamState {
     bool cursorSyncActive = false; // the AnyDesk-style cursor is on right now
     bool pcLocked = false;         // the PC's Windows session is locked (from the agent)
     PowerConfirm powerConfirm = PowerConfirm::None;
+    int bitrateKbps = 0;           // the stream's settings now (to mark the quality preset)
+    int fps = 0;
     bool streamAudio = true;       // the PC's sound plays on the laptop
     int streamVolume = 100;        // percent
     bool pointerLocked = false;

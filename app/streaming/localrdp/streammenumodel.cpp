@@ -68,6 +68,15 @@ static QString agentStatusText(AgentStatus status)
     return QStringLiteral("Агент на ПК: —");
 }
 
+QVector<QualityPreset> qualityPresets()
+{
+    return {
+        { QStringLiteral("Экономно (слабая сеть)"), 8000, 30 },
+        { QStringLiteral("Обычно"), 20000, 60 },
+        { QStringLiteral("Максимум"), 60000, 60 },
+    };
+}
+
 int windowsDisplayNumber(const QString& deviceName, int position)
 {
     static const QRegularExpression number(QStringLiteral("DISPLAY(\\d+)$"), QRegularExpression::CaseInsensitiveOption);
@@ -152,7 +161,16 @@ QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
             header(QStringLiteral("Экран")),
             item(K::Check, QStringLiteral("Полный экран"), QStringLiteral("Ctrl+Alt+Shift+X"), A::ToggleFullscreen, s.fullscreen),
             item(K::Check, QStringLiteral("Статистика"), QStringLiteral("Ctrl+Alt+Shift+S"), A::ToggleStats, s.statsVisible),
+            header(QStringLiteral("Качество (стрим переподключится)")),
         };
+        const QVector<QualityPreset> presets = qualityPresets();
+        for (int i = 0; i < presets.size(); i++) {
+            const QualityPreset& p = presets[i];
+            MenuItem m = item(K::Radio, QStringLiteral("%1: %2 Мбит/с, %3 к/с").arg(p.name).arg(p.kbps / 1000).arg(p.fps),
+                              QString(), A::SetQuality, s.bitrateKbps == p.kbps && s.fps == p.fps);
+            m.param = i;
+            items << m;
+        }
         return items;
     }
     case MenuSection::Sound:

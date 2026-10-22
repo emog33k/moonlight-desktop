@@ -26,6 +26,14 @@ struct MenuItem {
 // The toolbar's buttons, left to right; Session holds the right-hand buttons.
 enum class MenuSection { Mouse, Keyboard, Clipboard, Screen, Sound, Actions, Pc, Session };
 
+// Quality in one click (bitrate and frame rate; the resolution stays).
+struct QualityPreset {
+    QString name;
+    int kbps;
+    int fps;
+};
+QVector<QualityPreset> qualityPresets();
+
 // The number Windows shows for a monitor (Settings > Display), from its device
 // name "\\.\DISPLAYn"; position + 1 if the name has none.
 int windowsDisplayNumber(const QString& deviceName, int position);

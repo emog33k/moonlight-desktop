@@ -36,6 +36,8 @@ public:
     // The AnyDesk-style cursor: whether it is on now, and its "two cursors" fix
     void setCursorSyncActiveProvider(std::function<bool()> provider) { m_CursorSyncActive = std::move(provider); }
     void setFixDoubleCursorHandler(std::function<void()> handler) { m_FixDoubleCursor = std::move(handler); }
+    // Ends this stream and starts it again (new quality settings take effect)
+    void setRestartHandler(std::function<void()> handler) { m_Restart = std::move(handler); }
 
 private:
     StreamMenuHost* m_Input;
@@ -47,6 +49,7 @@ private:
     std::function<void()> m_LaunchLaptopSnip;
     std::function<bool()> m_CursorSyncActive;
     std::function<void()> m_FixDoubleCursor;
+    std::function<void()> m_Restart;
     std::function<void(const QString&)> m_Toast;
     PowerConfirm m_PowerConfirm = PowerConfirm::None;
     qint64 m_PowerConfirmSince = 0; // the confirmation is valid for a few seconds

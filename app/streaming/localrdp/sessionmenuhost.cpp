@@ -2,6 +2,7 @@
 #include "agentclient.h"
 #include "settings/streamingpreferences.h"
 #include "streamvolume.h"
+#include "streammenumodel.h"
 
 #include <QDateTime>
 
@@ -25,6 +26,8 @@ StreamState SessionMenuHost::queryState()
     state.localCursorShapes = m_Prefs->localCursorShapes;
     state.cursorSyncActive = m_CursorSyncActive ? m_CursorSyncActive() : false;
     state.streamAudio = m_Prefs->streamAudio;
+    state.bitrateKbps = m_Prefs->bitrateKbps;
+    state.fps = m_Prefs->fps;
     if (m_PowerConfirm != PowerConfirm::None && QDateTime::currentMSecsSinceEpoch() - m_PowerConfirmSince > 5000) {
         m_PowerConfirm = PowerConfirm::None;
     }
@@ -107,6 +110,25 @@ void SessionMenuHost::performAction(StreamAction action, int param)
         else {
             m_PowerConfirm = wanted;
             m_PowerConfirmSince = now;
+        }
+        break;
+    }
+    case StreamAction::SetQuality:
+    {
+        const QVector<QualityPreset> presets = qualityPresets();
+        if (param < 0 || param >= presets.size()) {
+            break;
+        }
+        const QualityPreset& p = presets[param];
+        if (m_Prefs->bitrateKbps == p.kbps && m_Prefs->fps == p.fps) {
+            break;
+        }
+        m_Prefs->bitrateKbps = p.kbps;
+        m_Prefs->fps = p.fps;
+        m_Prefs->saveQualityPrefs();
+        if (m_Restart) {
+            toast(QStringLiteral("Переподключаюсь: %1…").arg(p.name));
+            m_Restart();
         }
         break;
     }

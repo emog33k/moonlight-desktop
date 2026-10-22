@@ -1301,8 +1301,10 @@ private:
     void run() override
     {
         // Only quit the running app if our session terminated gracefully
+        // (LocalRDP: and not when it is only reconnecting with new settings)
         bool shouldQuit =
                 !m_Session->m_UnexpectedTermination &&
+                !m_Session->m_RestartRequested &&
                 m_Session->m_Preferences->quitAppAfter;
 
         // Notify the UI
@@ -1757,6 +1759,12 @@ bool Session::startConnectionAsync()
     return true;
 }
 
+Session* Session::createRestartSession()
+{
+    // Same PC and app; the preferences singleton already has the new settings
+    return new Session(m_Computer, m_App, m_Preferences);
+}
+
 void Session::localRdpUpdateCursor()
 {
 #ifdef Q_OS_WIN32
@@ -2040,6 +2048,13 @@ void Session::exec()
                 delete (QStringList*)event.user.data1;
             }
         });
+    });
+    m_MenuHost->setRestartHandler([this]() {
+        m_RestartRequested = true;
+        SDL_Event event = {};
+        event.type = SDL_QUIT;
+        event.quit.timestamp = SDL_GetTicks();
+        SDL_PushEvent(&event);
     });
     m_MenuHost->setLaptopSnipLauncher([]() {
         // Windows' own "snip an area"; the picture lands in the laptop's clipboard,
@@ -2625,7 +2640,8 @@ DispatchDeferredCleanup:
     if (m_AgentClient != nullptr) {
         // Ending on purpose: the agent may lock the PC right away (if enabled).
         // After a connection loss it waits for a reconnect instead.
-        if (!m_UnexpectedTermination) {
+        // (Not when reconnecting with new settings: the PC must not lock for that)
+        if (!m_UnexpectedTermination && !m_RestartRequested) {
             m_AgentClient->sayGoodbye();
         }
         delete m_AgentClient;

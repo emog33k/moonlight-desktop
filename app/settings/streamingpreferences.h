@@ -191,6 +191,9 @@ public:
     // LocalRDP: the PC's sound on the laptop (on/off, volume 0..100); the PC keeps its sound
     bool streamAudio;
     int streamVolume;
+
+    // LocalRDP: writes only the bitrate and frame rate (quality presets)
+    void saveQualityPrefs();
     bool absoluteTouchMode;
     bool framePacing;
     bool connectionWarnings;

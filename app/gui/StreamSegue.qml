@@ -61,6 +61,13 @@ Item {
 
     function sessionFinished(portTestResult)
     {
+        // LocalRDP: reconnecting with new settings: wait until this session is
+        // fully gone (sessionReadyForDeletion), then start the next one
+        if (session && session.restartRequested && !streamSegueErrorDialog.text) {
+            window.visible = true
+            return
+        }
+
         if (portTestResult !== 0 && portTestResult !== -1 && streamSegueErrorDialog.text) {
             streamSegueErrorDialog.text += "\n\n" + qsTr("This PC's Internet connection is blocking Moonlight. Streaming over the Internet may not work while connected to this network.")
         }
@@ -94,6 +101,16 @@ Item {
 
     function sessionReadyForDeletion()
     {
+        if (session && session.restartRequested && !streamSegueErrorDialog.text) {
+            var next = session.createRestartSession()
+            var component = Qt.createComponent("StreamSegue.qml")
+            stackView.replace(stackView.currentItem,
+                              component.createObject(stackView, {"appName": appName, "session": next,
+                                                                 "isResume": true, "quitAfter": quitAfter}),
+                              StackView.Immediate)
+            return
+        }
+
         // Garbage collect the Session object since it's pretty heavyweight
         // and keeps other libraries (like SDL_TTF) around until it is deleted.
         session = null

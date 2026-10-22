@@ -60,6 +60,13 @@
 #define SER_STREAMAUDIO "localrdp/streamaudio"
 #define SER_STREAMVOLUME "localrdp/streamvolume"
 
+void StreamingPreferences::saveQualityPrefs()
+{
+    QSettings settings;
+    settings.setValue(SER_BITRATE, bitrateKbps);
+    settings.setValue(SER_FPS, fps);
+}
+
 #define CURRENT_DEFAULT_VER 2
 
 static StreamingPreferences* s_GlobalPrefs;
