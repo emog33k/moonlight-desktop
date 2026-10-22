@@ -2,6 +2,7 @@
 #include "boxartmanager.h"
 #include "nvhttp.h"
 #include "nvpairingmanager.h"
+#include "localrdp-shared/desktoptr.h"
 
 #include <Limelight.h>
 #include <QtEndian>
@@ -625,9 +626,7 @@ private:
             if (e.getStatusCode() == 409) {
                 // LocalRDP: Sunshine still waits for the PIN of an earlier request (it
                 // forgets one after 5 minutes)
-                emit pairingCompleted(m_Computer, QStringLiteral(
-                    "ПК ещё ждёт PIN от предыдущего запроса на привязку. Введите тот PIN в Sunshine "
-                    "или подождите до 5 минут и попробуйте снова."));
+                emit pairingCompleted(m_Computer, LocalRdp::dtr("The host is still waiting for the PIN of an earlier pairing request. Enter that PIN in Sunshine, or wait up to 5 minutes and try again."));
             }
             else {
                 emit pairingCompleted(m_Computer, tr("GeForce Experience returned error: %1").arg(e.toQString()));

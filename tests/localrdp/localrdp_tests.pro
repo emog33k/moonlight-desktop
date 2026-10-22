@@ -14,6 +14,8 @@ TEMPLATE = app
 TARGET = localrdp_tests
 
 INCLUDEPATH += ../../app ../../localrdp/agent
+# The translation test reads the sources and app/languages/desktop_*.qm
+DEFINES += MOONLIGHT_SOURCE_DIR=\\\"$$PWD/../..\\\"
 
 SOURCES += \
     main.cpp \
@@ -42,6 +44,7 @@ SOURCES += \
     tst_reconnect.cpp \
     tst_pairingpins.cpp \
     tst_forkupdate.cpp \
+    tst_translations.cpp \
     ../../app/streaming/localrdp/forkupdate.cpp \
     ../../app/streaming/localrdp/pairingpins.cpp \
     ../../app/streaming/localrdp/reconnect.cpp \

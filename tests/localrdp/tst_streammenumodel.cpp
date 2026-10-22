@@ -43,8 +43,8 @@ void TestStreamMenuModel::headersInOrder()
             headers << item.label;
         }
     }
-    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Монитор ПК", "Экран", "Качество (стрим переподключится)", "Звук с ПК",
-                                    "Снимок экрана", "Буфер обмена", "Клавиши на ПК", "ПК" }));
+    QCOMPARE(headers, QStringList({ "Mouse", "Keyboard", "Clipboard", "Host display", "Screen", "Quality (the stream reconnects)", "Host sound",
+                                    "Screenshot", "Clipboard", "Keys on the host", "Host" }));
 }
 
 void TestStreamMenuModel::desktopModeChecked()
@@ -52,13 +52,13 @@ void TestStreamMenuModel::desktopModeChecked()
     StreamState state;
     state.absoluteMouse = true;
     QVector<MenuItem> items = buildStreamMenu(state);
-    QCOMPARE(findByLabel(items, "Режим рабочего стола")->checked, true);
-    QCOMPARE(findByLabel(items, "Игровой режим")->checked, false);
+    QCOMPARE(findByLabel(items, "Desktop mode")->checked, true);
+    QCOMPARE(findByLabel(items, "Game mode")->checked, false);
 
     state.absoluteMouse = false;
     items = buildStreamMenu(state);
-    QCOMPARE(findByLabel(items, "Режим рабочего стола")->checked, false);
-    QCOMPARE(findByLabel(items, "Игровой режим")->checked, true);
+    QCOMPARE(findByLabel(items, "Desktop mode")->checked, false);
+    QCOMPARE(findByLabel(items, "Game mode")->checked, true);
 }
 
 void TestStreamMenuModel::checksMirrorState()
@@ -133,19 +133,19 @@ void TestStreamMenuModel::agentStatusLine()
 {
     struct Case { AgentStatus status; QString text; };
     const Case cases[] = {
-        { AgentStatus::Unknown, "Агент на ПК: —" },
-        { AgentStatus::Connecting, "Агент на ПК: подключение…" },
-        { AgentStatus::Connected, "Агент на ПК: подключён" },
-        { AgentStatus::NotFound, "Агент на ПК: не найден" },
-        { AgentStatus::CertError, "Агент на ПК: ошибка сертификата" },
-        { AgentStatus::Rejected, "Агент на ПК: ПК отклонил подключение" },
+        { AgentStatus::Unknown, "Host agent: —" },
+        { AgentStatus::Connecting, "Host agent: connecting…" },
+        { AgentStatus::Connected, "Host agent: connected" },
+        { AgentStatus::NotFound, "Host agent: not found" },
+        { AgentStatus::CertError, "Host agent: certificate error" },
+        { AgentStatus::Rejected, "Host agent: the host refused the connection" },
     };
     for (const Case& c : cases) {
         StreamState state;
         state.agentStatus = c.status;
         int statusLines = 0;
         for (const MenuItem& item : buildStreamMenu(state)) {
-            if (item.kind == MenuItemKind::Status && item.label.startsWith(QStringLiteral("Агент"))) {
+            if (item.kind == MenuItemKind::Status && item.label.startsWith(QStringLiteral("Host agent"))) {
                 statusLines++;
                 QCOMPARE(item.label, c.text);
                 QVERIFY(!item.action.has_value());
@@ -172,9 +172,9 @@ void TestStreamMenuModel::lockPcNeedsAgent()
 void TestStreamMenuModel::lockPcTexts()
 {
     const QVector<MenuItem> items = buildStreamMenu(StreamState());
-    QCOMPARE(findByAction(items, StreamAction::LockPc)->label, QString("Заблокировать ПК"));
-    QCOMPARE(findByAction(items, StreamAction::ToggleLockOnDisconnect)->label, QString("Блокировать ПК при отключении"));
-    QCOMPARE(findByAction(items, StreamAction::ToggleLocalCursorShapes)->label, QString("Курсор как в AnyDesk"));
+    QCOMPARE(findByAction(items, StreamAction::LockPc)->label, QString("Lock the host"));
+    QCOMPARE(findByAction(items, StreamAction::ToggleLockOnDisconnect)->label, QString("Lock the host on disconnect"));
+    QCOMPARE(findByAction(items, StreamAction::ToggleLocalCursorShapes)->label, QString("Host cursor shapes"));
 }
 
 void TestStreamMenuModel::sendFilesNeedsAgentAndSync()
@@ -188,8 +188,8 @@ void TestStreamMenuModel::sendFilesNeedsAgentAndSync()
     state.clipboardSync = true;
     state.agentStatus = AgentStatus::NotFound;
     QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::SendFilesToPc)->enabled, false);
-    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::SendFilesToPc)->label, QString("Отправить файлы на ПК…"));
-    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::ToggleClipboardSync)->label, QString("Синхронизация буфера обмена"));
+    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::SendFilesToPc)->label, QString("Send files to the host…"));
+    QCOMPARE(findByAction(buildStreamMenu(state), StreamAction::ToggleClipboardSync)->label, QString("Clipboard sync"));
 }
 
 void TestStreamMenuModel::sectionsSplit()
@@ -234,7 +234,7 @@ void TestStreamMenuModel::displaysInDeskOrder()
     for (const MenuItem& item : buildSectionMenu(MenuSection::Screen, s)) {
         if (item.action && *item.action == StreamAction::SwitchDisplay) labels << item.label;
     }
-    QCOMPARE(labels, QStringList({ "Монитор 2: 1920×1080", "Монитор 1: 1920×1080, основной" }));
+    QCOMPARE(labels, QStringList({ "Display 2: 1920×1080", "Display 1: 1920×1080, primary" }));
 }
 
 void TestStreamMenuModel::displaysListed()
@@ -248,8 +248,8 @@ void TestStreamMenuModel::displaysListed()
         if (item.action && *item.action == StreamAction::SwitchDisplay) radios << item;
     }
     QCOMPARE(radios.size(), 2);
-    QCOMPARE(radios[0].label, QString("Монитор 1: 2560×1440, основной"));
-    QCOMPARE(radios[1].label, QString("Монитор 2: 1920×1080"));
+    QCOMPARE(radios[0].label, QString("Display 1: 2560×1440, primary"));
+    QCOMPARE(radios[1].label, QString("Display 2: 1920×1080"));
     QCOMPARE(radios[0].param, 1);
     QCOMPARE(radios[1].param, 0);
     QCOMPARE(radios[0].checked, true);
@@ -267,7 +267,7 @@ void TestStreamMenuModel::displaysUnknownGivesGeneric()
             QCOMPARE(item.checked, false);
         }
     }
-    QCOMPARE(labels, QStringList({ "Монитор 1", "Монитор 2", "Монитор 3", "Монитор 4" }));
+    QCOMPARE(labels, QStringList({ "Display 1", "Display 2", "Display 3", "Display 4" }));
 }
 
 void TestStreamMenuModel::toolbarPcMenuEndsWithSession()
@@ -379,7 +379,7 @@ void TestStreamMenuModel::pcLockedShownInPcMenu()
     s.pcLocked = true;
     bool shown = false;
     for (const MenuItem& i : buildSectionMenu(MenuSection::Pc, s)) {
-        shown |= i.kind == MenuItemKind::Status && i.label.contains("заблокирован");
+        shown |= i.kind == MenuItemKind::Status && i.label.contains("host locked");
     }
     QVERIFY(shown);
 }
@@ -393,11 +393,11 @@ void TestStreamMenuModel::powerItems()
     const MenuItem* shutdown = findByAction(items, StreamAction::ShutdownPc);
     QVERIFY(reboot && shutdown);
     QVERIFY(reboot->enabled && reboot->keepOpen);
-    QCOMPARE(reboot->label, QString("Перезагрузить ПК…"));
+    QCOMPARE(reboot->label, QString("Restart the host…"));
     s.powerConfirm = PowerConfirm::Reboot;
     items = buildSectionMenu(MenuSection::Pc, s);
-    QVERIFY(findByAction(items, StreamAction::RebootPc)->label.contains("ещё раз"));
-    QCOMPARE(findByAction(items, StreamAction::ShutdownPc)->label, QString("Выключить ПК…"));
+    QVERIFY(findByAction(items, StreamAction::RebootPc)->label.contains("again"));
+    QCOMPARE(findByAction(items, StreamAction::ShutdownPc)->label, QString("Shut down the host…"));
     s.agentStatus = AgentStatus::NotFound;
     QCOMPARE(findByAction(buildSectionMenu(MenuSection::Pc, s), StreamAction::RebootPc)->enabled, false);
 }

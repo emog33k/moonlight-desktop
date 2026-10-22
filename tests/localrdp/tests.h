@@ -390,6 +390,16 @@ private slots:
     void onlyAfterItWasRunning();
 };
 
+class TestTranslations : public QObject
+{
+    Q_OBJECT
+private slots:
+    void sourcesScanned();
+    void everyTextHasRussian();
+    void systemLanguageNameFindsIt();
+    void placeholdersKept();
+};
+
 class TestForkUpdate : public QObject
 {
     Q_OBJECT

@@ -53,7 +53,7 @@ Item {
 
     Component.onCompleted: {
         if (reconnectAttempt > 0) {
-            stageText = qsTr("Связь с ПК потеряна. Переподключение (попытка %1 из %2)…")
+            stageText = qsTr("Lost the connection to the host. Reconnecting (attempt %1 of %2)…")
                             .arg(reconnectAttempt).arg(maxReconnectAttempts)
         }
     }
@@ -127,11 +127,11 @@ Item {
             nextPending = true
             if (session.restartRequested) {
                 nextAttempt = 0
-                showReconnecting(qsTr("Переподключение с новыми настройками…"), false)
+                showReconnecting(qsTr("Reconnecting with the new settings…"), false)
             }
             else {
                 nextAttempt = reconnectAttempt + 1
-                showReconnecting(qsTr("Связь с ПК потеряна. Переподключение…"), true)
+                showReconnecting(qsTr("Lost the connection to the host. Reconnecting…"), true)
             }
             return
         }
@@ -314,7 +314,7 @@ Item {
         anchors.top: parent.verticalCenter
         anchors.topMargin: 60
         anchors.horizontalCenter: parent.horizontalCenter
-        text: qsTr("Отмена")
+        text: qsTr("Cancel")
         onClicked: {
             reconnectCancelled = true
             reconnectTimer.stop()

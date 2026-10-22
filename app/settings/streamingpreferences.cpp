@@ -251,6 +251,22 @@ bool StreamingPreferences::retranslate()
         delete newTranslator;
     }
 
+    // Moonlight Desktop's own texts (app/languages/desktop_*.ts), next to Moonlight's
+    static QTranslator* desktopTranslator = nullptr;
+    if (desktopTranslator != nullptr) {
+        QCoreApplication::removeTranslator(desktopTranslator);
+        delete desktopTranslator;
+        desktopTranslator = nullptr;
+    }
+    QTranslator* newDesktopTranslator = new QTranslator();
+    if (newDesktopTranslator->load(QString(":/languages/desktop_") + languageSuffix)) {
+        desktopTranslator = newDesktopTranslator;
+        QCoreApplication::installTranslator(desktopTranslator);
+    }
+    else {
+        delete newDesktopTranslator;
+    }
+
     if (m_QmlEngine != nullptr) {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
         // This is a dynamic retranslation from the settings page.

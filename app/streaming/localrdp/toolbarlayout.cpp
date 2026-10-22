@@ -1,4 +1,5 @@
 #include "toolbarlayout.h"
+#include "localrdp-shared/desktoptr.h"
 
 #include <algorithm>
 #include <cmath>
@@ -23,13 +24,13 @@ QVector<ToolbarButton> toolbarButtons(const QVector<DisplayInfo>& displays, int 
         return b;
     };
     QVector<ToolbarButton> buttons = {
-        section(MenuSection::Mouse, 0xE962, QStringLiteral("Мышь")),
-        section(MenuSection::Keyboard, 0xE765, QStringLiteral("Клавиатура")),
-        section(MenuSection::Clipboard, 0xE77F, QStringLiteral("Буфер")),
-        section(MenuSection::Screen, 0xE7F4, QStringLiteral("Экран")),
-        section(MenuSection::Sound, 0xE767, QStringLiteral("Звук")),
-        section(MenuSection::Actions, 0xE945, QStringLiteral("Действия")),
-        section(MenuSection::Pc, 0xE977, QStringLiteral("ПК")),
+        section(MenuSection::Mouse, 0xE962, dtr("Mouse")),
+        section(MenuSection::Keyboard, 0xE765, dtr("Keyboard")),
+        section(MenuSection::Clipboard, 0xE77F, dtr("Clipboard", "toolbar button, short")),
+        section(MenuSection::Screen, 0xE7F4, dtr("Screen")),
+        section(MenuSection::Sound, 0xE767, dtr("Sound")),
+        section(MenuSection::Actions, 0xE945, dtr("Actions")),
+        section(MenuSection::Pc, 0xE977, dtr("Host")),
     };
 
     // Monitors after the sections, so the sections' positions never change

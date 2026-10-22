@@ -1,5 +1,6 @@
 #include "session.h"
 #include "localrdp/reconnect.h"
+#include "localrdp-shared/desktoptr.h"
 #include "settings/streamingpreferences.h"
 #include "streaming/streamutils.h"
 #include "backend/richpresencemanager.h"
@@ -1813,10 +1814,10 @@ void Session::localRdpSendFiles(const QStringList& paths)
         return;
     }
     if (!m_Preferences->clipboardSync) {
-        m_StreamMenu->showToast(QStringLiteral("Синхронизация буфера выключена — включите её в меню"));
+        m_StreamMenu->showToast(LocalRdp::dtr("Clipboard sync is off: turn it on in the menu"));
     }
     else if (m_AgentClient == nullptr || m_AgentClient->status() != LocalRdp::AgentStatus::Connected) {
-        m_StreamMenu->showToast(QStringLiteral("Агент на ПК не подключён — файлы не отправлены"));
+        m_StreamMenu->showToast(LocalRdp::dtr("The host agent is not connected: files not sent"));
     }
     else {
         const int count = paths.size();
@@ -1826,9 +1827,9 @@ void Session::localRdpSendFiles(const QStringList& paths)
             event.type = SDL_USEREVENT;
             event.user.code = SDL_CODE_LOCALRDP_TOAST;
             event.user.data1 = new QString(
-                !ok ? QStringLiteral("Файлы не отправлены: %1").arg(reason)
-                    : count == 1 ? QStringLiteral("Файл в буфере ПК — нажмите Ctrl+V в нужной папке")
-                                 : QStringLiteral("Файлы (%1) в буфере ПК — нажмите Ctrl+V в нужной папке").arg(count));
+                !ok ? LocalRdp::dtr("Files not sent: %1").arg(reason)
+                    : count == 1 ? LocalRdp::dtr("The file is in the host clipboard: press Ctrl+V in a folder there")
+                                 : LocalRdp::dtr("%1 files are in the host clipboard: press Ctrl+V in a folder there").arg(count));
             if (SDL_PushEvent(&event) <= 0) {
                 delete (QString*)event.user.data1;
             }
@@ -2056,7 +2057,7 @@ void Session::exec()
             return;
         }
         const int generation = m_LocalRdpGeneration;
-        LocalRdp::pickFilesAsync(owner, QStringLiteral("Отправить файлы на ПК"), [generation](QStringList paths) {
+        LocalRdp::pickFilesAsync(owner, LocalRdp::dtr("Send files to the host"), [generation](QStringList paths) {
             s_LocalRdpPickerOpen = false;
             if (paths.isEmpty()) {
                 return;

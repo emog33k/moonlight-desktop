@@ -1,4 +1,5 @@
 #include "clipboardbridge_win32.h"
+#include "../desktoptr.h"
 #include "remotedataobject_win32.h"
 
 #include <QDateTime>
@@ -258,16 +259,16 @@ void ClipboardBridge::offerFiles(const QStringList& paths, std::function<void(bo
             }
         };
         if (!m_Enabled) {
-            report(false, QStringLiteral("синхронизация буфера выключена"));
+            report(false, dtr("clipboard sync is off"));
             return;
         }
         if (!m_Connected) {
-            report(false, QStringLiteral("нет связи с агентом на ПК"));
+            report(false, dtr("no connection to the host agent"));
             return;
         }
         const LocalSnapshot s = snapshotFromPaths(paths, m_NextSeq++);
         if (s.offer.files.isEmpty()) {
-            report(false, s.filesProblem.isEmpty() ? QStringLiteral("нечего отправлять") : s.filesProblem);
+            report(false, s.filesProblem.isEmpty() ? dtr("nothing to send") : s.filesProblem);
             return;
         }
         m_LocalCopiedAt = nowMs();

@@ -1,4 +1,5 @@
 #include "clipreader_win32.h"
+#include "../desktoptr.h"
 
 #include <QDir>
 #include <QFileInfo>
@@ -118,13 +119,13 @@ struct Walk {
         }
         total += size;
         if (entries.size() >= kMaxFiles) {
-            problem = QStringLiteral("больше %1 файлов").arg(kMaxFiles);
+            problem = dtr("more than %1 files").arg(kMaxFiles);
         }
         else if (total > kMaxTotalFileBytes) {
-            problem = QStringLiteral("больше %1 ГБ").arg(kMaxTotalFileBytes >> 30);
+            problem = dtr("more than %1 GB").arg(kMaxTotalFileBytes >> 30);
         }
         else if (!isSafeRelativeName(name)) {
-            problem = QStringLiteral("слишком длинный путь или недопустимое имя: %1").arg(name.left(60));
+            problem = dtr("path too long or name not allowed: %1").arg(name.left(60));
         }
         if (!problem.isEmpty()) {
             tooMuch = true;
@@ -238,7 +239,7 @@ LocalSnapshot snapshotFromPaths(const QStringList& paths, quint64 seq)
         s.filesProblem = walk.problem;
     }
     if (s.offer.files.isEmpty() && s.filesProblem.isEmpty() && !paths.isEmpty()) {
-        s.filesProblem = missing > 0 ? QStringLiteral("файлы не найдены") : QStringLiteral("нечего отправлять");
+        s.filesProblem = missing > 0 ? dtr("files not found") : dtr("nothing to send");
     }
     return s;
 }

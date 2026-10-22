@@ -3,6 +3,7 @@
 #include "settings/streamingpreferences.h"
 #include "streamvolume.h"
 #include "streammenumodel.h"
+#include "localrdp-shared/desktoptr.h"
 
 #include <QDateTime>
 
@@ -102,8 +103,8 @@ void SessionMenuHost::performAction(StreamAction action, int param)
             m_PowerConfirm = PowerConfirm::None;
             if (m_Agent) {
                 m_Agent->powerAction(wanted == PowerConfirm::Reboot ? QStringLiteral("reboot") : QStringLiteral("shutdown"));
-                toast(wanted == PowerConfirm::Reboot ? QStringLiteral("ПК перезагружается…")
-                                                     : QStringLiteral("ПК выключается…"));
+                toast(wanted == PowerConfirm::Reboot ? dtr("The host is restarting…")
+                                                     : dtr("The host is shutting down…"));
             }
         }
         else {
@@ -126,7 +127,7 @@ void SessionMenuHost::performAction(StreamAction action, int param)
         m_Prefs->fps = p.fps;
         m_Prefs->saveQualityPrefs();
         if (m_Restart) {
-            toast(QStringLiteral("Переподключаюсь: %1…").arg(p.name));
+            toast(dtr("Reconnecting: %1…").arg(p.name));
             m_Restart();
         }
         break;
@@ -139,16 +140,16 @@ void SessionMenuHost::performAction(StreamAction action, int param)
     case StreamAction::SnipLaptop:
         if (m_LaunchLaptopSnip) {
             m_LaunchLaptopSnip();
-            toast(QStringLiteral("Выделите область — снимок окажется в буфере ПК (вставьте там Ctrl+V)"));
+            toast(dtr("Select an area: the screenshot goes to the host clipboard (paste it there with Ctrl+V)"));
         }
         break;
     case StreamAction::SendKeys:
         m_Input->performAction(action, param);
         if (param == (int)QuickKeys::SnipArea) {
-            toast(QStringLiteral("Выделите область на ПК — снимок придёт в буфер ноутбука"));
+            toast(dtr("Select an area on the host: the screenshot comes to the clipboard here"));
         }
         else if (param == (int)QuickKeys::PrintScreen) {
-            toast(QStringLiteral("Снимок экрана ПК — в буфере ноутбука"));
+            toast(dtr("Host screenshot is in the clipboard here"));
         }
         break;
     case StreamAction::SendFilesToPc:
