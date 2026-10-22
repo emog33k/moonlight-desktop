@@ -115,10 +115,15 @@ private:
     std::thread m_IoThread;
     std::mutex m_IoMutex;
     std::condition_variable m_IoCv;
-    std::deque<Request> m_IoQueue;
+    std::deque<std::pair<Request, quint64>> m_IoQueue; // with the epoch it arrived in
     bool m_IoStop = false;
     std::atomic<quint32> m_IoBusyId { 0 };   // request being read now (0 = none)
+    std::atomic<quint64> m_IoBusyEpoch { 0 };
     std::atomic<qint64> m_IoBusySince { 0 };
+    // Bumped when the connection goes down or sharing is turned off: replies to
+    // requests from before are never sent (they would reach the next connection)
+    std::atomic<quint64> m_Epoch { 1 };
+    void stopServing(); // any thread
 };
 
 }

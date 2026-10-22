@@ -56,7 +56,10 @@ AgentServer::AgentServer(AgentConfig config, QObject* parent)
     }
 
     m_GraceTimer.setSingleShot(true);
-    connect(&m_GraceTimer, &QTimer::timeout, this, [this]() { lockNow("no reconnect within grace period"); });
+    connect(&m_GraceTimer, &QTimer::timeout, this, [this]() {
+        m_LaptopPresent = false;
+        lockNow("no reconnect within grace period");
+    });
 
     connect(&m_DisplayTimer, &QTimer::timeout, this, [this]() { sendDisplays(true); });
     connect(&m_CursorTimer, &QTimer::timeout, this, [this]() { sendCursor(true); });
@@ -168,6 +171,9 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
     case MsgType::Hello:
         // The laptop is really back: forget a pending lock from an earlier drop
         m_GraceTimer.stop();
+        if (conn == m_Session) {
+            m_LaptopPresent = true;
+        }
         if (conn == m_Session && !m_SessionReady) {
             m_SessionReady = true;
             m_Clipboard->connectionUp();
@@ -206,6 +212,7 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
         break;
     case MsgType::Goodbye:
         m_SessionSaidGoodbye = true;
+        m_LaptopPresent = false;
         if (m_LockOnDisconnect) {
             lockNow("laptop disconnected");
         }
@@ -230,7 +237,6 @@ void AgentServer::onSessionClosed(PeerConnection* conn)
     if (conn != m_Session) {
         return;
     }
-    const bool saidHello = m_SessionReady;
     m_Session = nullptr;
     m_IdleTimer.stop();
     m_DisplayTimer.stop();
@@ -240,9 +246,9 @@ void AgentServer::onSessionClosed(PeerConnection* conn)
     conn->deleteLater();
     emit message("session closed");
 
-    // Only a laptop that was really here (said Hello) starts the countdown; a
-    // connection that died before that leaves a running countdown as it is.
-    if (saidHello && !m_SessionSaidGoodbye && m_LockOnDisconnect) {
+    // Only while a laptop is here (said Hello, no Goodbye) does a lost connection
+    // start the countdown; a countdown already running is not pushed back.
+    if (m_LaptopPresent && !m_SessionSaidGoodbye && m_LockOnDisconnect && !m_GraceTimer.isActive()) {
         m_GraceTimer.start(m_Config.reconnectGraceMs);
     }
 }

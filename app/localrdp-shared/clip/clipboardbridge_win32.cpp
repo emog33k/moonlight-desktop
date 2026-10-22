@@ -64,8 +64,12 @@ ClipboardBridge::~ClipboardBridge()
     }
     m_IoCv.notify_all();
     // A read of a slow file (e.g. a OneDrive file downloading) must not hold up
-    // the end of the stream
-    CancelSynchronousIo((HANDLE)m_IoThread.native_handle());
+    // the end of the stream: cancel until the thread is out (it may only be
+    // about to start the read when we first try)
+    const HANDLE io = (HANDLE)m_IoThread.native_handle();
+    while (WaitForSingleObject(io, 50) == WAIT_TIMEOUT) {
+        CancelSynchronousIo(io);
+    }
     m_IoThread.join();
 }
 
@@ -85,9 +89,25 @@ void ClipboardBridge::setLocalCopyTime(qint64 msSinceEpoch)
     m_LocalCopiedAt = msSinceEpoch;
 }
 
+void ClipboardBridge::stopServing()
+{
+    m_Epoch++;
+    m_Source.clear();
+    {
+        std::lock_guard<std::mutex> lock(m_IoMutex);
+        m_IoQueue.clear();
+    }
+}
+
 void ClipboardBridge::setEnabled(bool enabled)
 {
     m_Enabled = enabled;
+    if (!enabled) {
+        // At once, from this thread: the clipboard thread may be busy for a while
+        // (e.g. waiting on a slow paste), and the PC may have just been locked
+        stopServing();
+        m_Fetcher->disconnected(); // also ends pastes of the peer's data in progress
+    }
     post([this, enabled]() {
         if (m_Enabled != enabled) {
             return; // changed again meanwhile; that task does the work
@@ -126,7 +146,7 @@ void ClipboardBridge::connectionDown()
 {
     m_Connected = false;
     m_Fetcher->disconnected();
-    m_Source.clear();
+    stopServing();
     post([this]() {
         m_Source.clear();
         m_PendingPeerOffer.reset();
@@ -151,13 +171,16 @@ void ClipboardBridge::onFrame(const Proto::Frame& frame)
         break;
     case MsgType::ClipRequest:
         if (auto request = decodeRequest(frame.payload)) {
-            if (request->what == What::File) {
+            if (!m_Enabled || !m_Connected) {
+                m_Send(MsgType::ClipError, encodeError(request->id, "off"));
+            }
+            else if (request->what == What::File) {
                 // Disk can be slow (OneDrive placeholders): never on the network thread
                 bool queued = false;
                 {
                     std::lock_guard<std::mutex> lock(m_IoMutex);
                     if (m_IoQueue.size() < kMaxQueuedFileRequests) {
-                        m_IoQueue.push_back(*request);
+                        m_IoQueue.push_back({ *request, m_Epoch.load() });
                         queued = true;
                     }
                 }
@@ -188,20 +211,31 @@ void ClipboardBridge::ioThreadMain()
 {
     for (;;) {
         Request request;
+        quint64 epoch;
         {
             std::unique_lock<std::mutex> lock(m_IoMutex);
             m_IoCv.wait(lock, [this]() { return m_IoStop || !m_IoQueue.empty(); });
             if (m_IoStop) {
                 return;
             }
-            request = m_IoQueue.front();
+            request = m_IoQueue.front().first;
+            epoch = m_IoQueue.front().second;
             m_IoQueue.pop_front();
+        }
+        if (epoch != m_Epoch || !m_Enabled) {
+            continue; // from a connection that is gone, or sharing was turned off
         }
         // While this read runs, the clipboard thread tells the peer we are still
         // at it (see onHeartbeatTimer), so a slow disk does not look like a dead peer.
         m_IoBusySince = nowMs();
+        m_IoBusyEpoch = epoch;
         m_IoBusyId = request.id;
-        m_Source.serve(request, m_Send);
+        m_Source.serve(request, [this, epoch](MsgType type, QByteArray payload) {
+            // The read may have taken long: only to the connection that asked
+            if (epoch == m_Epoch && m_Enabled) {
+                m_Send(type, payload);
+            }
+        });
         m_IoBusyId = 0;
     }
 }
@@ -209,7 +243,8 @@ void ClipboardBridge::ioThreadMain()
 void ClipboardBridge::onHeartbeatTimer()
 {
     const quint32 id = m_IoBusyId;
-    if (id != 0 && m_Connected && nowMs() - m_IoBusySince >= (qint64)kHeartbeatMs) {
+    if (id != 0 && m_Connected && m_Enabled && m_IoBusyEpoch == m_Epoch &&
+            nowMs() - m_IoBusySince >= (qint64)kHeartbeatMs) {
         m_Send(MsgType::ClipData, encodeChunk({ id, false, QByteArray() }));
     }
 }

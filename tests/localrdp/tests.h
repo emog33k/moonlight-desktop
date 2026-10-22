@@ -108,6 +108,7 @@ private slots:
     void reconnectThenDropStillLocks();
     void displayListAfterHelloAndOnChange();
     void noClipboardWhilePcLocked();
+    void replacedThenSilentDropStillLocks();
     void cursorAndSunshineAfterHello();
 };
 
@@ -186,6 +187,7 @@ private slots:
     void olderFileOffersExpire();
     void pendingFileFetchSurvivesNewOffer();
     void heartbeatKeepsSlowFileAlive();
+    void requestIdsStartRandom();
 };
 
 class TestClipReader : public QObject
@@ -236,6 +238,7 @@ private slots:
     void sentOffersCarryCopyTime();
     void offerAfterDisconnectIgnored();
     void disablingSendsEmptyOfferAndStopsServing();
+    void disableStopsServingAtOnce();
 };
 
 class TestVideoArea : public QObject

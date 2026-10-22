@@ -1,6 +1,7 @@
 #include "clipexchange.h"
 
 #include <QFile>
+#include <QRandomGenerator>
 
 #include <chrono>
 
@@ -137,7 +138,10 @@ void LocalClipSource::serve(const Request& request, const SendFn& send)
 }
 
 RemoteFetcher::RemoteFetcher(SendFn send)
-    : m_Send(std::move(send))
+    : m_Send(std::move(send)),
+      // Random start: a reply still in flight for an earlier connection's request
+      // can never match one of ours
+      m_NextId(QRandomGenerator::global()->bounded(1u << 30) + 1000000)
 {
 }
 

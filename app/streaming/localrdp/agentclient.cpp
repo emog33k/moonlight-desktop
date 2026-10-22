@@ -104,6 +104,7 @@ public:
 
     void sayGoodbye()
     {
+        m_Stopping = true; // closing below must not start a reconnect
         if (m_Conn && m_Ready) {
             m_Conn->send(MsgType::Goodbye);
             // The agent closes its side once it has read Goodbye; wait for that, so

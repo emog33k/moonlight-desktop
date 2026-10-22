@@ -80,6 +80,9 @@ private:
     QSslServer* m_Server;
     QPointer<PeerConnection> m_Session;
     bool m_SessionSaidGoodbye = false;
+    // The laptop said Hello and has not said Goodbye: any loss of the connection
+    // from now on (also of a reconnect that never got to Hello) starts the countdown
+    bool m_LaptopPresent = false;
     bool m_LockOnDisconnect = false;
     QTimer m_GraceTimer;
     QTimer m_IdleTimer;      // restarted by every frame of the session

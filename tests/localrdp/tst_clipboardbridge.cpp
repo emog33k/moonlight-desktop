@@ -355,3 +355,51 @@ void TestClipboardBridge::disablingSendsEmptyOfferAndStopsServing()
     QVERIFY(out.waitFor(MsgType::ClipError).has_value());
     QVERIFY(!out.waitFor(MsgType::ClipData, 300).has_value());
 }
+
+void TestClipboardBridge::disableStopsServingAtOnce()
+{
+    // The PC locks while its clipboard thread is busy (e.g. a slow paste): the
+    // clipboard must stop being served right away, not when that thread is free
+    QTemporaryDir dir;
+    QFile f(dir.filePath("s.bin"));
+    f.open(QIODevice::WriteOnly);
+    f.write("secret");
+    f.close();
+    Captured out;
+    ClipboardBridge bridge(out.sender(), false);
+    bridge.connectionUp();
+    std::mutex m;
+    std::condition_variable cv;
+    bool release = false, inside = false;
+    bridge.offerFiles({ f.fileName() }, [&](bool, QString) {
+        std::unique_lock<std::mutex> lock(m);
+        inside = true;
+        cv.notify_all();
+        cv.wait(lock, [&]() { return release; }); // keeps the clipboard thread busy
+    });
+    {
+        std::unique_lock<std::mutex> lock(m);
+        cv.wait(lock, [&]() { return inside; });
+    }
+    const auto offer = decodeOffer(out.waitFor(MsgType::ClipOffer)->payload);
+
+    bridge.setEnabled(false);
+    Request r;
+    r.id = 4;
+    r.seq = offer->seq;
+    r.what = What::File;
+    r.length = 100;
+    bridge.onFrame({ MsgType::ClipRequest, encodeRequest(r) });
+    QTest::qWait(300);
+    bool servedData = false;
+    {
+        std::lock_guard<std::mutex> lock(out.mutex);
+        for (const auto& fr : out.frames) servedData |= fr.type == MsgType::ClipData;
+    }
+    {
+        std::lock_guard<std::mutex> lock(m);
+        release = true;
+    }
+    cv.notify_all();
+    QVERIFY(!servedData);
+}

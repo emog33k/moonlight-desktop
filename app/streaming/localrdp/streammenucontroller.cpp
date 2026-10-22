@@ -117,7 +117,7 @@ int StreamMenuController::sectionButton(int from, int step) const
 
 void StreamMenuController::showMenu(int button)
 {
-    if (!m_Toolbar || !m_Menu) {
+    if (!m_Toolbar || !m_Menu || button < 0 || button >= m_Toolbar->buttons().size()) {
         return;
     }
     const StreamState state = m_Host->queryState();
@@ -136,9 +136,6 @@ void StreamMenuController::showMenu(int button)
     // In full screen this also brings the toolbar out
     m_Toolbar->setKeepVisible(true);
 
-    if (button < 0 || button >= m_Toolbar->buttons().size()) {
-        return;
-    }
     QRect anchor = m_Toolbar->buttonScreenRect(button);
     if (anchor.isEmpty()) {
         // No room for this button (very narrow window): under the toolbar's left end

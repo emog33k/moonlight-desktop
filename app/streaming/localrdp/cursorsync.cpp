@@ -9,8 +9,10 @@ CursorSync::CursorSync(Host* host, const QString& hostId)
       m_Key(QStringLiteral("localrdp/sunshinecursor/") + (hostId.isEmpty() ? QStringLiteral("default") : hostId))
 {
     QSettings settings;
-    m_RecordInstance = settings.value(m_Key + "/instance").toString();
-    m_RecordHidden = settings.value(m_Key + "/hidden", false).toBool();
+    // Earlier builds kept one record for all PCs: take it over once
+    const QString key = settings.contains(m_Key + "/instance") ? m_Key : QStringLiteral("localrdp/sunshinecursor");
+    m_RecordInstance = settings.value(key + "/instance").toString();
+    m_RecordHidden = settings.value(key + "/hidden", false).toBool();
 }
 
 void CursorSync::update(bool enabled, bool absoluteMouse, bool agentConnected, const QString& sunshineInstance)

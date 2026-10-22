@@ -356,3 +356,20 @@ void TestClipExchange::moreDataThanOfferedFails()
     pipe.fetcher.setOffer(claimed);
     QVERIFY(!pipe.fetcher.fetchAll(7, What::Text, 3000).has_value());
 }
+
+void TestClipExchange::requestIdsStartRandom()
+{
+    // A new connection's requests never reuse the ids a previous one had in flight
+    ManualPeer a, b;
+    a.fetcher.setOffer(textOffer(1, "x"));
+    b.fetcher.setOffer(textOffer(1, "x"));
+    std::thread ta([&]() { a.fetcher.fetchAll(1, What::Text, 200); });
+    std::thread tb([&]() { b.fetcher.fetchAll(1, What::Text, 200); });
+    const auto ra = a.waitRequest();
+    const auto rb = b.waitRequest();
+    ta.join();
+    tb.join();
+    QVERIFY(ra && rb);
+    QVERIFY(ra->id != rb->id);
+    QVERIFY(ra->id > 1000);
+}

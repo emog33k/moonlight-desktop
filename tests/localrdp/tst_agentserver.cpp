@@ -399,3 +399,21 @@ void TestAgentServer::noClipboardWhilePcLocked()
     conn.send(MsgType::ClipOffer, Clip::encodeOffer(offer));
     QTRY_COMPARE_WITH_TIMEOUT(peerOffers.load(), 1, 3000);
 }
+
+void TestAgentServer::replacedThenSilentDropStillLocks()
+{
+    // The laptop's Wi-Fi drops; its reconnect completes TLS (replacing the old
+    // session) but dies before Hello: the PC must still lock after the grace time
+    Fixture f;
+    auto first = f.connect("client1");
+    QSignalSpy frames(first.get(), &PeerConnection::frameReceived);
+    first->send(MsgType::Hello, jsonPayload(QJsonObject{ { "version", 1 }, { "lockOnDisconnect", true } }));
+    QVERIFY(waitForType(frames, MsgType::HelloAck));
+    {
+        auto again = f.connect("client1"); // replaces the first, no Hello
+        QVERIFY(again);
+        QTest::qWait(100);
+    }
+    first.reset();
+    QTRY_COMPARE_WITH_TIMEOUT(f.locks, 1, 3000);
+}
