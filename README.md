@@ -20,8 +20,11 @@ Downloads: [Releases](https://github.com/emog33k/moonlight-desktop/releases).
 - Client: `MoonlightDesktop-Setup.exe` (per-user install, settings kept separate from a regular Moonlight).
 - Pair as usual: enter the PIN at `https://localhost:47990` on the host.
 
+## Outside your local network
+Use [Tailscale](https://tailscale.com) (or another VPN that puts both machines in one network): install it on the host and the client, then add the host in Moonlight by its Tailscale address (100.x.y.z). Sunshine and the agent accept Tailscale addresses like local ones. Do not forward Sunshine's or the agent's ports on your router.
+
 ## Agent
-[`localrdp/agent`](localrdp/agent) listens on TCP 48100 (local subnet only) over TLS. It accepts only clients paired in Sunshine; its certificate is signed with Sunshine's key and its private key is protected with DPAPI.
+[`localrdp/agent`](localrdp/agent) listens on TCP 48100 over TLS; the firewall rule allows the local subnet and Tailscale only. It accepts only clients paired in Sunshine; its certificate is signed with Sunshine's key and its private key is protected with DPAPI.
 
 ## Building
 Visual Studio 2022 and Qt 6. Tests: [`tests/localrdp`](tests/localrdp), [`tests/localrdp-ui`](tests/localrdp-ui). Build and installer scripts: [emog33k/moonlight-desktop-build](https://github.com/emog33k/moonlight-desktop-build).
