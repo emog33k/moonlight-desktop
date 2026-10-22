@@ -1,4 +1,5 @@
 #include "session.h"
+#include "localrdp/reconnect.h"
 #include "settings/streamingpreferences.h"
 #include "streaming/streamutils.h"
 #include "backend/richpresencemanager.h"
@@ -110,6 +111,28 @@ void Session::clStageFailed(int stage, int errorCode)
 
 void Session::clConnectionTerminated(int errorCode)
 {
+    // LocalRDP: the network dropped in the middle of a stream that was running:
+    // no error dialog, the stream screen reconnects by itself (see reconnect.h)
+    static_assert(ML_ERROR_GRACEFUL_TERMINATION == 0 && ML_ERROR_UNEXPECTED_EARLY_TERMINATION == -102 &&
+                  ML_ERROR_PROTECTED_CONTENT == -103 && ML_ERROR_FRAME_CONVERSION == -104,
+                  "reconnect.cpp uses these values");
+    {
+        const Uint32 started = s_ActiveSession->m_StreamStartTicks;
+        const qint64 streamedMs = started != 0 ? (qint64)(SDL_GetTicks() - started) : 0;
+        if (LocalRdp::shouldAutoReconnect(errorCode, streamedMs)) {
+            s_ActiveSession->m_UnexpectedTermination = true;
+            s_ActiveSession->m_AutoReconnect = true;
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                        "Connection lost (%d) after %lld ms of streaming: reconnecting",
+                        errorCode, streamedMs);
+            SDL_Event event = {};
+            event.type = SDL_QUIT;
+            event.quit.timestamp = SDL_GetTicks();
+            SDL_PushEvent(&event);
+            return;
+        }
+    }
+
     unsigned int portFlags = LiGetPortFlagsFromTerminationErrorCode(errorCode);
     s_ActiveSession->m_PortTestResults = LiTestClientConnectivity(CONN_TEST_SERVER, 443, portFlags);
 
@@ -1755,6 +1778,7 @@ bool Session::startConnectionAsync()
         return false;
     }
 
+    m_StreamStartTicks = SDL_GetTicks();
     emit connectionStarted();
     return true;
 }

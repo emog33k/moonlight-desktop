@@ -115,6 +115,8 @@ public:
     Q_PROPERTY(QStringList launchWarnings MEMBER m_LaunchWarnings NOTIFY launchWarningsChanged);
     // LocalRDP: this stream ended to start again with new settings (quality presets)
     Q_PROPERTY(bool restartRequested MEMBER m_RestartRequested CONSTANT);
+    // LocalRDP: the network dropped mid-stream; the stream screen reconnects by itself
+    Q_PROPERTY(bool reconnectRequested MEMBER m_AutoReconnect CONSTANT);
     Q_INVOKABLE Session* createRestartSession();
 
     static
@@ -284,6 +286,8 @@ private:
     std::atomic<bool> m_AgentEventPending;
     int m_LocalRdpGeneration; // this stream's number (see s_LocalRdpGeneration)
     bool m_RestartRequested = false;
+    bool m_AutoReconnect = false;
+    Uint32 m_StreamStartTicks = 0; // when the stream started showing (0: not yet)
 #ifdef Q_OS_WIN32
     LocalRdp::AgentNotices m_AgentNotices;
 #endif

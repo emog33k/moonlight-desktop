@@ -375,3 +375,12 @@ private slots:
     void roundTripPerPc();
     void fitsDisplays();
 };
+
+class TestReconnect : public QObject
+{
+    Q_OBJECT
+private slots:
+    void networkLossReconnects();
+    void hostSideEndsDoNot();
+    void onlyAfterItWasRunning();
+};

@@ -39,6 +39,8 @@ SOURCES += \
     tst_streamvolume.cpp \
     tst_agentnotices.cpp \
     tst_windowmemory.cpp \
+    tst_reconnect.cpp \
+    ../../app/streaming/localrdp/reconnect.cpp \
     ../../app/streaming/localrdp/windowmemory.cpp \
     ../../app/streaming/localrdp/agentnotices.cpp \
     ../../app/streaming/localrdp/streamvolume.cpp \

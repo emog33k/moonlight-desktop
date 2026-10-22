@@ -14,10 +14,64 @@ Item {
     property bool isResume : false
     property bool quitAfter : false
 
+    // LocalRDP: reconnecting after the network dropped (or with new settings).
+    // reconnectAttempt > 0: this screen is such an attempt. Same limits as reconnect.h.
+    property int reconnectAttempt : 0
+    readonly property int maxReconnectAttempts : 20
+    property bool reconnectCancelled : false
+    property bool nextPending : false
+    property var nextSession : null
+    property int nextAttempt : 0
+
     function stageStarting(stage)
     {
-        // Update the spinner text
-        stageText = qsTr("Starting %1...").arg(stage)
+        // Update the spinner text (a reconnect keeps saying what it is doing)
+        if (reconnectAttempt === 0) {
+            stageText = qsTr("Starting %1...").arg(stage)
+        }
+    }
+
+    function showReconnecting(text, cancellable)
+    {
+        window.visible = true
+        stageSpinner.visible = true
+        stageLabel.visible = true
+        hintText.visible = false
+        stageText = text
+        reconnectCancelButton.visible = cancellable
+    }
+
+    function finishSegue()
+    {
+        // As at the end of sessionFinished(): back to the PC/app list
+        SdlGamepadKeyNavigation.enable()
+        if (!quitAfter) {
+            stackView.pop()
+        }
+        window.visible = true
+    }
+
+    Component.onCompleted: {
+        if (reconnectAttempt > 0) {
+            stageText = qsTr("Связь с ПК потеряна. Переподключение (попытка %1 из %2)…")
+                            .arg(reconnectAttempt).arg(maxReconnectAttempts)
+        }
+    }
+
+    Timer {
+        id: reconnectTimer
+        repeat: false
+        onTriggered: {
+            if (reconnectCancelled || !nextSession) {
+                return
+            }
+            var component = Qt.createComponent("StreamSegue.qml")
+            stackView.replace(stackView.currentItem,
+                              component.createObject(stackView, {"appName": appName, "session": nextSession,
+                                                                 "isResume": true, "quitAfter": quitAfter,
+                                                                 "reconnectAttempt": nextAttempt}),
+                              StackView.Immediate)
+        }
     }
 
     function stageFailed(stage, errorCode, failingPorts)
@@ -61,10 +115,24 @@ Item {
 
     function sessionFinished(portTestResult)
     {
-        // LocalRDP: reconnecting with new settings: wait until this session is
-        // fully gone (sessionReadyForDeletion), then start the next one
-        if (session && session.restartRequested && !streamSegueErrorDialog.text) {
-            window.visible = true
+        // LocalRDP: reconnecting (new settings, network dropped, or an attempt
+        // that failed while attempts are left): no dialog; the next session
+        // starts once this one is fully gone (sessionReadyForDeletion)
+        if (reconnectCancelled) {
+            streamSegueErrorDialog.text = ""
+        }
+        else if (session && (session.restartRequested || session.reconnectRequested ||
+                             (reconnectAttempt > 0 && reconnectAttempt < maxReconnectAttempts))) {
+            streamSegueErrorDialog.text = ""
+            nextPending = true
+            if (session.restartRequested) {
+                nextAttempt = 0
+                showReconnecting(qsTr("Переподключение с новыми настройками…"), false)
+            }
+            else {
+                nextAttempt = reconnectAttempt + 1
+                showReconnecting(qsTr("Связь с ПК потеряна. Переподключение…"), true)
+            }
             return
         }
 
@@ -101,13 +169,15 @@ Item {
 
     function sessionReadyForDeletion()
     {
-        if (session && session.restartRequested && !streamSegueErrorDialog.text) {
-            var next = session.createRestartSession()
-            var component = Qt.createComponent("StreamSegue.qml")
-            stackView.replace(stackView.currentItem,
-                              component.createObject(stackView, {"appName": appName, "session": next,
-                                                                 "isResume": true, "quitAfter": quitAfter}),
-                              StackView.Immediate)
+        if (nextPending && !reconnectCancelled && session) {
+            // The old connection is fully closed now: the next one may start
+            nextPending = false
+            nextSession = session.createRestartSession()
+            // Right away for new settings; a moment after a drop; a few seconds between failed attempts
+            reconnectTimer.interval = nextAttempt === 0 ? 0 : (nextAttempt === 1 ? 1000 : 3000)
+            session = null
+            gc()
+            reconnectTimer.start()
             return
         }
 
@@ -235,6 +305,28 @@ Item {
             verticalAlignment: Text.AlignVCenter
 
             wrapMode: Text.Wrap
+        }
+    }
+
+    Button {
+        id: reconnectCancelButton
+        visible: reconnectAttempt > 0
+        anchors.top: parent.verticalCenter
+        anchors.topMargin: 60
+        anchors.horizontalCenter: parent.horizontalCenter
+        text: qsTr("Отмена")
+        onClicked: {
+            reconnectCancelled = true
+            reconnectTimer.stop()
+            nextSession = null
+            visible = false
+            if (session) {
+                // An attempt is connecting: stop it; sessionFinished() then goes back
+                session.interrupt()
+            }
+            else {
+                finishSegue()
+            }
         }
     }
 
