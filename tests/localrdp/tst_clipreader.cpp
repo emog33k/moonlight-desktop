@@ -122,6 +122,38 @@ void TestClipReader::historyZeroMarksExcluded()
     QVERIFY(!readDataObject(&allowed, 1).excluded);
 }
 
+void TestClipReader::otherPrivacyFlagsMarkExcluded()
+{
+    TestDataObject viewerIgnore;
+    viewerIgnore.setText("secret");
+    viewerIgnore.set((CLIPFORMAT)RegisterClipboardFormatW(L"Clipboard Viewer Ignore"), QByteArray(1, 0));
+    QVERIFY(readDataObject(&viewerIgnore, 1).excluded);
+
+    TestDataObject noCloud;
+    noCloud.setText("secret");
+    noCloud.setDword(L"CanUploadToCloudClipboard", 0);
+    QVERIFY(readDataObject(&noCloud, 1).excluded);
+}
+
+void TestClipReader::unreadablePrivacyFlagNeverShared()
+{
+    // The flag is there but cannot be read right now: try again, never guess "public"
+    TestDataObject busy;
+    busy.setText("secret");
+    busy.setDword(L"CanIncludeInClipboardHistory", 1);
+    busy.failGetData((CLIPFORMAT)RegisterClipboardFormatW(L"CanIncludeInClipboardHistory"), CLIPBRD_E_CANT_OPEN);
+    const LocalSnapshot s = readDataObject(&busy, 1);
+    QVERIFY(s.busy);
+    QVERIFY(s.text.isEmpty());
+
+    // Unreadable for another reason: treated as private
+    TestDataObject broken;
+    broken.setText("secret");
+    broken.setDword(L"CanIncludeInClipboardHistory", 1);
+    broken.failGetData((CLIPFORMAT)RegisterClipboardFormatW(L"CanIncludeInClipboardHistory"), E_FAIL);
+    QVERIFY(readDataObject(&broken, 1).excluded);
+}
+
 void TestClipReader::tooManyFilesGivesNoFiles()
 {
     QTemporaryDir dir;

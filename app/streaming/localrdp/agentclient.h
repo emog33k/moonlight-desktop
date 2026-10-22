@@ -22,6 +22,11 @@ namespace LocalRdp {
 class AgentClientWorker;
 namespace Clip { class ClipboardBridge; }
 
+// When the laptop's clipboard was copied, as far as we can tell at stream start:
+// unchanged since the last stream (same Windows clipboard sequence number) keeps
+// the time we knew then, otherwise it counts as copied now.
+qint64 laptopClipboardCopyTime(quint32 currentSeq, quint32 storedSeq, qint64 storedTime, qint64 now);
+
 // Connection from the stream to LocalRDP Agent on the PC. Runs on its own thread
 // (the Qt main thread is busy with the SDL loop during a stream) and keeps
 // reconnecting while it exists. All methods are safe to call from any thread.
@@ -77,6 +82,7 @@ private:
     QString m_SunshineInstance;
     std::optional<Proto::CursorState> m_Cursor;
     std::function<void()> m_OnChange;
+    bool m_UseSystemClipboard = true;
     void notifyChange();
     AgentClientWorker* m_SendTarget = nullptr;
 };

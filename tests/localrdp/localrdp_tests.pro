@@ -4,6 +4,9 @@
 QT += testlib qml network
 RESOURCES += data/testdata.qrc
 LIBS += crypt32.lib ole32.lib shell32.lib user32.lib psapi.lib gdi32.lib
+# OpenSSL (agent identity): the same copy Moonlight builds with
+INCLUDEPATH += $$PWD/../../libs/windows/include/x64
+LIBS += -L$$PWD/../../libs/windows/lib/x64 -llibcrypto
 QT -= gui
 CONFIG += console c++17 testcase
 CONFIG -= app_bundle
@@ -31,6 +34,8 @@ SOURCES += \
     tst_clipboardbridge.cpp \
     tst_videoarea.cpp \
     tst_toolbarlayout.cpp \
+    tst_agentidentity.cpp \
+    ../../app/localrdp-shared/agentidentity.cpp \
     tst_hostdisplays.cpp \
     tst_cursorshape.cpp \
     tst_cursorsync.cpp \

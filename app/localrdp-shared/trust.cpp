@@ -29,17 +29,24 @@ bool isPairedClient(const QByteArray& sunshineStateJson, const QSslCertificate& 
         return false;
     }
 
+    // Same rule as Sunshine (nvhttp.cpp is_client_enabled): exactly one record
+    // with this certificate, and it is enabled ("enabled" missing = enabled).
+    bool matched = false;
     for (const QJsonValue& device : devices.toArray()) {
         const QJsonObject d = device.toObject();
-        if (d.value("enabled").toString() != QLatin1String("true")) {
+        const QSslCertificate paired(d.value("cert").toString().toLatin1(), QSsl::Pem);
+        if (paired.isNull() || paired != clientCert) {
             continue;
         }
-        const QSslCertificate paired(d.value("cert").toString().toLatin1(), QSsl::Pem);
-        if (!paired.isNull() && paired == clientCert) {
-            return true;
+        const QJsonValue enabled = d.value("enabled");
+        const bool isEnabled = enabled.isUndefined() || enabled.toBool() ||
+                               enabled.toString().compare(QLatin1String("true"), Qt::CaseInsensitive) == 0;
+        if (matched || !isEnabled) {
+            return false;
         }
+        matched = true;
     }
-    return false;
+    return matched;
 }
 
 static std::optional<QByteArray> runDpapi(const QByteArray& input, bool protect)

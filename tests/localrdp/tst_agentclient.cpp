@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "agentserver.h"
 #include "streaming/localrdp/agentclient.h"
+#include "localrdp-shared/agentidentity.h"
 #include "streaming/localrdp/sessionmenuhost.h"
 #include "settings/streamingpreferences.h"
 
@@ -32,6 +33,7 @@ struct AgentFixture {
     explicit AgentFixture(const QString& serverCertName = "server", int idleTimeoutMs = 60000)
     {
         AgentConfig config;
+        config.useSystemClipboard = false; // never the real clipboard in tests
         config.serverCert = testCert(serverCertName);
         config.serverKey = testKey(serverCertName);
         config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
@@ -48,7 +50,7 @@ struct AgentFixture {
 std::unique_ptr<AgentClient> makeClient(quint16 port, const QString& clientName = "client1")
 {
     return std::unique_ptr<AgentClient>(new AgentClient("127.0.0.1", testCert(clientName), testKey(clientName),
-                                                        testCert("server"), port, 200));
+                                                        testCert("server"), port, 200, 2000, 6000, /*useSystemClipboard*/ false));
 }
 
 }
@@ -117,6 +119,7 @@ void TestAgentClient::reconnectsAfterAgentRestart()
 
     // Agent comes back on the same port
     AgentConfig config;
+    config.useSystemClipboard = false; // never the real clipboard in tests
     config.serverCert = testCert("server");
     config.serverKey = testKey("server");
     config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
@@ -181,6 +184,7 @@ void TestAgentClient::filesOfferedFromLaptopReachThePc()
     std::mutex mutex;
     QStringList offered;
     AgentConfig config;
+    config.useSystemClipboard = false; // never the real clipboard in tests
     config.serverCert = testCert("server");
     config.serverKey = testKey("server");
     config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
@@ -211,6 +215,7 @@ void TestAgentClient::clipboardSyncOffSendsNothing()
 {
     std::atomic<int> offers { 0 };
     AgentConfig config;
+    config.useSystemClipboard = false; // never the real clipboard in tests
     config.serverCert = testCert("server");
     config.serverKey = testKey("server");
     config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
@@ -251,6 +256,7 @@ public:
 void TestAgentClient::pcDisplaysShownInMenu()
 {
     AgentConfig config;
+    config.useSystemClipboard = false; // never the real clipboard in tests
     config.serverCert = testCert("server");
     config.serverKey = testKey("server");
     config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
@@ -291,6 +297,7 @@ void TestAgentClient::pcCursorReachesClient()
     cursor.image.bgra = QByteArray(36, '\x10');
 
     AgentConfig config;
+    config.useSystemClipboard = false; // never the real clipboard in tests
     config.serverCert = testCert("server");
     config.serverKey = testKey("server");
     config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
@@ -329,4 +336,73 @@ void TestAgentClient::pcCursorReachesClient()
     got = waitCursor();
     QVERIFY(got);
     QCOMPARE(got->kind, Proto::CursorKind::Hidden);
+}
+
+namespace {
+std::unique_ptr<AgentServer> serverWithIdentity(const QString& signerName)
+{
+    const auto id = issueAgentIdentity(testCert(signerName).toPem(), testKey(signerName).toPem());
+    if (!id) {
+        return nullptr;
+    }
+    AgentConfig config;
+    config.useSystemClipboard = false; // never the real clipboard in tests
+    config.serverCert = QSslCertificate(id->certPem, QSsl::Pem);
+    config.serverKey = QSslKey(id->keyPem, QSsl::Ec, QSsl::Pem);
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    std::unique_ptr<AgentServer> server(new AgentServer(config));
+    return server->listen() ? std::move(server) : nullptr;
+}
+}
+
+void TestAgentClient::connectsToAgentWithOwnIdentity()
+{
+    // The agent shows its own certificate, signed by Sunshine's key (pinned as "server")
+    auto server = serverWithIdentity("server");
+    QVERIFY(server);
+    auto client = makeClient(server->port());
+    QTRY_COMPARE_WITH_TIMEOUT(client->status(), AgentStatus::Connected, 5000);
+}
+
+void TestAgentClient::agentIdentityFromOtherKeyRejected()
+{
+    auto server = serverWithIdentity("client2");
+    QVERIFY(server);
+    auto client = makeClient(server->port());
+    QTRY_COMPARE_WITH_TIMEOUT(client->status(), AgentStatus::CertError, 5000);
+    QTest::qWait(500);
+    QCOMPARE(client->status(), AgentStatus::CertError);
+}
+
+void TestAgentClient::silentServerRetried()
+{
+    // Something accepts the TCP connection but never completes TLS or answers
+    // Hello (PC asleep mid-handshake, agent hung): the client must give up and
+    // try again instead of waiting forever.
+    QTcpServer silent;
+    QVERIFY(silent.listen(QHostAddress::LocalHost, 0));
+    int accepted = 0;
+    QList<QTcpSocket*> held;
+    QObject::connect(&silent, &QTcpServer::newConnection, [&]() {
+        while (silent.hasPendingConnections()) {
+            held << silent.nextPendingConnection();
+            accepted++;
+        }
+    });
+    std::unique_ptr<AgentClient> client(new AgentClient("127.0.0.1", testCert("client1"), testKey("client1"),
+                                                        testCert("server"), silent.serverPort(), 200, 2000, 500, false));
+    QTRY_VERIFY_WITH_TIMEOUT(accepted >= 2, 5000);
+    QVERIFY(client->status() != AgentStatus::Connected);
+}
+
+void TestAgentClient::laptopClipboardAgeAcrossStreams()
+{
+    // Unchanged since the last stream: the time we knew then
+    QCOMPARE(laptopClipboardCopyTime(42, 42, 1000, 5000), qint64(1000));
+    // Changed while not streaming: copied just now, as far as we can tell
+    QCOMPARE(laptopClipboardCopyTime(43, 42, 1000, 5000), qint64(5000));
+    // Never streamed before
+    QCOMPARE(laptopClipboardCopyTime(43, 0, 0, 5000), qint64(5000));
 }

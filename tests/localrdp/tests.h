@@ -70,6 +70,8 @@ class TestTrust : public QObject
 private slots:
     void pairedEnabledAccepted();
     void pairedDisabledRejected();
+    void missingEnabledMeansEnabled();
+    void duplicateRecordsFollowSunshine();
     void unknownRejected();
     void nullCertRejected();
     void garbageJsonRejected();
@@ -104,6 +106,7 @@ private slots:
     void pingsKeepSessionAlive();
     void reconnectThenDropStillLocks();
     void displayListAfterHelloAndOnChange();
+    void noClipboardWhilePcLocked();
     void cursorAndSunshineAfterHello();
 };
 
@@ -125,6 +128,10 @@ private slots:
     void clipboardSyncOffSendsNothing();
     void pcDisplaysShownInMenu();
     void pcCursorReachesClient();
+    void connectsToAgentWithOwnIdentity();
+    void agentIdentityFromOtherKeyRejected();
+    void silentServerRetried();
+    void laptopClipboardAgeAcrossStreams();
 };
 
 class TestSessionMenuHost : public QObject
@@ -156,6 +163,8 @@ private slots:
     void chunkRoundTrip();
     void chunkTooShortRejected();
     void errorRoundTrip();
+    void oddTextBytesRejected();
+    void offerCopyTimeRoundTrip();
 };
 
 class TestClipExchange : public QObject
@@ -171,8 +180,11 @@ private slots:
     void directoryIndexRejected();
     void indexOutOfRangeRejected();
     void clearedSourceErrors();
-    void oldRequestAfterNewOfferFails();
+    void oldFilePasteContinuesAfterNewOffer();
     void moreDataThanOfferedFails();
+    void olderFileOffersExpire();
+    void pendingFileFetchSurvivesNewOffer();
+    void heartbeatKeepsSlowFileAlive();
 };
 
 class TestClipReader : public QObject
@@ -185,6 +197,8 @@ private slots:
     void filesAndNestedFolders();
     void excludedFormatMarksExcluded();
     void historyZeroMarksExcluded();
+    void otherPrivacyFlagsMarkExcluded();
+    void unreadablePrivacyFlagNeverShared();
     void tooManyFilesGivesNoFiles();
 };
 
@@ -200,7 +214,7 @@ private slots:
     void largeStreamBoundedMemory();
     void historyExclusionFormats();
     void fetchFailureGivesError();
-    void oldStreamFailsAfterNewOffer();
+    void oldStreamKeepsOldContentAfterNewOffer();
     void textCachedAcrossGetData();
 };
 
@@ -217,6 +231,10 @@ private slots:
     void fileRequestsServedOffCallerThread();
     void offerFilesReportsOutcome();
     void seqStartsRandom();
+    void initialOfferNewerSideWins();
+    void sentOffersCarryCopyTime();
+    void offerAfterDisconnectIgnored();
+    void disablingSendsEmptyOfferAndStopsServing();
 };
 
 class TestVideoArea : public QObject
@@ -278,4 +296,16 @@ private slots:
     void settingOffNeverToggles();
     void unknownSunshineNoToggle();
     void pcCursorForwardedWhileActive();
+};
+
+class TestAgentIdentity : public QObject
+{
+    Q_OBJECT
+private slots:
+    void issuedCertificateIsUsable();
+    void pinnedCertificateItselfTrusted();
+    void agentSignedByPinnedTrusted();
+    void agentSignedByOtherKeyRejected();
+    void otherCertificatesRejected();
+    void garbageInputFails();
 };

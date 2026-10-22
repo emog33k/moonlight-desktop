@@ -13,7 +13,12 @@ DEPENDPATH = . ../../app/localrdp-shared ../../app/localrdp-shared/clip
 
 SOURCES += \
     main.cpp \
-    agentserver.cpp     displays_win32.cpp     cursorwatch_win32.cpp     ../../app/localrdp-shared/cursorshape.cpp     ../../app/localrdp-shared/hostdisplays.cpp \
+    agentserver.cpp \
+    displays_win32.cpp \
+    cursorwatch_win32.cpp \
+    ../../app/localrdp-shared/agentidentity.cpp \
+    ../../app/localrdp-shared/cursorshape.cpp \
+    ../../app/localrdp-shared/hostdisplays.cpp \
     ../../app/localrdp-shared/protocol.cpp \
     ../../app/localrdp-shared/trust.cpp \
     ../../app/localrdp-shared/peerconnection.cpp \
@@ -29,9 +34,17 @@ HEADERS += \
     ../../app/localrdp-shared/clip/clipmessages.h \
     ../../app/localrdp-shared/clip/clipreader_win32.h \
     ../../app/localrdp-shared/clip/remotedataobject_win32.h \
-    agentserver.h     displays_win32.h     cursorwatch_win32.h     ../../app/localrdp-shared/cursorshape.h     ../../app/localrdp-shared/hostdisplays.h \
+    agentserver.h \
+    displays_win32.h \
+    cursorwatch_win32.h \
+    ../../app/localrdp-shared/agentidentity.h \
+    ../../app/localrdp-shared/cursorshape.h \
+    ../../app/localrdp-shared/hostdisplays.h \
     ../../app/localrdp-shared/protocol.h \
     ../../app/localrdp-shared/trust.h \
     ../../app/localrdp-shared/peerconnection.h
 
-LIBS += crypt32.lib user32.lib ole32.lib shell32.lib uuid.lib dxgi.lib gdi32.lib
+LIBS += crypt32.lib user32.lib ole32.lib shell32.lib uuid.lib dxgi.lib gdi32.lib wtsapi32.lib
+# OpenSSL (agent certificate for the installer): the same copy Moonlight builds with
+INCLUDEPATH += $$PWD/../../libs/windows/include/x64
+LIBS += -L$$PWD/../../libs/windows/lib/x64 -llibcrypto

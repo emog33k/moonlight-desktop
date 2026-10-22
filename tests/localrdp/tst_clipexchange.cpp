@@ -224,9 +224,10 @@ void TestClipExchange::clearedSourceErrors()
     QVERIFY(!pipe.fetcher.fetchAll(4, What::Text, 3000).has_value());
 }
 
-void TestClipExchange::oldRequestAfterNewOfferFails()
+void TestClipExchange::oldFilePasteContinuesAfterNewOffer()
 {
-    // A paste of the old clipboard must never receive the new clipboard's data
+    // A long file paste keeps going when the source copies something else,
+    // and never receives the new clipboard's data.
     QTemporaryDir dir;
     QFile a(dir.filePath("a.bin"));
     a.open(QIODevice::WriteOnly);
@@ -250,8 +251,101 @@ void TestClipExchange::oldRequestAfterNewOfferFails()
 
     pipe.source.set(second, {}, {}, {}, { b.fileName() });
     pipe.fetcher.setOffer(second);
-    QVERIFY(!pipe.fetcher.fetchRange(100, 0, 3, 3, 3000).has_value()); // old paste continues: fails
+    QCOMPARE(*pipe.fetcher.fetchRange(100, 0, 3, 4, 3000), QByteArray("-CON")); // still the old file
     QCOMPARE(*pipe.fetcher.fetchRange(200, 0, 0, 3, 3000), QByteArray("NEW"));
+    // Text of an old offer is not kept
+    pipe.source.set(textOffer(300, "t"), "t", {}, {}, {});
+    pipe.fetcher.setOffer(textOffer(300, "t"));
+    QVERIFY(!pipe.fetcher.fetchAll(299, What::Text, 1000).has_value());
+}
+
+void TestClipExchange::olderFileOffersExpire()
+{
+    QTemporaryDir dir;
+    QFile a(dir.filePath("a.bin"));
+    a.open(QIODevice::WriteOnly);
+    a.write("AAAA");
+    a.close();
+    Pipe pipe;
+    for (quint64 seq = 1; seq <= 6; seq++) {
+        Offer o;
+        o.seq = seq;
+        o.files = { { "a.bin", 4, false } };
+        pipe.source.set(o, {}, {}, {}, { a.fileName() });
+        pipe.fetcher.setOffer(o);
+    }
+    QVERIFY(pipe.fetcher.fetchRange(6, 0, 0, 4, 3000).has_value());
+    QVERIFY(pipe.fetcher.fetchRange(3, 0, 0, 4, 3000).has_value()); // a few back: still there
+    QVERIFY(!pipe.fetcher.fetchRange(1, 0, 0, 4, 3000).has_value()); // long ago: gone
+    pipe.source.clear();
+    QVERIFY(!pipe.fetcher.fetchRange(6, 0, 0, 4, 3000).has_value()); // cleared: nothing at all
+}
+
+namespace {
+// A fetcher whose requests are only recorded; the test answers by hand.
+struct ManualPeer {
+    std::mutex mutex;
+    QVector<Request> requests;
+    RemoteFetcher fetcher { [this](MsgType type, QByteArray payload) {
+        if (type == MsgType::ClipRequest) {
+            std::lock_guard<std::mutex> lock(mutex);
+            requests << *decodeRequest(payload);
+        }
+    } };
+    std::optional<Request> waitRequest()
+    {
+        for (int i = 0; i < 300; i++) {
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                if (!requests.isEmpty()) return requests.last();
+            }
+            QThread::msleep(10);
+        }
+        return std::nullopt;
+    }
+};
+Offer fileOffer(quint64 seq)
+{
+    Offer o;
+    o.seq = seq;
+    o.files = { { "f.bin", 100, false } };
+    return o;
+}
+}
+
+void TestClipExchange::pendingFileFetchSurvivesNewOffer()
+{
+    ManualPeer peer;
+    peer.fetcher.setOffer(fileOffer(10));
+    std::optional<QByteArray> got;
+    std::thread paste([&]() { got = peer.fetcher.fetchRange(10, 0, 0, 5, 3000); });
+    const auto request = peer.waitRequest();
+    QVERIFY(request.has_value());
+    peer.fetcher.setOffer(fileOffer(11)); // the PC copied something new meanwhile
+    peer.fetcher.onData(encodeChunk({ request->id, true, "12345" }));
+    paste.join();
+    QVERIFY(got.has_value());
+    QCOMPARE(*got, QByteArray("12345"));
+}
+
+void TestClipExchange::heartbeatKeepsSlowFileAlive()
+{
+    // The source is still reading (e.g. a OneDrive file downloading): it sends
+    // empty "still working" chunks; the wait must not time out meanwhile.
+    ManualPeer peer;
+    peer.fetcher.setOffer(fileOffer(20));
+    std::optional<QByteArray> got;
+    std::thread paste([&]() { got = peer.fetcher.fetchRange(20, 0, 0, 3, 300); });
+    const auto request = peer.waitRequest();
+    QVERIFY(request.has_value());
+    for (int i = 0; i < 8; i++) {
+        QThread::msleep(100);
+        peer.fetcher.onData(encodeChunk({ request->id, false, QByteArray() }));
+    }
+    peer.fetcher.onData(encodeChunk({ request->id, true, "abc" }));
+    paste.join();
+    QVERIFY(got.has_value());
+    QCOMPARE(*got, QByteArray("abc"));
 }
 
 void TestClipExchange::moreDataThanOfferedFails()

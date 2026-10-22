@@ -244,7 +244,7 @@ void TestRemoteDataObject::fetchFailureGivesError()
     data->Release();
 }
 
-void TestRemoteDataObject::oldStreamFailsAfterNewOffer()
+void TestRemoteDataObject::oldStreamKeepsOldContentAfterNewOffer()
 {
     QTemporaryDir dir;
     QFile a(dir.filePath("a.bin"));
@@ -271,13 +271,16 @@ void TestRemoteDataObject::oldStreamFailsAfterNewOffer()
     QCOMPARE(m.pstm->Read(buf.data(), (ULONG)buf.size(), &got), S_OK);
     QCOMPARE(buf[0], 'A');
 
-    // The source copies something else; same name, same size
+    // The source copies something else; same name, same size. The paste that
+    // is running goes on with the old file and never gets the new one's bytes.
     Offer second = first;
     second.seq = 2000;
     peer.offer(second, {}, {}, { b.fileName() });
 
-    const HRESULT hr = m.pstm->Read(buf.data(), (ULONG)buf.size(), &got);
-    QVERIFY(FAILED(hr));
+    QCOMPARE(m.pstm->Read(buf.data(), (ULONG)buf.size(), &got), S_OK);
+    QCOMPARE(got, (ULONG)kClipChunk);
+    QCOMPARE(buf[0], 'A');
+    QCOMPARE(buf[kClipChunk - 1], 'A');
     ReleaseStgMedium(&m);
     data->Release();
 }

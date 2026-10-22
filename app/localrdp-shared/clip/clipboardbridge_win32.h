@@ -40,9 +40,20 @@ public:
     ClipboardBridge(const ClipboardBridge&) = delete;
     ClipboardBridge& operator=(const ClipboardBridge&) = delete;
 
+    // Off: our clipboard is no longer offered or served (the peer is told to drop
+    // it) and the peer's offers are ignored. On again: announced like at connect.
     void setEnabled(bool enabled);
     void connectionUp();   // announce the current clipboard
     void connectionDown(); // forget both sides' offers
+
+    // When the current local clipboard was copied (ms since 1970; 0 = unknown).
+    // At connection start the newer clipboard wins (see Offer::initial). Set it
+    // before connectionUp; it then follows local copies and accepted offers.
+    void setLocalCopyTime(qint64 msSinceEpoch);
+    qint64 localCopyTime() const { return m_LocalCopiedAt; }
+    // Same copy time on both sides: true = take the peer's (the agent sets this,
+    // so the laptop's clipboard wins ties).
+    void setPreferPeerOnTie(bool prefer) { m_PreferPeerOnTie = prefer; }
 
     // ClipOffer / ClipRequest / ClipData / ClipError from the network thread.
     void onFrame(const Proto::Frame& frame);
@@ -64,14 +75,18 @@ private:
     void announceLocalClipboard();
     void acceptPeerOffer(const Offer& offer);
     void onRetryTimer();
+    void onHeartbeatTimer();
     void dropOurObject();
     void dropOurObjectReference();
-    void sendSnapshot(const LocalSnapshot& snapshot);
+    void sendSnapshot(const LocalSnapshot& snapshot, bool initial);
 
     SendFn m_Send;
     const bool m_UseSystemClipboard;
     std::atomic<bool> m_Enabled { true };
     std::atomic<bool> m_Connected { false };
+    std::atomic<qint64> m_LocalCopiedAt { 0 };
+    std::atomic<bool> m_PreferPeerOnTie { false };
+    bool m_LocalHasContent = true;      // clipboard thread: last announce had something to offer
     std::function<void(const Offer&)> m_PeerOfferObserver; // clipboard thread
 
     LocalClipSource m_Source;
@@ -82,10 +97,14 @@ private:
     // Retries while another program holds the clipboard (clipboard thread)
     int m_AnnounceRetries = 0;
     bool m_AnnouncePending = false;
+    bool m_AnnounceInitial = false;     // the pending announce is the connection-start one
     std::optional<Offer> m_PendingPeerOffer;
     int m_PeerOfferRetries = 0;
+    bool m_DropPending = false;
+    int m_DropRetries = 0;
 
     std::thread m_Thread;
+    DWORD m_ThreadId = 0;
     HWND m_Hwnd = nullptr;
     std::mutex m_Mutex;
     std::condition_variable m_Ready;
@@ -98,6 +117,8 @@ private:
     std::condition_variable m_IoCv;
     std::deque<Request> m_IoQueue;
     bool m_IoStop = false;
+    std::atomic<quint32> m_IoBusyId { 0 };   // request being read now (0 = none)
+    std::atomic<qint64> m_IoBusySince { 0 };
 };
 
 }

@@ -17,17 +17,20 @@ QSslCertificate testCert(const QString& name)
     return QSslCertificate(f.readAll(), QSsl::Pem);
 }
 
-// Same shape as Sunshine's sunshine_state.json
+// Same shape as Sunshine's sunshine_state.json; a null "enabled" string leaves the field out
 QByteArray sunshineState(const QList<QPair<QSslCertificate, QString>>& devices)
 {
     QJsonArray named;
     for (const auto& d : devices) {
-        named.append(QJsonObject{
+        QJsonObject device{
             { "name", "laptop" },
             { "cert", QString::fromLatin1(d.first.toPem()) },
             { "uuid", "00000000-0000-0000-0000-000000000000" },
-            { "enabled", d.second },
-        });
+        };
+        if (!d.second.isNull()) {
+            device["enabled"] = d.second;
+        }
+        named.append(device);
     }
     QJsonObject root{ { "uniqueid", "x" }, { "named_devices", named } };
     return QJsonDocument(QJsonObject{ { "username", "u" }, { "root", root } }).toJson();
@@ -42,6 +45,23 @@ void TestTrust::pairedEnabledAccepted()
 void TestTrust::pairedDisabledRejected()
 {
     QVERIFY(!isPairedClient(sunshineState({ { testCert("client1"), "false" } }), testCert("client1")));
+}
+
+void TestTrust::missingEnabledMeansEnabled()
+{
+    // Sunshine treats a record without "enabled" as enabled
+    QVERIFY(isPairedClient(sunshineState({ { testCert("client1"), QString() } }), testCert("client1")));
+}
+
+void TestTrust::duplicateRecordsFollowSunshine()
+{
+    // Sunshine accepts a certificate only if exactly one record matches and it is enabled
+    QVERIFY(!isPairedClient(sunshineState({ { testCert("client1"), "true" }, { testCert("client1"), "false" } }),
+                            testCert("client1")));
+    QVERIFY(!isPairedClient(sunshineState({ { testCert("client1"), "false" }, { testCert("client1"), "true" } }),
+                            testCert("client1")));
+    QVERIFY(!isPairedClient(sunshineState({ { testCert("client1"), "true" }, { testCert("client1"), "true" } }),
+                            testCert("client1")));
 }
 
 void TestTrust::unknownRejected()

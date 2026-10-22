@@ -34,6 +34,11 @@ struct Offer {
     std::optional<quint64> imageBytes; // CF_DIB bytes
     std::optional<quint64> pngBytes;   // registered "PNG" format bytes
     QVector<FileEntry> files;
+    // When this content was copied (ms since 1970, 0 = unknown). At connection
+    // start both sides announce their clipboard ("initial"); only the newer one
+    // is taken, so the clipboards don't swap.
+    qint64 copiedAt = 0;
+    bool initial = false;
     bool isEmpty() const { return !textBytes && !imageBytes && !pngBytes && files.isEmpty(); }
 };
 
@@ -66,7 +71,9 @@ std::optional<Chunk> decodeChunk(const QByteArray& payload);
 QByteArray encodeError(quint32 id, const QString& reason);
 std::optional<QPair<quint32, QString>> decodeError(const QByteArray& payload);
 
-// A name that can only ever mean "something inside the paste target folder".
+// A name that can only ever mean "something inside the paste target folder",
+// looks like what it is (no direction-changing characters) and can be created
+// and deleted normally (no device names, no trailing dots or spaces).
 bool isSafeRelativeName(const QString& name);
 
 }

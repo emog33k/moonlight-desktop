@@ -43,6 +43,10 @@ struct AgentConfig {
     // Identifies the running Sunshine (its process id); empty if not running.
     // Reported in HelloAck so the laptop knows when Sunshine restarted.
     std::function<QString()> sunshineInstance;
+    // While the PC is locked nothing of its clipboard or files is shared, and
+    // nothing from the laptop lands on it. Polled every lockPollMs.
+    std::function<bool()> isSessionLocked;
+    int lockPollMs = 1000;
 };
 
 // TLS server for the paired laptop. Only a client whose certificate is paired and
@@ -70,6 +74,7 @@ private:
     void lockNow(const char* reason);
     void sendDisplays(bool onlyIfChanged);
     void sendCursor(bool onlyIfChanged);
+    void checkSessionLock();
 
     AgentConfig m_Config;
     QSslServer* m_Server;
@@ -80,6 +85,11 @@ private:
     QTimer m_IdleTimer;      // restarted by every frame of the session
     QTimer m_DisplayTimer;
     QByteArray m_SentDisplays; // last DisplayList payload sent to this session
+    QByteArray m_SeenDisplays; // changed list seen once; sent when seen again (no flicker mid-change)
+    QTimer m_LockTimer;
+    bool m_PcLocked = false;
+    qint64 m_LastRejectLog = 0;
+    int m_RejectsNotLogged = 0;
     QTimer m_CursorTimer;
     Proto::CursorKind m_SentCursorKind = Proto::CursorKind::Default;
     quint64 m_SentCursorKey = 0;

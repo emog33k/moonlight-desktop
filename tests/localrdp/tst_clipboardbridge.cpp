@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "localrdp-shared/clip/clipboardbridge_win32.h"
 
+#include <QDateTime>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QTemporaryDir>
@@ -109,7 +110,13 @@ void TestClipboardBridge::disabledSendsNothing()
     bridge.connectionUp();
     bridge.setEnabled(false);
     bridge.offerFiles({ f.fileName() });
-    QVERIFY(!out.waitFor(MsgType::ClipOffer, 500).has_value());
+    QTest::qWait(500);
+    // Only the empty "drop what I offered" announcement, never content
+    std::lock_guard<std::mutex> lock(out.mutex);
+    for (const auto& frame : out.frames) {
+        QCOMPARE(frame.type, MsgType::ClipOffer);
+        QVERIFY(decodeOffer(frame.payload)->isEmpty());
+    }
 }
 
 void TestClipboardBridge::notConnectedSendsNothing()
@@ -249,4 +256,102 @@ void TestClipboardBridge::seqStartsRandom()
     }
     QVERIFY(seqs[0] != seqs[1]);
     QVERIFY(seqs[0] > 1000 && seqs[1] > 1000);
+}
+
+namespace {
+Proto::Frame offerFrame(quint64 seq, qint64 copiedAt, bool initial, bool empty = false)
+{
+    Offer o;
+    o.seq = seq;
+    if (!empty) {
+        o.textBytes = 4;
+    }
+    o.copiedAt = copiedAt;
+    o.initial = initial;
+    return { MsgType::ClipOffer, encodeOffer(o) };
+}
+}
+
+void TestClipboardBridge::initialOfferNewerSideWins()
+{
+    Captured out;
+    ClipboardBridge bridge(out.sender(), false);
+    std::mutex m;
+    QVector<quint64> applied;
+    bridge.setPeerOfferObserver([&](const Offer& o) { std::lock_guard<std::mutex> l(m); applied << o.seq; });
+    bridge.setLocalCopyTime(1000);
+    bridge.connectionUp();
+
+    bridge.onFrame(offerFrame(1, 500, true));        // peer's clipboard is older: keep ours
+    bridge.onFrame(offerFrame(2, 0, true, true));    // nothing on the peer: keep ours
+    bridge.onFrame(offerFrame(3, 500, false));       // a fresh copy on the peer: always taken
+    bridge.onFrame(offerFrame(4, 2000, true));       // peer's is newer: taken
+    QTest::qWait(300);
+    std::lock_guard<std::mutex> l(m);
+    QCOMPARE(applied, QVector<quint64>({ 3, 4 }));
+}
+
+void TestClipboardBridge::sentOffersCarryCopyTime()
+{
+    QTemporaryDir dir;
+    QFile f(dir.filePath("t.txt"));
+    f.open(QIODevice::WriteOnly);
+    f.close();
+    Captured out;
+    ClipboardBridge bridge(out.sender(), false);
+    bridge.connectionUp();
+    const qint64 before = QDateTime::currentMSecsSinceEpoch();
+    bridge.offerFiles({ f.fileName() });
+    const auto offer = decodeOffer(out.waitFor(MsgType::ClipOffer)->payload);
+    QVERIFY(offer->copiedAt >= before && offer->copiedAt <= QDateTime::currentMSecsSinceEpoch());
+    QCOMPARE(offer->initial, false);
+}
+
+void TestClipboardBridge::offerAfterDisconnectIgnored()
+{
+    Captured out;
+    ClipboardBridge bridge(out.sender(), false);
+    std::atomic<int> applied { 0 };
+    bridge.setPeerOfferObserver([&](const Offer&) { applied++; });
+    bridge.connectionUp();
+    bridge.connectionDown();
+    bridge.onFrame(offerFrame(1, 5000, false)); // late frame from the closed connection
+    bridge.setEnabled(false);
+    bridge.connectionUp();
+    bridge.onFrame(offerFrame(2, 5000, false)); // sync turned off
+    QTest::qWait(300);
+    QCOMPARE(applied.load(), 0);
+}
+
+void TestClipboardBridge::disablingSendsEmptyOfferAndStopsServing()
+{
+    QTemporaryDir dir;
+    QFile f(dir.filePath("d.bin"));
+    f.open(QIODevice::WriteOnly);
+    f.write("secret");
+    f.close();
+    Captured out;
+    ClipboardBridge bridge(out.sender(), false);
+    bridge.connectionUp();
+    bridge.offerFiles({ f.fileName() });
+    const auto offer = decodeOffer(out.waitFor(MsgType::ClipOffer)->payload);
+
+    bridge.setEnabled(false);
+    QTest::qWait(300);
+    {
+        std::lock_guard<std::mutex> lock(out.mutex);
+        QVERIFY(out.frames.size() >= 2);
+        const auto last = decodeOffer(out.frames.last().payload);
+        QCOMPARE(out.frames.last().type, MsgType::ClipOffer);
+        QVERIFY(last->isEmpty()); // the peer drops what we had offered
+        out.frames.clear();
+    }
+    Request r;
+    r.id = 9;
+    r.seq = offer->seq;
+    r.what = What::File;
+    r.length = 100;
+    bridge.onFrame({ MsgType::ClipRequest, encodeRequest(r) });
+    QVERIFY(out.waitFor(MsgType::ClipError).has_value());
+    QVERIFY(!out.waitFor(MsgType::ClipData, 300).has_value());
 }

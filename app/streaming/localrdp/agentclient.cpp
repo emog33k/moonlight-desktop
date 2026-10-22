@@ -1,9 +1,12 @@
 #include "agentclient.h"
+#include "localrdp-shared/agentidentity.h"
 #include "localrdp-shared/clip/clipboardbridge_win32.h"
 #include "localrdp-shared/hostdisplays.h"
 #include "localrdp-shared/peerconnection.h"
 
+#include <QDateTime>
 #include <QElapsedTimer>
+#include <QSettings>
 #include <QJsonObject>
 #include <QPointer>
 #include <QTimer>
@@ -11,6 +14,9 @@
 namespace LocalRdp {
 
 using namespace Proto;
+
+static const char* const kClipSeqKey = "localrdp/clip/lastseq";
+static const char* const kClipTimeKey = "localrdp/clip/lastcopiedat";
 
 // What the worker reports back to AgentClient (called on the worker's thread).
 struct AgentClientEvents {
@@ -44,6 +50,18 @@ public:
 
     void start()
     {
+        // Connecting and saying Hello must finish within the pong timeout; a PC
+        // that went quiet mid-handshake would otherwise leave us waiting forever.
+        m_ConnectTimer = new QTimer(this);
+        m_ConnectTimer->setSingleShot(true);
+        connect(m_ConnectTimer, &QTimer::timeout, this, [this]() {
+            if (m_Ready) {
+                return;
+            }
+            setStatus(m_Encrypted ? AgentStatus::Connecting : AgentStatus::NotFound);
+            dropConnection();
+            scheduleRetry();
+        });
         m_RetryTimer = new QTimer(this);
         m_RetryTimer->setSingleShot(true);
         connect(m_RetryTimer, &QTimer::timeout, this, &AgentClientWorker::connectOnce);
@@ -88,8 +106,14 @@ public:
     {
         if (m_Conn && m_Ready) {
             m_Conn->send(MsgType::Goodbye);
-            m_Conn->socket()->flush();
-            m_Conn->socket()->waitForBytesWritten(300);
+            // The agent closes its side once it has read Goodbye; wait for that, so
+            // our close cannot discard Goodbye before the agent sees it.
+            QSslSocket* socket = m_Conn->socket();
+            socket->flush();
+            socket->disconnectFromHost();
+            if (socket->state() != QAbstractSocket::UnconnectedState) {
+                socket->waitForDisconnected(500);
+            }
         }
         m_Stopping = true;
     }
@@ -119,9 +143,10 @@ private:
         m_Encrypted = false;
         m_Socket = connectPinned(m_Host, m_Port, m_ClientCert, m_ClientKey, m_PinnedServer);
         m_Socket->setParent(this);
+        m_ConnectTimer->start(m_PongTimeoutMs);
 
         connect(m_Socket, &QSslSocket::encrypted, this, [this]() {
-            if (m_Socket->peerCertificate() != m_PinnedServer) {
+            if (!isTrustedServerCertificate(m_Socket->peerCertificate(), m_PinnedServer)) {
                 // connectPinned aborts this too; report it as what it is
                 setStatus(AgentStatus::CertError);
                 scheduleRetry();
@@ -134,6 +159,8 @@ private:
             m_Conn = new PeerConnection(socket, this);
             connect(m_Conn, &PeerConnection::frameReceived, this, &AgentClientWorker::onFrame);
             connect(m_Conn, &PeerConnection::closed, this, &AgentClientWorker::onClosed);
+            // Any bytes count as a sign of life (a big clipboard chunk on slow Wi-Fi takes a while)
+            connect(m_Conn, &PeerConnection::activity, this, [this]() { m_LastHeard.start(); });
             m_Conn->send(MsgType::Hello, jsonPayload(QJsonObject{
                 { "version", (int)kProtocolVersion },
                 { "client", "Moonlight LocalRDP" },
@@ -159,6 +186,7 @@ private:
         switch (frame.type) {
         case MsgType::HelloAck:
             m_Ready = true;
+            m_ConnectTimer->stop();
             if (auto ack = parseJsonPayload(frame.payload)) {
                 m_Events.sunshine(ack->value("sunshine").toString().left(64));
             }
@@ -285,6 +313,7 @@ private:
     QElapsedTimer m_LastHeard;
 
     QTimer* m_RetryTimer = nullptr;
+    QTimer* m_ConnectTimer = nullptr;
     QSslSocket* m_Socket = nullptr;  // until the handshake completes
     PeerConnection* m_Conn = nullptr; // after it
     bool m_Encrypted = false;
@@ -305,6 +334,16 @@ AgentClient::AgentClient(const QString& host, const QSslCertificate& clientCert,
                                       Qt::QueuedConnection);
         }
     }, useSystemClipboard));
+    m_UseSystemClipboard = useSystemClipboard;
+    if (useSystemClipboard) {
+        // How old the laptop's clipboard is decides, at connection start, whether
+        // it or the PC's clipboard wins (see Clip::Offer::initial)
+        QSettings settings;
+        m_Clipboard->setLocalCopyTime(laptopClipboardCopyTime(GetClipboardSequenceNumber(),
+                                                              settings.value(kClipSeqKey).toUInt(),
+                                                              settings.value(kClipTimeKey).toLongLong(),
+                                                              QDateTime::currentMSecsSinceEpoch()));
+    }
 
     AgentClientEvents events;
     events.displays = [this](const DisplayList& list) {
@@ -353,7 +392,22 @@ AgentClient::~AgentClient()
     // No long blocking work runs on this thread, so this returns quickly; a
     // QThread destroyed while still running would abort the whole program.
     m_Thread.wait();
+    const qint64 copiedAt = m_Clipboard->localCopyTime();
     m_Clipboard.reset(); // after the worker: it no longer forwards frames
+    if (m_UseSystemClipboard) {
+        // Remembered for the next stream (after the bridge has tidied the clipboard)
+        QSettings settings;
+        settings.setValue(kClipSeqKey, (uint)GetClipboardSequenceNumber());
+        settings.setValue(kClipTimeKey, copiedAt);
+    }
+}
+
+qint64 laptopClipboardCopyTime(quint32 currentSeq, quint32 storedSeq, qint64 storedTime, qint64 now)
+{
+    // Windows numbers every clipboard change. The same number as at the end of the
+    // last stream: nothing was copied since. Otherwise it was copied while we were
+    // not streaming, most likely just before this stream: count it as new.
+    return (storedSeq != 0 && currentSeq == storedSeq) ? storedTime : now;
 }
 
 void AgentClient::lockNow()

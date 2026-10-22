@@ -31,13 +31,30 @@ static std::optional<quint64> readCount(const QJsonValue& v)
     return (quint64)d;
 }
 
+static bool isDeviceName(const QString& part)
+{
+    // CON, NUL, COM1, LPT9.txt... are devices on Windows, extension or not
+    const QString base = part.section('.', 0, 0).trimmed().toUpper();
+    static const QStringList fixed = { "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$" };
+    if (fixed.contains(base)) {
+        return true;
+    }
+    if (base.size() == 4 && (base.startsWith(QLatin1String("COM")) || base.startsWith(QLatin1String("LPT")))) {
+        const QChar d = base.at(3);
+        return (d >= '1' && d <= '9') || d == QChar(0xB9) || d == QChar(0xB2) || d == QChar(0xB3);
+    }
+    return false;
+}
+
 bool isSafeRelativeName(const QString& name)
 {
     if (name.isEmpty() || name.size() > kMaxNameLength) {
         return false;
     }
     for (const QChar c : name) {
-        if (c.unicode() < 0x20 || QStringLiteral("<>:\"|?*").contains(c)) {
+        const QChar::Category cat = c.category();
+        if (c.unicode() < 0x20 || cat == QChar::Other_Control || cat == QChar::Other_Format ||
+                QStringLiteral("<>:\"|?*").contains(c)) {
             return false;
         }
     }
@@ -46,8 +63,8 @@ bool isSafeRelativeName(const QString& name)
     }
     const QStringList parts = QString(name).replace('/', '\\').split('\\');
     for (const QString& part : parts) {
-        if (part.isEmpty() || part == QLatin1String(".") || part == QLatin1String("..")) {
-            return false;
+        if (part.isEmpty() || part.endsWith('.') || part.endsWith(' ') || isDeviceName(part)) {
+            return false; // also covers "." and ".."
         }
     }
     return true;
@@ -64,6 +81,12 @@ QByteArray encodeOffer(const Offer& offer)
     }
     if (offer.pngBytes) {
         o["png"] = (double)*offer.pngBytes;
+    }
+    if (offer.copiedAt > 0) {
+        o["at"] = (double)offer.copiedAt;
+    }
+    if (offer.initial) {
+        o["initial"] = true;
     }
     if (!offer.files.isEmpty()) {
         QJsonArray files;
@@ -103,6 +126,17 @@ std::optional<Offer> decodeOffer(const QByteArray& payload)
             *f.out = v;
         }
     }
+    if (offer.textBytes && *offer.textBytes % 2 != 0) {
+        return std::nullopt; // UTF-16: whole characters only
+    }
+    if (o->contains("at")) {
+        const auto at = readCount(o->value("at"));
+        if (!at) {
+            return std::nullopt;
+        }
+        offer.copiedAt = (qint64)*at;
+    }
+    offer.initial = o->value("initial").toBool();
 
     if (o->contains("files")) {
         const QJsonValue filesValue = o->value("files");

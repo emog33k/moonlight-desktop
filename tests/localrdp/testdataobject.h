@@ -20,6 +20,8 @@ class TestDataObject : public IDataObject
 {
 public:
     void set(CLIPFORMAT format, const QByteArray& bytes) { m_Formats[format] = bytes; }
+    // The format is listed, but reading it fails with hr (e.g. the clipboard is busy)
+    void failGetData(CLIPFORMAT format, HRESULT hr) { m_Fail[format] = hr; }
 
     void setText(const QString& text)
     {
@@ -65,6 +67,10 @@ public:
     // IDataObject
     STDMETHODIMP GetData(FORMATETC* fmt, STGMEDIUM* medium) override
     {
+        auto fail = m_Fail.find(fmt->cfFormat);
+        if (fail != m_Fail.end()) {
+            return fail->second;
+        }
         auto it = m_Formats.find(fmt->cfFormat);
         if (it == m_Formats.end() || !(fmt->tymed & TYMED_HGLOBAL)) {
             return DV_E_FORMATETC;
@@ -102,5 +108,6 @@ public:
 
 private:
     std::map<CLIPFORMAT, QByteArray> m_Formats;
+    std::map<CLIPFORMAT, HRESULT> m_Fail;
     ULONG m_Refs = 1;
 };

@@ -43,6 +43,9 @@ void TestClipMessages::unsafeNamesRejected()
         "..\\x", "a\\..\\b", "..", "C:\\x", "c:x", "\\x", "/x", "\\\\srv\\x", "a<b", "a>b", "a|b",
         "a?b", "a*b", "a\"b", QString("a") + QChar(0) + "b", QString("a") + QChar(7), QString(300, 'a'), "",
         "a/../b",
+        // Look like something else or are hard to delete on Windows
+        QString("invoice") + QChar(0x202E) + "fdp.exe", QString("a") + QChar(0x200E) + "b", "a.", "a ", "dir \\x",
+        "dir.\\x", "CON", "con.txt", "NUL", "dir\\COM1", "LPT9.log", "AUX.tar.gz",
     };
     for (const QString& name : bad) {
         QVERIFY2(!isSafeRelativeName(name), qPrintable(name));
@@ -55,7 +58,8 @@ void TestClipMessages::unsafeNamesRejected()
 
 void TestClipMessages::safeNames()
 {
-    for (const QString& name : QStringList{ "a.txt", "папка\\файл.png", "dir\\sub", "a b (1).doc", "...txt" }) {
+    for (const QString& name : QStringList{ "a.txt", "папка\\файл.png", "dir\\sub", "a b (1).doc", "...txt",
+                                            "console.txt", "COM10", "nul1.txt", ".gitignore" }) {
         QVERIFY2(isSafeRelativeName(name), qPrintable(name));
     }
 }
@@ -130,4 +134,31 @@ void TestClipMessages::errorRoundTrip()
     QVERIFY(e.has_value());
     QCOMPARE(e->first, quint32(9));
     QCOMPARE(e->second, QString("stale"));
+}
+
+void TestClipMessages::oddTextBytesRejected()
+{
+    Offer o;
+    o.seq = 1;
+    o.textBytes = 7; // UTF-16: always an even number of bytes
+    QVERIFY(!decodeOffer(encodeOffer(o)).has_value());
+    o.textBytes = 8;
+    QVERIFY(decodeOffer(encodeOffer(o)).has_value());
+}
+
+void TestClipMessages::offerCopyTimeRoundTrip()
+{
+    Offer o;
+    o.seq = 1;
+    o.textBytes = 2;
+    o.copiedAt = 1761100000123;
+    o.initial = true;
+    const auto d = decodeOffer(encodeOffer(o));
+    QVERIFY(d.has_value());
+    QCOMPARE(d->copiedAt, o.copiedAt);
+    QCOMPARE(d->initial, true);
+    // Older senders: no time, not initial
+    const auto old = decodeOffer(R"({"seq":1})");
+    QCOMPARE(old->copiedAt, qint64(0));
+    QCOMPARE(old->initial, false);
 }

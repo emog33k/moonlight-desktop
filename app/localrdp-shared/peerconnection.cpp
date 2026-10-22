@@ -1,4 +1,5 @@
 #include "peerconnection.h"
+#include "agentidentity.h"
 
 namespace LocalRdp {
 
@@ -36,6 +37,11 @@ void PeerConnection::send(Proto::MsgType type, const QByteArray& payload)
     if (m_Closed) {
         return;
     }
+    if (m_Socket->bytesToWrite() + payload.size() > kMaxQueuedBytes) {
+        m_Socket->abort();
+        onDisconnected();
+        return;
+    }
     m_Socket->write(Proto::encodeFrame(type, payload));
 }
 
@@ -53,7 +59,11 @@ void PeerConnection::onReadyRead()
     if (m_Closed) {
         return;
     }
-    m_Decoder.feed(m_Socket->readAll());
+    const QByteArray bytes = m_Socket->readAll();
+    if (!bytes.isEmpty()) {
+        emit activity();
+    }
+    m_Decoder.feed(bytes);
     while (auto frame = m_Decoder.next()) {
         emit frameReceived(*frame);
         if (m_Closed) {
@@ -87,15 +97,17 @@ QSslSocket* connectPinned(const QString& host, quint16 port,
     config.setPeerVerifyMode(QSslSocket::VerifyPeer);
     socket->setSslConfiguration(config);
 
-    // The server's certificate is self-signed, so verification always reports
-    // errors. Accept them only when the presented certificate is the pinned one
-    // (same rule Moonlight uses for Sunshine in NvHTTP::handleSslErrors).
+    // The server's certificate is not from a public CA, so verification always
+    // reports errors. Accept them only for the pinned certificate itself or an
+    // agent certificate signed by it (see agentidentity.h); same idea as
+    // Moonlight's rule for Sunshine in NvHTTP::handleSslErrors.
     QObject::connect(socket, &QSslSocket::sslErrors, socket, [socket, pinnedServer](const QList<QSslError>& errors) {
-        if (pinnedServer.isNull() || socket->peerCertificate() != pinnedServer) {
+        const QSslCertificate peer = socket->peerCertificate();
+        if (!isTrustedServerCertificate(peer, pinnedServer)) {
             return; // handshake fails and the socket disconnects
         }
         for (const QSslError& error : errors) {
-            if (!error.certificate().isNull() && error.certificate() != pinnedServer) {
+            if (!error.certificate().isNull() && error.certificate() != peer) {
                 return;
             }
         }
@@ -103,9 +115,9 @@ QSslSocket* connectPinned(const QString& host, quint16 port,
     });
 
     // Also when verification raised no errors at all (e.g. a TLS-inspecting
-    // antivirus whose root the laptop trusts): only the pinned certificate is ok.
+    // antivirus whose root the laptop trusts): only our certificates are ok.
     QObject::connect(socket, &QSslSocket::encrypted, socket, [socket, pinnedServer]() {
-        if (pinnedServer.isNull() || socket->peerCertificate() != pinnedServer) {
+        if (!isTrustedServerCertificate(socket->peerCertificate(), pinnedServer)) {
             socket->abort();
         }
     });

@@ -1,6 +1,7 @@
 #include "agentserver.h"
 #include "localrdp-shared/trust.h"
 
+#include <QDateTime>
 #include <QJsonObject>
 #include <QSslServer>
 
@@ -22,7 +23,10 @@ AgentServer::AgentServer(AgentConfig config, QObject* parent)
     // certificate against Sunshine's paired devices before reading anything.
     ssl.setPeerVerifyMode(QSslSocket::VerifyPeer);
     m_Server->setSslConfiguration(ssl);
-    m_Server->setHandshakeTimeout(10000);
+    // Short handshake and a long queue: idle connections from the LAN cannot
+    // keep the laptop out for long
+    m_Server->setHandshakeTimeout(4000);
+    m_Server->setMaxPendingConnections(256);
 
     connect(m_Server, &QSslServer::sslErrors, this, [](QSslSocket* socket, const QList<QSslError>& errors) {
         socket->ignoreSslErrors(errors);
@@ -45,6 +49,8 @@ AgentServer::AgentServer(AgentConfig config, QObject* parent)
             }
         }, Qt::QueuedConnection);
     }, m_Config.useSystemClipboard));
+    // Same copy time on both sides (rare): the laptop's clipboard wins
+    m_Clipboard->setPreferPeerOnTie(true);
     if (m_Config.onPeerOffer) {
         m_Clipboard->setPeerOfferObserver(m_Config.onPeerOffer);
     }
@@ -52,11 +58,17 @@ AgentServer::AgentServer(AgentConfig config, QObject* parent)
     m_GraceTimer.setSingleShot(true);
     connect(&m_GraceTimer, &QTimer::timeout, this, [this]() { lockNow("no reconnect within grace period"); });
 
-    // A laptop that vanished (Wi-Fi gone, lid closed) never sends a FIN; its
-    // pings stop instead. Treat that like a dropped connection.
     connect(&m_DisplayTimer, &QTimer::timeout, this, [this]() { sendDisplays(true); });
     connect(&m_CursorTimer, &QTimer::timeout, this, [this]() { sendCursor(true); });
 
+    if (m_Config.isSessionLocked) {
+        connect(&m_LockTimer, &QTimer::timeout, this, &AgentServer::checkSessionLock);
+        m_LockTimer.start(m_Config.lockPollMs);
+        checkSessionLock();
+    }
+
+    // A laptop that vanished (Wi-Fi gone, lid closed) never sends a FIN; its
+    // pings stop instead. Treat that like a dropped connection.
     m_IdleTimer.setSingleShot(true);
     connect(&m_IdleTimer, &QTimer::timeout, this, [this]() {
         if (m_Session) {
@@ -93,11 +105,22 @@ void AgentServer::onEncrypted(QSslSocket* socket)
     const QSslCertificate peer = socket->peerCertificate();
     const QByteArray state = m_Config.readSunshineState ? m_Config.readSunshineState() : QByteArray();
     if (!isPairedClient(state, peer)) {
-        emit message("unpaired client rejected from " + socket->peerAddress().toString() + " (" +
-                     (peer.isNull() ? QString("no certificate")
-                                    : "certificate " + peer.subjectDisplayName() + ", sha256 " +
-                                      QString::fromLatin1(peer.digest(QCryptographicHash::Sha256).toHex().left(16))) +
-                     (state.isEmpty() ? QString(", Sunshine state file unreadable") : QString()) + ")");
+        // At most one line per 10 s, so a flood cannot push real entries out of the log
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (now - m_LastRejectLog >= 10000) {
+            emit message("unpaired client rejected from " + socket->peerAddress().toString() + " (" +
+                         (peer.isNull() ? QString("no certificate")
+                                        : "certificate " + peer.subjectDisplayName().left(64) + ", sha256 " +
+                                          QString::fromLatin1(peer.digest(QCryptographicHash::Sha256).toHex().left(16))) +
+                         (state.isEmpty() ? QString(", Sunshine state file unreadable") : QString()) +
+                         (m_RejectsNotLogged > 0 ? QString(", %1 more since the last line").arg(m_RejectsNotLogged) : QString()) +
+                         ")");
+            m_LastRejectLog = now;
+            m_RejectsNotLogged = 0;
+        }
+        else {
+            m_RejectsNotLogged++;
+        }
         socket->abort();
         socket->deleteLater();
         return;
@@ -125,6 +148,12 @@ void AgentServer::onEncrypted(QSslSocket* socket)
     // reconnect that dies again right away must not leave the PC unlocked.
     m_IdleTimer.start(m_Config.idleTimeoutMs);
     connect(conn, &PeerConnection::frameReceived, this, [this, conn](const Frame& f) { onFrame(conn, f); });
+    // Any bytes count as a sign of life (a big clipboard chunk on slow Wi-Fi takes a while)
+    connect(conn, &PeerConnection::activity, this, [this, conn]() {
+        if (conn == m_Session) {
+            m_IdleTimer.start(m_Config.idleTimeoutMs);
+        }
+    });
     connect(conn, &PeerConnection::closed, this, [this, conn]() { onSessionClosed(conn); });
     emit message("paired client connected from " + socket->peerAddress().toString());
 }
@@ -165,7 +194,7 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
         }
         break;
     case MsgType::Ping:
-        conn->send(MsgType::Pong, frame.payload);
+        conn->send(MsgType::Pong); // never echo what the peer sent
         break;
     case MsgType::LockNow:
         lockNow("requested from the laptop");
@@ -201,6 +230,7 @@ void AgentServer::onSessionClosed(PeerConnection* conn)
     if (conn != m_Session) {
         return;
     }
+    const bool saidHello = m_SessionReady;
     m_Session = nullptr;
     m_IdleTimer.stop();
     m_DisplayTimer.stop();
@@ -210,7 +240,9 @@ void AgentServer::onSessionClosed(PeerConnection* conn)
     conn->deleteLater();
     emit message("session closed");
 
-    if (!m_SessionSaidGoodbye && m_LockOnDisconnect) {
+    // Only a laptop that was really here (said Hello) starts the countdown; a
+    // connection that died before that leaves a running countdown as it is.
+    if (saidHello && !m_SessionSaidGoodbye && m_LockOnDisconnect) {
         m_GraceTimer.start(m_Config.reconnectGraceMs);
     }
 }
@@ -220,10 +252,21 @@ void AgentServer::sendDisplays(bool onlyIfChanged)
     if (!m_Config.listDisplays || !m_Session || !m_SessionReady) {
         return;
     }
-    const QByteArray payload = encodeDisplayList(m_Config.listDisplays());
-    if (onlyIfChanged && payload == m_SentDisplays) {
-        return;
+    const DisplayList list = m_Config.listDisplays();
+    const QByteArray payload = encodeDisplayList(list);
+    if (onlyIfChanged) {
+        // Monitors being switched (or the screen turned off) can briefly list
+        // nothing or only some: send a change only once it is seen twice in a row.
+        if (payload == m_SentDisplays || list.displays.isEmpty()) {
+            m_SeenDisplays.clear();
+            return;
+        }
+        if (payload != m_SeenDisplays) {
+            m_SeenDisplays = payload;
+            return;
+        }
     }
+    m_SeenDisplays.clear();
     m_SentDisplays = payload;
     m_Session->send(MsgType::DisplayList, payload);
 }
@@ -251,6 +294,17 @@ void AgentServer::sendCursor(bool onlyIfChanged)
         m_Session->send(MsgType::CursorDefault);
         break;
     }
+}
+
+void AgentServer::checkSessionLock()
+{
+    const bool locked = m_Config.isSessionLocked();
+    if (locked == m_PcLocked) {
+        return;
+    }
+    m_PcLocked = locked;
+    emit message(locked ? "PC locked: clipboard sharing paused" : "PC unlocked: clipboard sharing resumed");
+    m_Clipboard->setEnabled(!locked);
 }
 
 void AgentServer::lockNow(const char* reason)

@@ -44,16 +44,37 @@ static std::optional<QByteArray> getBytes(IDataObject* data, CLIPFORMAT format, 
     return result;
 }
 
-static bool isPrivate(IDataObject* data)
+// Password managers and similar apps mark what they copy as private. Any doubt
+// counts as private: a flag that is there but cannot be read right now means
+// "read again shortly" (busy), any other read failure means private.
+static bool isPrivate(IDataObject* data, bool* busy)
 {
-    if (hasFormat(data, registered(L"ExcludeClipboardContentFromMonitorProcessing"))) {
+    if (hasFormat(data, registered(L"ExcludeClipboardContentFromMonitorProcessing")) ||
+            hasFormat(data, registered(L"Clipboard Viewer Ignore"))) {
         return true;
     }
-    const auto history = getBytes(data, registered(L"CanIncludeInClipboardHistory"));
-    if (history && history->size() >= (qsizetype)sizeof(DWORD)) {
+    for (const wchar_t* name : { L"CanIncludeInClipboardHistory", L"CanUploadToCloudClipboard" }) {
+        const CLIPFORMAT format = registered(name);
+        if (!hasFormat(data, format)) {
+            continue;
+        }
+        bool flagBusy = false;
+        const auto flag = getBytes(data, format, &flagBusy);
+        if (!flag) {
+            if (flagBusy) {
+                *busy = true;
+                return false;
+            }
+            return true;
+        }
+        if (flag->size() < (qsizetype)sizeof(DWORD)) {
+            return true;
+        }
         DWORD value;
-        memcpy(&value, history->constData(), sizeof(value));
-        return value == 0;
+        memcpy(&value, flag->constData(), sizeof(value));
+        if (value == 0) {
+            return true;
+        }
     }
     return false;
 }
@@ -144,9 +165,12 @@ LocalSnapshot readDataObject(IDataObject* data, quint64 seq)
     if (data == nullptr) {
         return s;
     }
-    if (isPrivate(data)) {
+    if (isPrivate(data, &s.busy)) {
         s.excluded = true;
         return s;
+    }
+    if (s.busy) {
+        return s; // could not tell whether it is private: read again shortly
     }
 
     if (auto text = getBytes(data, CF_UNICODETEXT, &s.busy)) {

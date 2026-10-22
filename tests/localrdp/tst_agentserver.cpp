@@ -3,6 +3,7 @@
 #include "localrdp-shared/peerconnection.h"
 #include "localrdp-shared/hostdisplays.h"
 #include "localrdp-shared/cursorshape.h"
+#include "localrdp-shared/clip/clipmessages.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -11,6 +12,7 @@
 #include <QSignalSpy>
 #include <QTest>
 
+#include <atomic>
 #include <memory>
 
 using namespace LocalRdp;
@@ -31,6 +33,7 @@ struct Fixture {
     {
         state = sunshineState({ { testCert("client1"), "true" } });
         AgentConfig config;
+        config.useSystemClipboard = false; // never the real clipboard in tests
         config.serverCert = testCert("server");
         config.serverKey = testKey("server");
         config.readSunshineState = [this]() { return state; };
@@ -247,6 +250,7 @@ void TestAgentServer::displayListAfterHelloAndOnChange()
     displays.initial = 0;
 
     AgentConfig config;
+    config.useSystemClipboard = false; // never the real clipboard in tests
     config.serverCert = testCert("server");
     config.serverKey = testKey("server");
     config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
@@ -304,6 +308,7 @@ void TestAgentServer::cursorAndSunshineAfterHello()
     cursor.image.bgra = QByteArray(16, '\x7f');
 
     AgentConfig config;
+    config.useSystemClipboard = false; // never the real clipboard in tests
     config.serverCert = testCert("server");
     config.serverKey = testKey("server");
     config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
@@ -353,4 +358,44 @@ void TestAgentServer::cursorAndSunshineAfterHello()
     cursor.kind = CursorKind::Shape;
     cursor.key = 2;
     QTRY_COMPARE_WITH_TIMEOUT(count(MsgType::CursorShape), 2, 3000);
+}
+
+void TestAgentServer::noClipboardWhilePcLocked()
+{
+    std::atomic<bool> locked { true };
+    std::atomic<int> peerOffers { 0 };
+    AgentConfig config;
+    config.useSystemClipboard = false; // never the real clipboard in tests
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.useSystemClipboard = false;
+    config.isSessionLocked = [&locked]() { return locked.load(); };
+    config.lockPollMs = 50;
+    config.onPeerOffer = [&peerOffers](const Clip::Offer&) { peerOffers++; };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+
+    QSslSocket* socket = connectPinned("127.0.0.1", server.port(), testCert("client1"), testKey("client1"), testCert("server"));
+    QSignalSpy encrypted(socket, &QSslSocket::encrypted);
+    QVERIFY(encrypted.wait(5000));
+    PeerConnection conn(socket);
+    QSignalSpy frames(&conn, &PeerConnection::frameReceived);
+    conn.send(MsgType::Hello, jsonPayload(hello()));
+    QVERIFY(waitForType(frames, MsgType::HelloAck));
+
+    Clip::Offer offer;
+    offer.seq = 1;
+    offer.textBytes = 4;
+    conn.send(MsgType::ClipOffer, Clip::encodeOffer(offer));
+    QTest::qWait(300);
+    QCOMPARE(peerOffers.load(), 0); // nothing from the laptop lands on a locked PC
+
+    locked = false;
+    QTest::qWait(200);
+    offer.seq = 2;
+    conn.send(MsgType::ClipOffer, Clip::encodeOffer(offer));
+    QTRY_COMPARE_WITH_TIMEOUT(peerOffers.load(), 1, 3000);
 }
