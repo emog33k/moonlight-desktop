@@ -16,8 +16,8 @@ Downloads: [Releases](https://github.com/emog33k/moonlight-desktop/releases).
 - Window size and position are remembered.
 
 ## Installation
-- Host: install Sunshine, then `LocalRDPAgent-Setup.exe`, as the Windows user you work as.
-- Client: `MoonlightLocalRDP-Setup.exe` (per-user install, settings kept separate from a regular Moonlight).
+- Host: install Sunshine, then `MoonlightDesktopAgent-Setup.exe`, as the Windows user you work as.
+- Client: `MoonlightDesktop-Setup.exe` (per-user install, settings kept separate from a regular Moonlight).
 - Pair as usual: enter the PIN at `https://localhost:47990` on the host.
 
 ## Agent
