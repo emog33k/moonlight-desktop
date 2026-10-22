@@ -166,6 +166,7 @@ QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
             item(K::Check, dtr("Clipboard sync"), QString(), A::ToggleClipboardSync, s.clipboardSync),
             disabledUnless(item(K::Command, dtr("Send files to the host…"), QString(), A::SendFilesToPc),
                            s.clipboardSync && s.agentStatus == AgentStatus::Connected),
+            status(dtr("Or drag files onto the stream window")),
         };
     case MenuSection::Screen:
     {

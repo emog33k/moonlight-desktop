@@ -31,6 +31,7 @@
     <message><source>Clipboard</source><comment>toolbar button, short</comment><translation>Буфер</translation></message>
     <message><source>Clipboard sync</source><translation>Синхронизация буфера обмена</translation></message>
     <message><source>Send files to the host…</source><translation>Отправить файлы на ПК…</translation></message>
+    <message><source>Or drag files onto the stream window</source><translation>Или перетащите файлы в окно стрима</translation></message>
     <message><source>Host display</source><translation>Монитор ПК</translation></message>
     <message><source>Screen</source><translation>Экран</translation></message>
     <message><source>Full screen</source><translation>Полный экран</translation></message>

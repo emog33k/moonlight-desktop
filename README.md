@@ -7,7 +7,7 @@ Downloads: [Releases](https://github.com/emog33k/moonlight-desktop/releases).
 ## Changes in this fork
 - In-stream toolbar above the video (mouse, keyboard, clipboard, display, sound, actions, host). In full screen it is hidden and shows at the top edge.
 - Host display switching, numbered and ordered as in Windows display settings.
-- Two-way clipboard: text, images and files; sending files to the host.
+- Two-way clipboard: text, images and files. Files can also be dragged onto the stream window to send them to the host.
 - Host cursor shapes drawn locally.
 - Client-side stream audio mute and volume.
 - Host lock, lock on disconnect, restart and shut down.
