@@ -53,15 +53,18 @@ jobs:
         working-directory: root/moonlight-qt
         run: ./setup-deps.ps1
 
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+      # Qt from download.qt.io by our own script (every archive checked against its
+      # published checksum); aqtinstall fails on the current repository layout
+      - name: Cache Qt
+        id: qt-cache
+        uses: actions/cache@v4
         with:
-          version: 6.11.3
-          dir: ${{ github.workspace }}/root/tools
-          cache: true
-          set-env: false
-          add-tools-to-path: false
-          aqtsource: 'git+https://github.com/miurahr/aqtinstall.git@073e34d7c2ab4ae6961ed7cca690b3abd5ba5a7e'
+          path: root/tools/Qt
+          key: qt-6.11.3-msvc2022_64-${{ hashFiles('root/scripts/fetch-qt.ps1') }}
+
+      - name: Install Qt
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: ./root/scripts/fetch-qt.ps1
 
       - name: Install NSIS
         run: |
