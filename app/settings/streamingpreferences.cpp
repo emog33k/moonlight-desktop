@@ -57,6 +57,8 @@
 #define SER_LOCKONDISCONNECT "localrdp/lockondisconnect"
 #define SER_CLIPBOARDSYNC "localrdp/clipboardsync"
 #define SER_CURSORSHAPES "localrdp/cursorshapes"
+#define SER_STREAMAUDIO "localrdp/streamaudio"
+#define SER_STREAMVOLUME "localrdp/streamvolume"
 
 #define CURRENT_DEFAULT_VER 2
 
@@ -146,6 +148,8 @@ void StreamingPreferences::reload()
     lockOnDisconnect = settings.value(SER_LOCKONDISCONNECT, false).toBool();
     clipboardSync = settings.value(SER_CLIPBOARDSYNC, true).toBool();
     localCursorShapes = settings.value(SER_CURSORSHAPES, true).toBool();
+    streamAudio = settings.value(SER_STREAMAUDIO, true).toBool();
+    streamVolume = qBound(0, settings.value(SER_STREAMVOLUME, 100).toInt(), 100);
     absoluteTouchMode = settings.value(SER_ABSTOUCHMODE, true).toBool();
     framePacing = settings.value(SER_FRAMEPACING, false).toBool();
     connectionWarnings = settings.value(SER_CONNWARNINGS, true).toBool();
@@ -352,6 +356,8 @@ void StreamingPreferences::save()
     settings.setValue(SER_LOCKONDISCONNECT, lockOnDisconnect);
     settings.setValue(SER_CLIPBOARDSYNC, clipboardSync);
     settings.setValue(SER_CURSORSHAPES, localCursorShapes);
+    settings.setValue(SER_STREAMAUDIO, streamAudio);
+    settings.setValue(SER_STREAMVOLUME, streamVolume);
     settings.setValue(SER_ABSTOUCHMODE, absoluteTouchMode);
     settings.setValue(SER_FRAMEPACING, framePacing);
     settings.setValue(SER_CONNWARNINGS, connectionWarnings);
@@ -390,6 +396,8 @@ void StreamingPreferences::saveInputPrefs()
     settings.setValue(SER_LOCKONDISCONNECT, lockOnDisconnect);
     settings.setValue(SER_CLIPBOARDSYNC, clipboardSync);
     settings.setValue(SER_CURSORSHAPES, localCursorShapes);
+    settings.setValue(SER_STREAMAUDIO, streamAudio);
+    settings.setValue(SER_STREAMVOLUME, streamVolume);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
 }
 

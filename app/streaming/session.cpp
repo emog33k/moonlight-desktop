@@ -25,6 +25,7 @@
 #include "localrdp/toolbarlayout.h"
 #include "localrdp/cursorsync.h"
 #include "localrdp/sdlcursor.h"
+#include "localrdp/streamvolume.h"
 #include "backend/identitymanager.h"
 #endif
 
@@ -1986,6 +1987,7 @@ void Session::exec()
         m_AgentClient->setClipboardSync(m_Preferences->clipboardSync);
     }
     m_LocalRdpGeneration = ++s_LocalRdpGeneration;
+    LocalRdp::setStreamAudio(m_Preferences->streamAudio, m_Preferences->streamVolume);
     m_MenuHost = new LocalRdp::SessionMenuHost(m_InputHandler, m_Preferences, m_AgentClient, [this]() {
         SDL_SysWMinfo info;
         SDL_VERSION(&info.version);

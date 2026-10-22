@@ -38,6 +38,7 @@ private slots:
     void screenshotsNeedClipboardSync();
     void quickKeyCombos();
     void doubleCursorFixOnlyWhenActive();
+    void soundSection();
 };
 
 class TestMenuLayout : public QObject
@@ -158,6 +159,7 @@ private slots:
     void toggleCursorShapesPersists();
     void quickActions();
     void doubleCursorFixForwarded();
+    void soundActions();
 };
 
 class TestClipMessages : public QObject
@@ -333,4 +335,14 @@ class TestScreenNudge : public QObject
     Q_OBJECT
 private slots:
     void captureGetsNewFrame();
+};
+
+class TestStreamVolume : public QObject
+{
+    Q_OBJECT
+private slots:
+    void floatScaled();
+    void shortScaled();
+    void fullAndZero();
+    void sharedSetting();
 };

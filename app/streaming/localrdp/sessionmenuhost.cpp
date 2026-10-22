@@ -1,6 +1,7 @@
 #include "sessionmenuhost.h"
 #include "agentclient.h"
 #include "settings/streamingpreferences.h"
+#include "streamvolume.h"
 
 namespace LocalRdp {
 
@@ -21,6 +22,8 @@ StreamState SessionMenuHost::queryState()
     state.clipboardSync = m_Prefs->clipboardSync;
     state.localCursorShapes = m_Prefs->localCursorShapes;
     state.cursorSyncActive = m_CursorSyncActive ? m_CursorSyncActive() : false;
+    state.streamAudio = m_Prefs->streamAudio;
+    state.streamVolume = m_Prefs->streamVolume;
     state.currentDisplay = m_CurrentDisplay;
     if (m_Agent) {
         state.displays = m_Agent->displays();
@@ -68,6 +71,18 @@ void SessionMenuHost::performAction(StreamAction action, int param)
         if (m_Agent) {
             m_Agent->refreshScreens();
         }
+        break;
+    case StreamAction::ToggleStreamAudio:
+    case StreamAction::VolumeUp:
+    case StreamAction::VolumeDown:
+        if (action == StreamAction::ToggleStreamAudio) {
+            m_Prefs->streamAudio = !m_Prefs->streamAudio;
+        }
+        else {
+            m_Prefs->streamVolume = qBound(0, m_Prefs->streamVolume + (action == StreamAction::VolumeUp ? 10 : -10), 100);
+        }
+        m_Prefs->saveInputPrefs();
+        setStreamAudio(m_Prefs->streamAudio, m_Prefs->streamVolume);
         break;
     case StreamAction::FixDoubleCursor:
         if (m_FixDoubleCursor) {

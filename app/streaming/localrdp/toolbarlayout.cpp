@@ -26,6 +26,7 @@ QVector<ToolbarButton> toolbarButtons()
         section(MenuSection::Keyboard, 0xE765, QStringLiteral("Клавиатура")),
         section(MenuSection::Clipboard, 0xE77F, QStringLiteral("Буфер")),
         section(MenuSection::Screen, 0xE7F4, QStringLiteral("Экран")),
+        section(MenuSection::Sound, 0xE767, QStringLiteral("Звук")),
         section(MenuSection::Actions, 0xE945, QStringLiteral("Действия")),
         section(MenuSection::Pc, 0xE977, QStringLiteral("ПК")),
         action(StreamAction::ToggleFullscreen, 0xE740),

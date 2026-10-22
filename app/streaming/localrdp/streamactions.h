@@ -29,6 +29,9 @@ enum class StreamAction {
     SnipLaptop,              // laptop's "snip an area" (the picture syncs to the PC's clipboard)
     SendKeys,                // param = QuickKeys: a key combination on the PC
     FixDoubleCursor,         // Sunshine's cursor still shows next to ours: toggle it once
+    ToggleStreamAudio,       // the PC's sound on the laptop on/off (the PC keeps its sound)
+    VolumeUp,                // +10 %
+    VolumeDown,              // -10 %
     Count // not an action: number of actions
 };
 
@@ -61,6 +64,8 @@ struct StreamState {
     bool localCursorVisible = false;
     bool localCursorShapes = true;
     bool cursorSyncActive = false; // the AnyDesk-style cursor is on right now
+    bool streamAudio = true;       // the PC's sound plays on the laptop
+    int streamVolume = 100;        // percent
     bool pointerLocked = false;
     bool systemKeyCapture = true;
     bool fullscreen = false;

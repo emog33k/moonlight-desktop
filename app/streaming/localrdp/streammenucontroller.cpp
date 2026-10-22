@@ -254,6 +254,14 @@ void StreamMenuController::onAction(StreamAction action, int param)
         return;
     }
 
+    // An item that keeps the menu open (volume steps): do it and show the menu
+    // again with the new state
+    if (isMenuOpen() && m_MenuButton != kNoMenu) {
+        m_Host->performAction(action, param);
+        showMenu(m_MenuButton);
+        return;
+    }
+
     // The menu window has already closed itself.
     const bool leaving = action == StreamAction::Disconnect || action == StreamAction::DisconnectAndExit;
     closeMenu(!leaving);

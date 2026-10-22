@@ -188,6 +188,9 @@ public:
     bool clipboardSync;
     // LocalRDP: AnyDesk-style cursor (local cursor with the PC cursor's shape)
     bool localCursorShapes;
+    // LocalRDP: the PC's sound on the laptop (on/off, volume 0..100); the PC keeps its sound
+    bool streamAudio;
+    int streamVolume;
     bool absoluteTouchMode;
     bool framePacing;
     bool connectionWarnings;

@@ -20,10 +20,11 @@ struct MenuItem {
     bool checked = false;
     bool enabled = true;                // disabled items are grey and do nothing
     int param = 0;                      // e.g. display index for SwitchDisplay
+    bool keepOpen = false;              // choosing it leaves the menu open (e.g. volume steps)
 };
 
 // The toolbar's buttons, left to right; Session holds the right-hand buttons.
-enum class MenuSection { Mouse, Keyboard, Clipboard, Screen, Actions, Pc, Session };
+enum class MenuSection { Mouse, Keyboard, Clipboard, Screen, Sound, Actions, Pc, Session };
 
 // Windows virtual-key codes for a quick key combination, modifiers first
 // (pressed in this order, released in reverse). Empty for an unknown one.

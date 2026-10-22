@@ -16,7 +16,7 @@ void TestToolbarLayout::buttonsAreSectionsThenActions()
         if (x.rightSide) right << x.action;
         else left << x.label;
     }
-    QCOMPARE(left, QStringList({ "Мышь", "Клавиатура", "Буфер", "Экран", "Действия", "ПК" }));
+    QCOMPARE(left, QStringList({ "Мышь", "Клавиатура", "Буфер", "Экран", "Звук", "Действия", "ПК" }));
     QCOMPARE(right, QVector<StreamAction>({ StreamAction::ToggleFullscreen, StreamAction::Minimize, StreamAction::Disconnect }));
 }
 

@@ -34,6 +34,8 @@ void TestStreamingPreferences::remoteDesktopDefaults()
     QCOMPARE(prefs->windowMode, StreamingPreferences::WM_WINDOWED);
     QCOMPARE(prefs->lockOnDisconnect, false);
     QCOMPARE(prefs->clipboardSync, true);
+    QCOMPARE(prefs->streamAudio, true);
+    QCOMPARE(prefs->streamVolume, 100);
 }
 
 void TestStreamingPreferences::newPreferencesRoundTrip()

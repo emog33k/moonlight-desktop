@@ -130,6 +130,7 @@ private slots:
     void displayItemCarriesIndex();
     void leftRightMoveAlongToolbar();
     void captureNotRestoredWithoutFocus();
+    void volumeItemKeepsMenuOpen();
 
 private:
     HWND menuHwnd();

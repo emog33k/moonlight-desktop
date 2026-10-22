@@ -43,7 +43,7 @@ void TestStreamMenuModel::headersInOrder()
             headers << item.label;
         }
     }
-    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Монитор ПК", "Экран",
+    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Монитор ПК", "Экран", "Звук с ПК",
                                     "Снимок экрана", "Буфер обмена", "Клавиши на ПК", "ПК" }));
 }
 
@@ -143,7 +143,7 @@ void TestStreamMenuModel::agentStatusLine()
         state.agentStatus = c.status;
         int statusLines = 0;
         for (const MenuItem& item : buildStreamMenu(state)) {
-            if (item.kind == MenuItemKind::Status) {
+            if (item.kind == MenuItemKind::Status && item.label.startsWith(QStringLiteral("Агент"))) {
                 statusLines++;
                 QCOMPARE(item.label, c.text);
                 QVERIFY(!item.action.has_value());
@@ -320,4 +320,35 @@ void TestStreamMenuModel::doubleCursorFixOnlyWhenActive()
     QVERIFY(!findByAction(buildSectionMenu(MenuSection::Mouse, s), StreamAction::FixDoubleCursor));
     s.cursorSyncActive = true;
     QVERIFY(findByAction(buildSectionMenu(MenuSection::Mouse, s), StreamAction::FixDoubleCursor));
+}
+
+void TestStreamMenuModel::soundSection()
+{
+    StreamState s;
+    s.streamAudio = true;
+    s.streamVolume = 70;
+    QVector<MenuItem> items = buildSectionMenu(MenuSection::Sound, s);
+    QCOMPARE(actionsOf(items), QVector<StreamAction>({ StreamAction::ToggleStreamAudio, StreamAction::VolumeUp,
+                                                       StreamAction::VolumeDown }));
+    QCOMPARE(findByAction(items, StreamAction::ToggleStreamAudio)->checked, true);
+    bool shown = false;
+    for (const MenuItem& i : items) {
+        shown |= i.kind == MenuItemKind::Status && i.label.contains("70%");
+    }
+    QVERIFY(shown);
+    // Adjusting the volume keeps the menu open (several clicks in a row)
+    QVERIFY(findByAction(items, StreamAction::VolumeUp)->keepOpen);
+    QVERIFY(findByAction(items, StreamAction::VolumeDown)->keepOpen);
+    QVERIFY(findByAction(items, StreamAction::ToggleStreamAudio)->keepOpen);
+    // Limits
+    s.streamVolume = 100;
+    QCOMPARE(findByAction(buildSectionMenu(MenuSection::Sound, s), StreamAction::VolumeUp)->enabled, false);
+    s.streamVolume = 0;
+    QCOMPARE(findByAction(buildSectionMenu(MenuSection::Sound, s), StreamAction::VolumeDown)->enabled, false);
+    // Muted: the volume can still be set for later
+    s.streamAudio = false;
+    s.streamVolume = 50;
+    items = buildSectionMenu(MenuSection::Sound, s);
+    QCOMPARE(findByAction(items, StreamAction::ToggleStreamAudio)->checked, false);
+    QCOMPARE(findByAction(items, StreamAction::VolumeUp)->enabled, true);
 }

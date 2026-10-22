@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "settings/streamingpreferences.h"
 #include "streaming/localrdp/sessionmenuhost.h"
+#include "streaming/localrdp/streamvolume.h"
 
 #include <QSettings>
 #include <QTemporaryDir>
@@ -171,4 +172,34 @@ void TestSessionMenuHost::doubleCursorFixForwarded()
     host.performAction(StreamAction::FixDoubleCursor);
     QCOMPARE(fixes, 1);
     QVERIFY(input.performed.isEmpty());
+}
+
+void TestSessionMenuHost::soundActions()
+{
+    FakeInput input;
+    StreamingPreferences* prefs = StreamingPreferences::get();
+    SessionMenuHost host(&input, prefs, nullptr);
+    QCOMPARE(host.queryState().streamAudio, true);
+    QCOMPARE(host.queryState().streamVolume, 100);
+
+    host.performAction(StreamAction::VolumeDown);
+    host.performAction(StreamAction::VolumeDown);
+    QCOMPARE(host.queryState().streamVolume, 80);
+    QCOMPARE(streamVolume(), 80); // what the audio thread uses
+    host.performAction(StreamAction::ToggleStreamAudio);
+    QCOMPARE(host.queryState().streamAudio, false);
+    QCOMPARE(streamAudioOn(), false);
+    for (int i = 0; i < 15; i++) {
+        host.performAction(StreamAction::VolumeUp);
+    }
+    QCOMPARE(host.queryState().streamVolume, 100);
+    QVERIFY(input.performed.isEmpty());
+
+    // Remembered
+    prefs->streamAudio = true;
+    prefs->streamVolume = 1;
+    prefs->reload();
+    QCOMPARE(prefs->streamAudio, false);
+    QCOMPARE(prefs->streamVolume, 100);
+    host.performAction(StreamAction::ToggleStreamAudio);
 }

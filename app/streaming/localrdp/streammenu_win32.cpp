@@ -116,7 +116,9 @@ void StreamMenuWindow::activate(int index)
     }
     const StreamAction action = *m_Items[index].action;
     const int param = m_Items[index].param;
-    close();
+    if (!m_Items[index].keepOpen) {
+        close();
+    }
     if (m_OnAction) {
         m_OnAction(action, param);
     }

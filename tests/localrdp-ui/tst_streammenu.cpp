@@ -376,3 +376,21 @@ void TestStreamMenu::captureNotRestoredWithoutFocus()
     m_Controller->handleKeyEvent(keyDown(SDL_SCANCODE_ESCAPE, SDLK_ESCAPE));
     QCOMPARE(m_Host->captureChanges, QVector<bool>({ false }));
 }
+
+void TestStreamMenu::volumeItemKeepsMenuOpen()
+{
+    m_Host->state.streamVolume = 70;
+    openMenuWith(StreamAction::VolumeDown);
+    click(itemCenterOnScreen(StreamAction::VolumeDown));
+    deliverMenuEvents(*m_Controller);
+    QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::VolumeDown }));
+    QVERIFY(m_Controller->isMenuOpen()); // a few clicks in a row without reopening
+    click(itemCenterOnScreen(StreamAction::VolumeDown));
+    deliverMenuEvents(*m_Controller);
+    QCOMPARE(m_Host->performed.size(), 2);
+    QVERIFY(m_Controller->isMenuOpen());
+    // The on/off switch keeps it open too (the volume may come next)
+    click(itemCenterOnScreen(StreamAction::ToggleStreamAudio));
+    deliverMenuEvents(*m_Controller);
+    QVERIFY(m_Controller->isMenuOpen());
+}

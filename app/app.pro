@@ -194,6 +194,7 @@ SOURCES += \
     streaming/localrdp/toolbarlayout.cpp \
     streaming/localrdp/menulayout.cpp \
     streaming/localrdp/videoarea.cpp \
+    streaming/localrdp/streamvolume.cpp \
     streaming/localrdp/streammenumodel.cpp \
     streaming/session.cpp \
     streaming/audio/audio.cpp \
@@ -235,6 +236,7 @@ HEADERS += \
     streaming/localrdp/toolbarlayout.h \
     streaming/localrdp/menulayout.h \
     streaming/localrdp/videoarea.h \
+    streaming/localrdp/streamvolume.h \
     streaming/localrdp/streammenuhost.h \
     streaming/localrdp/streamactions.h \
     streaming/localrdp/streammenumodel.h \

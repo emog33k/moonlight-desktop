@@ -1,5 +1,6 @@
 #include "../session.h"
 #include "renderers/renderer.h"
+#include "../localrdp/streamvolume.h"
 
 #ifdef HAVE_SLAUDIO
 #include "renderers/slaud.h"
@@ -183,7 +184,8 @@ void Session::arDecodeAndPlaySample(char* sampleData, int sampleLength)
     s_ActiveSession->m_AudioSampleCount++;
 
     // If audio is muted, don't decode or play the audio
-    if (s_ActiveSession->m_AudioMuted) {
+    // (LocalRDP: also when the PC's sound is turned off on the laptop)
+    if (s_ActiveSession->m_AudioMuted || !LocalRdp::streamAudioOn()) {
         return;
     }
 
@@ -211,6 +213,18 @@ void Session::arDecodeAndPlaySample(char* sampleData, int sampleLength)
                                                      (short*)buffer,
                                                      desiredBufferSize / frameSize,
                                                      0);
+        }
+
+        // LocalRDP: the laptop's own volume for the PC's sound
+        if (samplesDecoded > 0) {
+            const int volume = LocalRdp::streamVolume();
+            const int count = samplesDecoded * s_ActiveSession->m_ActiveAudioConfig.channelCount;
+            if (s_ActiveSession->m_AudioRenderer->getAudioBufferFormat() == IAudioRenderer::AudioFormat::Float32NE) {
+                LocalRdp::applyStreamVolume((float*)buffer, count, volume);
+            }
+            else {
+                LocalRdp::applyStreamVolume((short*)buffer, count, volume);
+            }
         }
 
         // Update desiredSize with the number of bytes actually populated by the decoding operation
