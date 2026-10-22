@@ -68,6 +68,21 @@ void SessionMenuHost::performAction(StreamAction action, int param)
             m_Agent->refreshScreens();
         }
         break;
+    case StreamAction::SnipLaptop:
+        if (m_LaunchLaptopSnip) {
+            m_LaunchLaptopSnip();
+            toast(QStringLiteral("Выделите область — снимок окажется в буфере ПК (вставьте там Ctrl+V)"));
+        }
+        break;
+    case StreamAction::SendKeys:
+        m_Input->performAction(action, param);
+        if (param == (int)QuickKeys::SnipArea) {
+            toast(QStringLiteral("Выделите область на ПК — снимок придёт в буфер ноутбука"));
+        }
+        else if (param == (int)QuickKeys::PrintScreen) {
+            toast(QStringLiteral("Снимок экрана ПК — в буфере ноутбука"));
+        }
+        break;
     case StreamAction::SendFilesToPc:
         if (m_PickFilesToSend) {
             m_PickFilesToSend();

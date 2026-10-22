@@ -43,7 +43,8 @@ void TestStreamMenuModel::headersInOrder()
             headers << item.label;
         }
     }
-    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Монитор ПК", "Экран", "ПК" }));
+    QCOMPARE(headers, QStringList({ "Мышь", "Клавиатура", "Буфер обмена", "Монитор ПК", "Экран",
+                                    "Снимок экрана", "Буфер обмена", "Клавиши на ПК", "ПК" }));
 }
 
 void TestStreamMenuModel::desktopModeChecked()
@@ -97,7 +98,8 @@ void TestStreamMenuModel::everyActionableItemHasAction()
 
 void TestStreamMenuModel::everyActionAppearsOnce()
 {
-    // Hotkey-only actions are not in the menu; SwitchDisplay appears once per monitor.
+    // Hotkey-only actions are not in the menu; SwitchDisplay appears once per
+    // monitor, SendKeys once per quick key combination.
     const QSet<StreamAction> notInMenu = { StreamAction::ToggleLocalCursor };
     QVector<int> counts(static_cast<int>(StreamAction::Count), 0);
     for (const MenuItem& item : buildStreamMenu(StreamState())) {
@@ -107,7 +109,10 @@ void TestStreamMenuModel::everyActionAppearsOnce()
     }
     for (int i = 0; i < counts.size(); i++) {
         const StreamAction a = static_cast<StreamAction>(i);
-        const int expected = notInMenu.contains(a) ? 0 : a == StreamAction::SwitchDisplay ? 4 : 1;
+        const int expected = notInMenu.contains(a) ? 0
+                           : a == StreamAction::SwitchDisplay ? 4
+                           : a == StreamAction::SendKeys ? (int)QuickKeys::Count
+                           : 1;
         QVERIFY2(counts[i] == expected, qPrintable(QString("action %1 appears %2 times").arg(i).arg(counts[i])));
     }
 }
@@ -245,4 +250,65 @@ void TestStreamMenuModel::toolbarPcMenuEndsWithSession()
                                                     StreamAction::Minimize, StreamAction::Disconnect,
                                                     StreamAction::DisconnectAndExit }));
     QCOMPARE(actionsOf(buildToolbarMenu(MenuSection::Mouse, s)), actionsOf(buildSectionMenu(MenuSection::Mouse, s)));
+}
+
+void TestStreamMenuModel::actionsSection()
+{
+    StreamState s;
+    s.agentStatus = AgentStatus::Connected;
+    s.clipboardSync = true;
+    const QVector<MenuItem> items = buildSectionMenu(MenuSection::Actions, s);
+    QVector<QPair<StreamAction, int>> got;
+    for (const MenuItem& i : items) {
+        if (i.action) {
+            got << qMakePair(*i.action, i.param);
+            QVERIFY2(i.enabled, qPrintable(i.label));
+        }
+    }
+    const QVector<QPair<StreamAction, int>> want = {
+        { StreamAction::SnipLaptop, 0 },
+        { StreamAction::SendKeys, (int)QuickKeys::SnipArea },
+        { StreamAction::SendKeys, (int)QuickKeys::PrintScreen },
+        { StreamAction::SendKeys, (int)QuickKeys::Paste },
+        { StreamAction::SendKeys, (int)QuickKeys::TaskManager },
+        { StreamAction::SendKeys, (int)QuickKeys::ShowDesktop },
+        { StreamAction::SendKeys, (int)QuickKeys::Explorer },
+        { StreamAction::SendKeys, (int)QuickKeys::Start },
+        { StreamAction::SendKeys, (int)QuickKeys::AltTab },
+    };
+    QCOMPARE(got, want);
+}
+
+void TestStreamMenuModel::screenshotsNeedClipboardSync()
+{
+    // Screenshots travel through the synced clipboard
+    StreamState s;
+    s.agentStatus = AgentStatus::NotFound;
+    s.clipboardSync = true;
+    QVector<MenuItem> items = buildSectionMenu(MenuSection::Actions, s);
+    QCOMPARE(findByAction(items, StreamAction::SnipLaptop)->enabled, false);
+    s.agentStatus = AgentStatus::Connected;
+    s.clipboardSync = false;
+    items = buildSectionMenu(MenuSection::Actions, s);
+    QCOMPARE(findByAction(items, StreamAction::SnipLaptop)->enabled, false);
+    // Keys always work
+    for (const MenuItem& i : items) {
+        if (i.action && *i.action == StreamAction::SendKeys && i.param == (int)QuickKeys::TaskManager) {
+            QVERIFY(i.enabled);
+        }
+    }
+}
+
+void TestStreamMenuModel::quickKeyCombos()
+{
+    using V = QVector<short>;
+    QCOMPARE(quickKeyCombo(QuickKeys::Paste), V({ 0xA2, 0x56 }));             // Ctrl+V
+    QCOMPARE(quickKeyCombo(QuickKeys::SnipArea), V({ 0x5B, 0xA0, 0x53 }));    // Win+Shift+S
+    QCOMPARE(quickKeyCombo(QuickKeys::PrintScreen), V({ 0x2C }));
+    QCOMPARE(quickKeyCombo(QuickKeys::TaskManager), V({ 0xA2, 0xA0, 0x1B })); // Ctrl+Shift+Esc
+    QCOMPARE(quickKeyCombo(QuickKeys::ShowDesktop), V({ 0x5B, 0x44 }));       // Win+D
+    QCOMPARE(quickKeyCombo(QuickKeys::Explorer), V({ 0x5B, 0x45 }));          // Win+E
+    QCOMPARE(quickKeyCombo(QuickKeys::Start), V({ 0x5B }));
+    QCOMPARE(quickKeyCombo(QuickKeys::AltTab), V({ 0xA4, 0x09 }));
+    QVERIFY(quickKeyCombo((QuickKeys)99).isEmpty());
 }

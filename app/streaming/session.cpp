@@ -19,6 +19,7 @@
 #include "localrdp/agentclient.h"
 #include "localrdp/filepicker_win32.h"
 #include <SDL_syswm.h>
+#include <shellapi.h>
 #include "localrdp/sessionmenuhost.h"
 #include "localrdp/streammenucontroller.h"
 #include "localrdp/toolbarlayout.h"
@@ -2010,6 +2011,20 @@ void Session::exec()
                 delete (QStringList*)event.user.data1;
             }
         });
+    });
+    m_MenuHost->setLaptopSnipLauncher([]() {
+        // Windows' own "snip an area"; the picture lands in the laptop's clipboard,
+        // which syncs to the PC's
+        ShellExecuteW(nullptr, L"open", L"ms-screenclip:", nullptr, nullptr, SW_SHOWNORMAL);
+    });
+    m_MenuHost->setToastHandler([](const QString& text) {
+        SDL_Event event = {};
+        event.type = SDL_USEREVENT;
+        event.user.code = SDL_CODE_LOCALRDP_TOAST;
+        event.user.data1 = new QString(text);
+        if (SDL_PushEvent(&event) <= 0) {
+            delete (QString*)event.user.data1;
+        }
     });
     m_StreamMenu = new LocalRdp::StreamMenuController(m_Window, m_MenuHost);
 

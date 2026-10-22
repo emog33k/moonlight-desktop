@@ -34,6 +34,9 @@ private slots:
     void displaysListed();
     void displaysUnknownGivesGeneric();
     void toolbarPcMenuEndsWithSession();
+    void actionsSection();
+    void screenshotsNeedClipboardSync();
+    void quickKeyCombos();
 };
 
 class TestMenuLayout : public QObject
@@ -152,6 +155,7 @@ private slots:
     void sendFilesOpensPicker();
     void switchDisplayForwardedAndRemembered();
     void toggleCursorShapesPersists();
+    void quickActions();
 };
 
 class TestClipMessages : public QObject

@@ -2,6 +2,7 @@
 
 #include <Limelight.h>
 #include "SDL_compat.h"
+#include "streaming/localrdp/streammenumodel.h"
 
 #define VK_0 0x30
 #define VK_A 0x41
@@ -211,6 +212,14 @@ void SdlInputHandler::performAction(LocalRdp::StreamAction action, int param)
         // Handled by the session (cursor sync with LocalRDP Agent)
         break;
 
+    case StreamAction::SendKeys:
+        sendKeyCombo(LocalRdp::quickKeyCombo((LocalRdp::QuickKeys)param));
+        break;
+
+    case StreamAction::SnipLaptop:
+        // Handled by the session (it is a laptop-side action)
+        break;
+
     case StreamAction::ToggleSystemKeyCapture:
         // Toggle the system key capture mode
         if (isSystemKeyCaptureActive()) {
@@ -289,6 +298,30 @@ void SdlInputHandler::setCursorVisibilityOverride(int state)
     // the next capture or pointer move does it.
     if (m_AbsoluteMouseMode && m_FakeMouseCaptureActive && m_MouseWasInVideoRegion) {
         SDL_ShowCursor(cursorVisibility());
+    }
+}
+
+void SdlInputHandler::sendKeyCombo(const QVector<short>& virtualKeys)
+{
+    // Same key codes and modifier bookkeeping as real key presses coming through
+    // handleKeyEvent(): high bit set on every code, modifier flags as they build up.
+    auto modifierOf = [](short vk) -> char {
+        switch (vk) {
+        case 0xA0: case 0xA1: return MODIFIER_SHIFT;
+        case 0xA2: case 0xA3: return MODIFIER_CTRL;
+        case 0xA4: case 0xA5: return MODIFIER_ALT;
+        case 0x5B: case 0x5C: return MODIFIER_META;
+        default: return 0;
+        }
+    };
+    char mods = 0;
+    for (short vk : virtualKeys) {
+        mods |= modifierOf(vk);
+        LiSendKeyboardEvent2((short)(vk | 0x8000), KEY_ACTION_DOWN, mods, 0);
+    }
+    for (int i = virtualKeys.size() - 1; i >= 0; i--) {
+        mods &= ~modifierOf(virtualKeys[i]);
+        LiSendKeyboardEvent2((short)(virtualKeys[i] | 0x8000), KEY_ACTION_UP, mods, 0);
     }
 }
 

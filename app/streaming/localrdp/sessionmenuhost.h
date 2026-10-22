@@ -29,6 +29,10 @@ public:
 
     // The session applies the AnyDesk-style cursor setting when it changes.
     void setCursorShapesChangedHandler(std::function<void(bool)> handler) { m_OnCursorShapesChanged = std::move(handler); }
+    // Opens the laptop's "snip an area" (the session provides it)
+    void setLaptopSnipLauncher(std::function<void()> launcher) { m_LaunchLaptopSnip = std::move(launcher); }
+    // A short notice for the user (the session shows it under the toolbar)
+    void setToastHandler(std::function<void(const QString&)> handler) { m_Toast = std::move(handler); }
 
 private:
     StreamMenuHost* m_Input;
@@ -37,6 +41,9 @@ private:
     std::function<void()> m_PickFilesToSend;
     int m_CurrentDisplay = -1;
     std::function<void(bool)> m_OnCursorShapesChanged;
+    std::function<void()> m_LaunchLaptopSnip;
+    std::function<void(const QString&)> m_Toast;
+    void toast(const QString& text) { if (m_Toast) m_Toast(text); }
 };
 
 }

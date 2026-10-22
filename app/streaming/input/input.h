@@ -169,6 +169,8 @@ public:
     // LocalRDP: presses and releases Ctrl+Alt+Shift+<vk> on the host (Sunshine's
     // shortcuts: F1..F12 switch monitors, N toggles its cursor in the video).
     void sendHostShortcut(short virtualKey);
+    // LocalRDP: presses these keys in order on the host, then releases them in reverse
+    void sendKeyCombo(const QVector<short>& virtualKeys);
 
     // LocalRDP: the AnyDesk-style cursor decides whether the local cursor shows
     // over the video (SDL_ENABLE/SDL_DISABLE); -1 = Moonlight's own setting.

@@ -23,7 +23,11 @@ struct MenuItem {
 };
 
 // The toolbar's buttons, left to right; Session holds the right-hand buttons.
-enum class MenuSection { Mouse, Keyboard, Clipboard, Screen, Pc, Session };
+enum class MenuSection { Mouse, Keyboard, Clipboard, Screen, Actions, Pc, Session };
+
+// Windows virtual-key codes for a quick key combination, modifiers first
+// (pressed in this order, released in reverse). Empty for an unknown one.
+QVector<short> quickKeyCombo(QuickKeys keys);
 
 // One section's items.
 QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& state);

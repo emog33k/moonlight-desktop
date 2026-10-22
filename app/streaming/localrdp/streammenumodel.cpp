@@ -23,6 +23,13 @@ static MenuItem status(const QString& text)
     return { MenuItemKind::Status, text, QString(), std::nullopt, false };
 }
 
+static MenuItem keys(const QString& label, QuickKeys k, const QString& shortcut)
+{
+    MenuItem m = { MenuItemKind::Command, label, shortcut, StreamAction::SendKeys, false };
+    m.param = (int)k;
+    return m;
+}
+
 static MenuItem disabledUnless(MenuItem item, bool enabled)
 {
     item.enabled = enabled;
@@ -108,6 +115,28 @@ QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
         };
         return items;
     }
+    case MenuSection::Actions:
+    {
+        // Screenshots travel through the synced clipboard
+        const bool viaClipboard = s.clipboardSync && s.agentStatus == AgentStatus::Connected;
+        return {
+            header(QStringLiteral("Снимок экрана")),
+            disabledUnless(item(K::Command, QStringLiteral("Область ноутбука → в буфер ПК"), QString(), A::SnipLaptop),
+                           viaClipboard),
+            disabledUnless(keys(QStringLiteral("Область ПК → в буфер ноутбука"), QuickKeys::SnipArea, QStringLiteral("Win+Shift+S")),
+                           viaClipboard),
+            disabledUnless(keys(QStringLiteral("Весь экран ПК → в буфер ноутбука"), QuickKeys::PrintScreen, QStringLiteral("PrtSc")),
+                           viaClipboard),
+            header(QStringLiteral("Буфер обмена")),
+            keys(QStringLiteral("Вставить на ПК"), QuickKeys::Paste, QStringLiteral("Ctrl+V")),
+            header(QStringLiteral("Клавиши на ПК")),
+            keys(QStringLiteral("Диспетчер задач"), QuickKeys::TaskManager, QStringLiteral("Ctrl+Shift+Esc")),
+            keys(QStringLiteral("Свернуть все окна"), QuickKeys::ShowDesktop, QStringLiteral("Win+D")),
+            keys(QStringLiteral("Проводник"), QuickKeys::Explorer, QStringLiteral("Win+E")),
+            keys(QStringLiteral("Меню «Пуск»"), QuickKeys::Start, QStringLiteral("Win")),
+            keys(QStringLiteral("Переключить окно"), QuickKeys::AltTab, QStringLiteral("Alt+Tab")),
+        };
+    }
     case MenuSection::Pc:
         return {
             header(QStringLiteral("ПК")),
@@ -126,6 +155,23 @@ QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
     return {};
 }
 
+QVector<short> quickKeyCombo(QuickKeys k)
+{
+    const short ctrl = 0xA2, shift = 0xA0, alt = 0xA4, win = 0x5B;
+    switch (k) {
+    case QuickKeys::Paste: return { ctrl, 0x56 };
+    case QuickKeys::SnipArea: return { win, shift, 0x53 };
+    case QuickKeys::PrintScreen: return { 0x2C };
+    case QuickKeys::TaskManager: return { ctrl, shift, 0x1B };
+    case QuickKeys::ShowDesktop: return { win, 0x44 };
+    case QuickKeys::Explorer: return { win, 0x45 };
+    case QuickKeys::Start: return { win };
+    case QuickKeys::AltTab: return { alt, 0x09 };
+    case QuickKeys::Count: break;
+    }
+    return {};
+}
+
 QVector<MenuItem> buildToolbarMenu(MenuSection section, const StreamState& s)
 {
     QVector<MenuItem> items = buildSectionMenu(section, s);
@@ -140,7 +186,7 @@ QVector<MenuItem> buildStreamMenu(const StreamState& s)
 {
     QVector<MenuItem> all;
     for (MenuSection section : { MenuSection::Mouse, MenuSection::Keyboard, MenuSection::Clipboard,
-                                 MenuSection::Screen, MenuSection::Pc, MenuSection::Session }) {
+                                 MenuSection::Screen, MenuSection::Actions, MenuSection::Pc, MenuSection::Session }) {
         if (!all.isEmpty()) {
             all << separator();
         }

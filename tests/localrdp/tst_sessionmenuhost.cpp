@@ -134,3 +134,25 @@ void TestSessionMenuHost::toggleCursorShapesPersists()
     prefs->reload();
     QCOMPARE(prefs->localCursorShapes, false);
 }
+
+void TestSessionMenuHost::quickActions()
+{
+    FakeInput input;
+    SessionMenuHost host(&input, StreamingPreferences::get(), nullptr);
+    int snips = 0;
+    QStringList toasts;
+    host.setLaptopSnipLauncher([&snips]() { snips++; });
+    host.setToastHandler([&toasts](const QString& t) { toasts << t; });
+
+    host.performAction(StreamAction::SnipLaptop);
+    QCOMPARE(snips, 1);
+    QCOMPARE(toasts.size(), 1); // tells where the picture goes
+    QVERIFY(input.performed.isEmpty());
+
+    host.performAction(StreamAction::SendKeys, (int)QuickKeys::SnipArea);
+    QCOMPARE(input.performed, QVector<StreamAction>({ StreamAction::SendKeys }));
+    QCOMPARE(input.params, QVector<int>({ (int)QuickKeys::SnipArea }));
+    QCOMPARE(toasts.size(), 2);
+    host.performAction(StreamAction::SendKeys, (int)QuickKeys::TaskManager);
+    QCOMPARE(toasts.size(), 2); // plain keys: no notice
+}

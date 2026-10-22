@@ -26,7 +26,22 @@ enum class StreamAction {
     ToggleLockOnDisconnect,
     ToggleClipboardSync,
     SendFilesToPc,
+    SnipLaptop,              // laptop's "snip an area" (the picture syncs to the PC's clipboard)
+    SendKeys,                // param = QuickKeys: a key combination on the PC
     Count // not an action: number of actions
+};
+
+// Key combinations the "Действия" menu sends to the PC (see quickKeyCombo()).
+enum class QuickKeys {
+    Paste,        // Ctrl+V
+    SnipArea,     // Win+Shift+S: snip an area of the PC (lands in the laptop's clipboard)
+    PrintScreen,  // the PC's whole screen to its clipboard (and so the laptop's)
+    TaskManager,  // Ctrl+Shift+Esc
+    ShowDesktop,  // Win+D
+    Explorer,     // Win+E
+    Start,        // Win
+    AltTab,       // Alt+Tab
+    Count
 };
 
 // Connection to LocalRDP Agent on the PC.
