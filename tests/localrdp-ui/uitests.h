@@ -83,6 +83,7 @@ private slots:
     void toastBelowToolbar();
     void destroyRemovesToolbar();
     void screenshots();
+    void monitorButtons();
 
 private:
     HWND toolbarHwnd();

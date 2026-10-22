@@ -46,8 +46,10 @@ public:
     // The button whose menu is open is drawn pressed (-1: none).
     void setActiveButton(int index);
     void setAgentStatus(AgentStatus status);
-    // Polled a few times a second to keep the status dot current.
-    void setStatusProvider(std::function<AgentStatus()> provider) { m_StatusProvider = std::move(provider); }
+    // Polled a few times a second: the status dot and the monitor buttons.
+    void setStateProvider(std::function<StreamState()> provider) { m_StateProvider = std::move(provider); }
+    // Replaces the buttons (e.g. a monitor was plugged in). Sections keep their positions.
+    void setButtons(const QVector<ToolbarButton>& buttons);
     // Where the pointer is (GetCursorPos by default; tests substitute it).
     void setCursorProvider(std::function<QPoint()> provider);
 
@@ -95,7 +97,7 @@ private:
     bool m_LayoutCompact = false;
     bool m_Shown = false;
     std::function<QPoint()> m_CursorProvider;
-    std::function<AgentStatus()> m_StatusProvider;
+    std::function<StreamState()> m_StateProvider;
 
     AgentStatus m_AgentStatus = AgentStatus::Unknown;
     int m_Hover = -1;

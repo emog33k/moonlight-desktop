@@ -221,6 +221,19 @@ void ToolbarWindow::setActiveButton(int index)
     }
 }
 
+void ToolbarWindow::setButtons(const QVector<ToolbarButton>& buttons)
+{
+    if (buttons == m_Buttons) {
+        return;
+    }
+    m_Buttons = buttons;
+    m_Hover = -1;
+    m_Pressed = -1;
+    m_LayoutForWidth = -1; // lay out again
+    reposition();
+    render();
+}
+
 void ToolbarWindow::setAgentStatus(AgentStatus status)
 {
     if (status != m_AgentStatus) {
@@ -255,8 +268,10 @@ void ToolbarWindow::applyVisibility()
 
 void ToolbarWindow::onTimer()
 {
-    if (m_StatusProvider) {
-        setAgentStatus(m_StatusProvider());
+    if (m_StateProvider) {
+        const StreamState state = m_StateProvider();
+        setAgentStatus(state.agentStatus);
+        setButtons(toolbarButtons(state.displays, state.currentDisplay));
     }
     if (!m_Fullscreen || !m_Visible) {
         return;
@@ -362,6 +377,11 @@ void ToolbarWindow::render()
         if (fill.GetA() != 0) {
             Gdiplus::SolidBrush brush(fill);
             g.FillRectangle(&brush, rf);
+        }
+        if (b.selected) {
+            // The monitor shown now: a blue bar under it
+            Gdiplus::SolidBrush bar(Gdiplus::Color(255, 0x4F, 0x9B, 0xFF));
+            g.FillRectangle(&bar, rf.X + 4 * s, rf.Y + rf.Height - 3 * s, rf.Width - 8 * s, 3 * s);
         }
 
         // Icon

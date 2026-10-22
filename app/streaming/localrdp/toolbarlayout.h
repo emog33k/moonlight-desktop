@@ -21,10 +21,20 @@ struct ToolbarButton {
     wchar_t icon = 0;                          // Segoe MDL2 Assets glyph
     QString label;                             // empty: icon only
     bool rightSide = false;
+    int param = 0;                             // Kind::Action: e.g. the monitor (Sunshine's index)
+    bool selected = false;                     // drawn as the current one (the monitor shown)
+
+    bool operator==(const ToolbarButton& o) const
+    {
+        return kind == o.kind && section == o.section && action == o.action && icon == o.icon && label == o.label &&
+               rightSide == o.rightSide && param == o.param && selected == o.selected;
+    }
 };
 
-// Left: the section dropdowns. Right: full screen, minimize, disconnect.
-QVector<ToolbarButton> toolbarButtons();
+// Left: the section dropdowns, then (with two or more monitors) one button per
+// PC monitor, numbered like Windows, the one shown marked. Right: full screen,
+// minimize, disconnect.
+QVector<ToolbarButton> toolbarButtons(const QVector<DisplayInfo>& displays = {}, int currentDisplay = -1);
 
 // Toolbar height at 96 DPI.
 constexpr int kToolbarBaseHeight = 34;

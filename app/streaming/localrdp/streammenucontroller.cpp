@@ -63,7 +63,7 @@ StreamMenuController::StreamMenuController(SDL_Window* window, StreamMenuHost* h
         }
         postUserEvent(SDL_CODE_LOCALRDP_TOOLBAR, index, 0);
     }));
-    m_Toolbar->setStatusProvider([host]() { return host->queryState().agentStatus; });
+    m_Toolbar->setStateProvider([host]() { return host->queryState(); });
 
     m_Menu.reset(new StreamMenuWindow(m_Hwnd,
                                       [](StreamAction action, int param) { postUserEvent(SDL_CODE_STREAM_MENU_ACTION, (int)action, param); },
@@ -209,7 +209,7 @@ void StreamMenuController::onToolbar(int button, bool hover)
     const ToolbarButton& b = m_Toolbar->buttons()[button];
     if (b.kind == ToolbarButton::Kind::Action) {
         if (!hover) {
-            onAction(b.action, 0);
+            onAction(b.action, b.param);
         }
         return;
     }

@@ -213,7 +213,8 @@ void TestStreamMenuModel::sectionsSplit()
 void TestStreamMenuModel::displaysListed()
 {
     StreamState s;
-    s.displays = { { "DISPLAY1", 2560, 1440, true }, { "DISPLAY2", 1920, 1080, false } };
+    // Sunshine's order: DISPLAY2 first. The menu numbers and orders them like Windows.
+    s.displays = { { R"(\\.\DISPLAY2)", 1920, 1080, false }, { R"(\\.\DISPLAY1)", 2560, 1440, true } };
     s.currentDisplay = 1;
     QVector<MenuItem> radios;
     for (const MenuItem& item : buildSectionMenu(MenuSection::Screen, s)) {
@@ -222,12 +223,12 @@ void TestStreamMenuModel::displaysListed()
     QCOMPARE(radios.size(), 2);
     QCOMPARE(radios[0].label, QString("Монитор 1: 2560×1440, основной"));
     QCOMPARE(radios[1].label, QString("Монитор 2: 1920×1080"));
-    QCOMPARE(radios[0].param, 0);
-    QCOMPARE(radios[1].param, 1);
-    QCOMPARE(radios[0].checked, false);
-    QCOMPARE(radios[1].checked, true);
+    QCOMPARE(radios[0].param, 1);
+    QCOMPARE(radios[1].param, 0);
+    QCOMPARE(radios[0].checked, true);
+    QCOMPARE(radios[1].checked, false);
     QCOMPARE(radios[0].kind, MenuItemKind::Radio);
-    QCOMPARE(radios[0].shortcut, QString("Ctrl+Alt+Shift+F1"));
+    QCOMPARE(radios[0].shortcut, QString("Ctrl+Alt+Shift+F2"));
 }
 
 void TestStreamMenuModel::displaysUnknownGivesGeneric()

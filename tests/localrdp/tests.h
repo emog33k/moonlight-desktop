@@ -272,6 +272,8 @@ private slots:
     void narrowWindowKeepsRightButtons();
     void scalesWithDpi();
     void compactForFullScreen();
+    void monitorButtonsNumberedLikeWindows();
+    void windowsNumberFromName();
     void hitTest();
 };
 

@@ -1,5 +1,9 @@
 #include "streammenumodel.h"
 
+#include <QRegularExpression>
+
+#include <algorithm>
+
 namespace LocalRdp {
 
 static MenuItem header(const QString& label)
@@ -55,19 +59,40 @@ static QString agentStatusText(AgentStatus status)
     return QStringLiteral("Агент на ПК: —");
 }
 
+int windowsDisplayNumber(const QString& deviceName, int position)
+{
+    static const QRegularExpression number(QStringLiteral("DISPLAY(\\d+)$"), QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch m = number.match(deviceName);
+    const int n = m.hasMatch() ? m.captured(1).toInt() : 0;
+    return n > 0 ? n : position + 1;
+}
+
 static QVector<MenuItem> displayItems(const StreamState& s)
 {
     QVector<MenuItem> items;
-    // Sunshine switches the captured monitor on Ctrl+Alt+Shift+F1..F12
-    const int count = s.displays.isEmpty() ? 4 : qMin(s.displays.size(), 12);
-    for (int i = 0; i < count; i++) {
-        QString label = QStringLiteral("Монитор %1").arg(i + 1);
-        if (!s.displays.isEmpty()) {
-            const DisplayInfo& d = s.displays[i];
-            label += QStringLiteral(": %1×%2").arg(d.width).arg(d.height);
-            if (d.primary) {
-                label += QStringLiteral(", основной");
-            }
+    // Sunshine switches the captured monitor on Ctrl+Alt+Shift+F1..F12 (its own
+    // order); the menu shows and orders them by Windows' numbers.
+    if (s.displays.isEmpty()) {
+        for (int i = 0; i < 4; i++) {
+            MenuItem m = item(MenuItemKind::Radio, QStringLiteral("Монитор %1").arg(i + 1),
+                              QStringLiteral("Ctrl+Alt+Shift+F%1").arg(i + 1), StreamAction::SwitchDisplay, false);
+            m.param = i;
+            items << m;
+        }
+        return items;
+    }
+    QVector<int> order;
+    for (int i = 0; i < qMin(s.displays.size(), 12); i++) {
+        order << i;
+    }
+    std::stable_sort(order.begin(), order.end(), [&s](int a, int b) {
+        return windowsDisplayNumber(s.displays[a].name, a) < windowsDisplayNumber(s.displays[b].name, b);
+    });
+    for (int i : order) {
+        const DisplayInfo& d = s.displays[i];
+        QString label = QStringLiteral("Монитор %1: %2×%3").arg(windowsDisplayNumber(d.name, i)).arg(d.width).arg(d.height);
+        if (d.primary) {
+            label += QStringLiteral(", основной");
         }
         MenuItem m = item(MenuItemKind::Radio, label, QStringLiteral("Ctrl+Alt+Shift+F%1").arg(i + 1),
                           StreamAction::SwitchDisplay, i == s.currentDisplay);

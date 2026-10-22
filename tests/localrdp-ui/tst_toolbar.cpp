@@ -330,3 +330,34 @@ void TestToolbar::screenshots()
     UiTest::saveScreenshot(bar.united(UiTest::windowScreenRect(menuHwnd())).adjusted(0, 0, 0, 10), "toolbar-screen-menu");
     m_Controller->toggleMenu();
 }
+
+void TestToolbar::monitorButtons()
+{
+    // The PC reports its monitors: number buttons appear (Windows' numbers)
+    m_Host->state.displays = { { QStringLiteral("DISPLAY2"), 1920, 1080, false }, { QStringLiteral("DISPLAY1"), 1920, 1080, true } };
+    m_Host->state.currentDisplay = 0;
+    UiTest::pump(300);
+    const QVector<ToolbarButton> buttons = toolbarButtons(m_Host->state.displays, 0);
+    int one = -1;
+    for (int i = 0; i < buttons.size(); i++) {
+        if (buttons[i].action == StreamAction::SwitchDisplay && buttons[i].label == "1") one = i;
+    }
+    QVERIFY(one >= 0);
+    const QRect r = buttonRect(one);
+    QVERIFY(!r.isEmpty());
+    UiTest::sendMouse(toolbarHwnd(), WM_LBUTTONDOWN, r.center());
+    UiTest::sendMouse(toolbarHwnd(), WM_LBUTTONUP, r.center());
+    deliverMenuEvents(*m_Controller);
+    QCOMPARE(m_Host->performed, QVector<StreamAction>({ StreamAction::SwitchDisplay }));
+    QCOMPARE(m_Host->params, QVector<int>({ 1 })); // Windows' 1 = Sunshine's second
+    UiTest::saveScreenshot(UiTest::windowScreenRect(toolbarHwnd()), "toolbar-monitors");
+
+    // Unplugged: the buttons go away again
+    m_Host->state.displays.removeLast();
+    UiTest::pump(300);
+    m_Host->performed.clear();
+    UiTest::sendMouse(toolbarHwnd(), WM_LBUTTONDOWN, r.center());
+    UiTest::sendMouse(toolbarHwnd(), WM_LBUTTONUP, r.center());
+    deliverMenuEvents(*m_Controller);
+    QVERIFY(!m_Host->performed.contains(StreamAction::SwitchDisplay));
+}

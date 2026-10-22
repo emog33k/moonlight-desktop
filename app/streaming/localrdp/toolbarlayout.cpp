@@ -1,10 +1,11 @@
 #include "toolbarlayout.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace LocalRdp {
 
-QVector<ToolbarButton> toolbarButtons()
+QVector<ToolbarButton> toolbarButtons(const QVector<DisplayInfo>& displays, int currentDisplay)
 {
     using K = ToolbarButton::Kind;
     auto section = [](MenuSection s, wchar_t icon, const QString& label) {
@@ -21,7 +22,7 @@ QVector<ToolbarButton> toolbarButtons()
         b.rightSide = true;
         return b;
     };
-    return {
+    QVector<ToolbarButton> buttons = {
         section(MenuSection::Mouse, 0xE962, QStringLiteral("Мышь")),
         section(MenuSection::Keyboard, 0xE765, QStringLiteral("Клавиатура")),
         section(MenuSection::Clipboard, 0xE77F, QStringLiteral("Буфер")),
@@ -29,10 +30,32 @@ QVector<ToolbarButton> toolbarButtons()
         section(MenuSection::Sound, 0xE767, QStringLiteral("Звук")),
         section(MenuSection::Actions, 0xE945, QStringLiteral("Действия")),
         section(MenuSection::Pc, 0xE977, QStringLiteral("ПК")),
-        action(StreamAction::ToggleFullscreen, 0xE740),
-        action(StreamAction::Minimize, 0xE921),
-        action(StreamAction::Disconnect, 0xE711),
     };
+
+    // Monitors after the sections, so the sections' positions never change
+    if (displays.size() >= 2) {
+        QVector<int> order;
+        for (int i = 0; i < qMin(displays.size(), 12); i++) {
+            order << i;
+        }
+        std::stable_sort(order.begin(), order.end(), [&displays](int a, int b) {
+            return windowsDisplayNumber(displays[a].name, a) < windowsDisplayNumber(displays[b].name, b);
+        });
+        for (int i : order) {
+            ToolbarButton b{ K::Action };
+            b.action = StreamAction::SwitchDisplay;
+            b.param = i;
+            b.icon = 0xE7F4;
+            b.label = QString::number(windowsDisplayNumber(displays[i].name, i));
+            b.selected = i == currentDisplay;
+            buttons << b;
+        }
+    }
+
+    buttons << action(StreamAction::ToggleFullscreen, 0xE740)
+            << action(StreamAction::Minimize, 0xE921)
+            << action(StreamAction::Disconnect, 0xE711);
+    return buttons;
 }
 
 ToolbarLayout layoutToolbar(const QVector<ToolbarButton>& buttons, int width, double scale,

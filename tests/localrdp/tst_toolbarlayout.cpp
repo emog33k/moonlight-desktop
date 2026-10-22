@@ -87,3 +87,35 @@ void TestToolbarLayout::compactForFullScreen()
     // Never wider than the screen
     QVERIFY(layoutToolbar(b, 300, 1.0, fixedWidth, true).size.width() <= 300);
 }
+
+void TestToolbarLayout::monitorButtonsNumberedLikeWindows()
+{
+    // Sunshine's order (index) need not match Windows' numbers (\\.\DISPLAYn)
+    QVector<DisplayInfo> displays = { { QString(R"(\\.\DISPLAY2)"), 1920, 1080, false },
+                                      { QString(R"(\\.\DISPLAY1)"), 2560, 1440, true } };
+    const QVector<ToolbarButton> b = toolbarButtons(displays, 0);
+    QVector<ToolbarButton> monitors;
+    for (const ToolbarButton& x : b) {
+        if (x.kind == ToolbarButton::Kind::Action && x.action == StreamAction::SwitchDisplay) monitors << x;
+    }
+    QCOMPARE(monitors.size(), 2);
+    QCOMPARE(monitors[0].label, QString("1"));
+    QCOMPARE(monitors[0].param, 1); // Windows' 1 is Sunshine's second
+    QCOMPARE(monitors[0].selected, false);
+    QCOMPARE(monitors[1].label, QString("2"));
+    QCOMPARE(monitors[1].param, 0);
+    QCOMPARE(monitors[1].selected, true);
+    QVERIFY(!monitors[0].rightSide);
+    // After the sections, so their positions never change
+    QCOMPARE(b.indexOf(monitors[0]), toolbarButtons().size() - 3);
+    // One monitor (or none known): no buttons
+    QCOMPARE(toolbarButtons({ displays[0] }, 0).size(), toolbarButtons().size());
+}
+
+void TestToolbarLayout::windowsNumberFromName()
+{
+    QCOMPARE(windowsDisplayNumber(QString(R"(\\.\DISPLAY3)"), 0), 3);
+    QCOMPARE(windowsDisplayNumber(QString(R"(\\.\display12)"), 0), 12);
+    QCOMPARE(windowsDisplayNumber(QString("something"), 4), 5); // fallback: position + 1
+    QCOMPARE(windowsDisplayNumber(QString(), 0), 1);
+}
