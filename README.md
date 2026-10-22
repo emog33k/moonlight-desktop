@@ -1,3 +1,35 @@
+# Moonlight Desktop
+
+A fork of [Moonlight PC](https://github.com/moonlight-stream/moonlight-qt) for remote desktop use on a local network: in-stream toolbar, two-way clipboard with files, host display switching, host cursor shapes and power actions. Windows only. The host runs [Sunshine](https://github.com/LizardByte/Sunshine) and a small agent from this repository.
+
+Downloads: [Releases](https://github.com/emog33k/moonlight-desktop/releases).
+
+## Changes in this fork
+- In-stream toolbar above the video (mouse, keyboard, clipboard, display, sound, actions, host). In full screen it is hidden and shows at the top edge.
+- Host display switching, numbered and ordered as in Windows display settings.
+- Two-way clipboard: text, images and files; sending files to the host.
+- Host cursor shapes drawn locally.
+- Client-side stream audio mute and volume.
+- Host lock, lock on disconnect, restart and shut down.
+- Quick actions: screenshots, paste as keystrokes, common key combinations.
+- Quality presets and automatic reconnect after a network drop.
+- Window size and position are remembered.
+
+## Installation
+- Host: install Sunshine, then `LocalRDPAgent-Setup.exe`, as the Windows user you work as.
+- Client: `MoonlightLocalRDP-Setup.exe` (per-user install, settings kept separate from a regular Moonlight).
+- Pair as usual: enter the PIN at `https://localhost:47990` on the host.
+
+## Agent
+[`localrdp/agent`](localrdp/agent) listens on TCP 48100 (local subnet only) over TLS. It accepts only clients paired in Sunshine; its certificate is signed with Sunshine's key and its private key is protected with DPAPI.
+
+## Building
+Visual Studio 2022 and Qt 6. Tests: [`tests/localrdp`](tests/localrdp), [`tests/localrdp-ui`](tests/localrdp-ui). Build and installer scripts: [emog33k/moonlight-desktop-build](https://github.com/emog33k/moonlight-desktop-build).
+
+License: GPLv3, same as Moonlight.
+
+---
+
 # Moonlight PC
 
 [Moonlight PC](https://moonlight-stream.org) is an open source PC client for NVIDIA GameStream and [Sunshine](https://github.com/LizardByte/Sunshine).
