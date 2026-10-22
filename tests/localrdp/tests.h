@@ -32,6 +32,7 @@ private slots:
     void sendFilesNeedsAgentAndSync();
     void sectionsSplit();
     void displaysListed();
+    void displaysInDeskOrder();
     void displaysUnknownGivesGeneric();
     void toolbarPcMenuEndsWithSession();
     void actionsSection();
@@ -282,6 +283,7 @@ private slots:
     void scalesWithDpi();
     void compactForFullScreen();
     void monitorButtonsNumberedLikeWindows();
+    void monitorButtonsInDeskOrder();
     void windowsNumberFromName();
     void hitTest();
 };
@@ -295,6 +297,9 @@ private slots:
     void malformedRejected();
     void initialOutOfRangeUnknown();
     void initialFromConfig();
+    void positionsSent();
+    void olderAgentWithoutPositions();
+    void positionOutOfRangeRejected();
 };
 
 class TestCursorShape : public QObject

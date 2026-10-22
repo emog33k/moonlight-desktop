@@ -213,6 +213,30 @@ void TestStreamMenuModel::sectionsSplit()
     QVERIFY(screen.contains(StreamAction::SwitchDisplay));
 }
 
+void TestStreamMenuModel::displaysInDeskOrder()
+{
+    // Left to right, then top to bottom: DISPLAY2 left, DISPLAY3 above DISPLAY1
+    QVector<DisplayInfo> d = { { R"(\\.\DISPLAY1)", 1920, 1080, true, 0, 0 },
+                               { R"(\\.\DISPLAY2)", 1920, 1080, false, -1920, 0 },
+                               { R"(\\.\DISPLAY3)", 1920, 1080, false, 0, -1080 } };
+    QCOMPARE(displaysInWindowsOrder(d), QVector<int>({ 1, 2, 0 }));
+    // No positions (an older agent): by Windows' number
+    QVector<DisplayInfo> unknown = { { R"(\\.\DISPLAY2)", 1920, 1080, false }, { R"(\\.\DISPLAY1)", 1920, 1080, true } };
+    QCOMPARE(displaysInWindowsOrder(unknown), QVector<int>({ 1, 0 }));
+    // At most 12 (Ctrl+Alt+Shift+F1..F12)
+    QVector<DisplayInfo> many(14, DisplayInfo{ "x", 800, 600, false });
+    QCOMPARE(displaysInWindowsOrder(many).size(), 12);
+
+    // The Screen menu lists them in the same order
+    StreamState s;
+    s.displays = { d[0], d[1] };
+    QStringList labels;
+    for (const MenuItem& item : buildSectionMenu(MenuSection::Screen, s)) {
+        if (item.action && *item.action == StreamAction::SwitchDisplay) labels << item.label;
+    }
+    QCOMPARE(labels, QStringList({ "Монитор 2: 1920×1080", "Монитор 1: 1920×1080, основной" }));
+}
+
 void TestStreamMenuModel::displaysListed()
 {
     StreamState s;

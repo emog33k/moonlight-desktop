@@ -38,6 +38,11 @@ QVector<QualityPreset> qualityPresets();
 // name "\\.\DISPLAYn"; position + 1 if the name has none.
 int windowsDisplayNumber(const QString& deviceName, int position);
 
+// Indexes of the PC's monitors (at most 12, Sunshine's F1..F12) in the order
+// they stand in Settings > Display: left to right, then top to bottom; by
+// Windows' number when the positions are the same (an older agent sends none).
+QVector<int> displaysInWindowsOrder(const QVector<DisplayInfo>& displays);
+
 // Windows virtual-key codes for a quick key combination, modifiers first
 // (pressed in this order, released in reverse). Empty for an unknown one.
 QVector<short> quickKeyCombo(QuickKeys keys);

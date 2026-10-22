@@ -372,7 +372,7 @@ AgentClient::AgentClient(const QString& host, const QSslCertificate& clientCert,
     events.displays = [this](const DisplayList& list) {
         QVector<DisplayInfo> displays;
         for (const HostDisplay& d : list.displays) {
-            displays << DisplayInfo{ d.name, d.width, d.height, d.primary };
+            displays << DisplayInfo{ d.name, d.width, d.height, d.primary, d.x, d.y };
         }
         std::lock_guard<std::mutex> lock(m_DisplaysMutex);
         m_Displays = displays;

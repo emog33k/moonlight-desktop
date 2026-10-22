@@ -264,7 +264,7 @@ void TestAgentClient::pcDisplaysShownInMenu()
     config.bindAddress = QHostAddress::LocalHost;
     config.listDisplays = []() {
         Proto::DisplayList l;
-        l.displays = { { "\\.\DISPLAY1", 2560, 1440, false }, { "\\.\DISPLAY2", 1920, 1080, true } };
+        l.displays = { { "\\.\DISPLAY1", 2560, 1440, false, -2560, 0 }, { "\\.\DISPLAY2", 1920, 1080, true } };
         l.initial = 1;
         return l;
     };
@@ -275,6 +275,7 @@ void TestAgentClient::pcDisplaysShownInMenu()
     QTRY_COMPARE_WITH_TIMEOUT(client->displays().size(), 2, 5000);
     QCOMPARE(client->displays()[0].width, 2560);
     QCOMPARE(client->displays()[1].primary, true);
+    QCOMPARE(client->displays()[0].x, -2560); // where it stands, for the buttons' order
     QCOMPARE(client->initialDisplay(), 1);
 
     // The menu marks the monitor Sunshine started on until the user picks another

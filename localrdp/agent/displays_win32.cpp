@@ -29,6 +29,8 @@ QVector<HostDisplay> enumerateDisplays()
                 d.name = QString::fromWCharArray(desc.DeviceName);
                 d.width = desc.DesktopCoordinates.right - desc.DesktopCoordinates.left;
                 d.height = desc.DesktopCoordinates.bottom - desc.DesktopCoordinates.top;
+                d.x = desc.DesktopCoordinates.left; // where it stands in Settings > Display
+                d.y = desc.DesktopCoordinates.top;
                 MONITORINFO mi = { sizeof(mi) };
                 d.primary = GetMonitorInfoW(desc.Monitor, &mi) && (mi.dwFlags & MONITORINFOF_PRIMARY);
                 if (displays.size() < kMaxDisplays && d.width > 0 && d.height > 0) {

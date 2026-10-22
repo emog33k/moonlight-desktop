@@ -85,11 +85,31 @@ int windowsDisplayNumber(const QString& deviceName, int position)
     return n > 0 ? n : position + 1;
 }
 
+QVector<int> displaysInWindowsOrder(const QVector<DisplayInfo>& displays)
+{
+    QVector<int> order;
+    for (int i = 0; i < qMin(displays.size(), 12); i++) {
+        order << i;
+    }
+    std::stable_sort(order.begin(), order.end(), [&displays](int a, int b) {
+        const DisplayInfo& da = displays[a];
+        const DisplayInfo& db = displays[b];
+        if (da.x != db.x) {
+            return da.x < db.x;
+        }
+        if (da.y != db.y) {
+            return da.y < db.y;
+        }
+        return windowsDisplayNumber(da.name, a) < windowsDisplayNumber(db.name, b);
+    });
+    return order;
+}
+
 static QVector<MenuItem> displayItems(const StreamState& s)
 {
     QVector<MenuItem> items;
     // Sunshine switches the captured monitor on Ctrl+Alt+Shift+F1..F12 (its own
-    // order); the menu shows and orders them by Windows' numbers.
+    // order); the menu shows Windows' numbers, in the order the monitors stand.
     if (s.displays.isEmpty()) {
         for (int i = 0; i < 4; i++) {
             MenuItem m = item(MenuItemKind::Radio, QStringLiteral("Монитор %1").arg(i + 1),
@@ -99,14 +119,7 @@ static QVector<MenuItem> displayItems(const StreamState& s)
         }
         return items;
     }
-    QVector<int> order;
-    for (int i = 0; i < qMin(s.displays.size(), 12); i++) {
-        order << i;
-    }
-    std::stable_sort(order.begin(), order.end(), [&s](int a, int b) {
-        return windowsDisplayNumber(s.displays[a].name, a) < windowsDisplayNumber(s.displays[b].name, b);
-    });
-    for (int i : order) {
+    for (int i : displaysInWindowsOrder(s.displays)) {
         const DisplayInfo& d = s.displays[i];
         QString label = QStringLiteral("Монитор %1: %2×%3").arg(windowsDisplayNumber(d.name, i)).arg(d.width).arg(d.height);
         if (d.primary) {

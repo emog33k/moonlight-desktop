@@ -10,6 +10,7 @@ namespace Proto {
 
 static const int kMaxNameLength = 64;
 static const int kMaxSide = 32768;
+static const int kMaxPosition = kMaxSide * kMaxDisplays; // farther than any desktop reaches
 
 QByteArray encodeDisplayList(const DisplayList& list)
 {
@@ -20,6 +21,8 @@ QByteArray encodeDisplayList(const DisplayList& list)
             { "width", d.width },
             { "height", d.height },
             { "primary", d.primary },
+            { "x", d.x },
+            { "y", d.y },
         };
     }
     return QJsonDocument(QJsonObject{ { "displays", displays }, { "initial", list.initial } })
@@ -53,8 +56,11 @@ std::optional<DisplayList> decodeDisplayList(const QByteArray& payload)
         d.width = e.value("width").toInt();
         d.height = e.value("height").toInt();
         d.primary = e.value("primary").toBool();
+        d.x = e.value("x").toInt(); // missing (an older agent): 0
+        d.y = e.value("y").toInt();
         if (d.name.size() > kMaxNameLength || d.width <= 0 || d.height <= 0 ||
-                d.width > kMaxSide || d.height > kMaxSide) {
+                d.width > kMaxSide || d.height > kMaxSide ||
+                qAbs(d.x) > kMaxPosition || qAbs(d.y) > kMaxPosition) {
             return std::nullopt;
         }
         list.displays << d;

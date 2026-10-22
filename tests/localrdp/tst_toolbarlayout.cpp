@@ -112,6 +112,23 @@ void TestToolbarLayout::monitorButtonsNumberedLikeWindows()
     QCOMPARE(toolbarButtons({ displays[0] }, 0).size(), toolbarButtons().size());
 }
 
+void TestToolbarLayout::monitorButtonsInDeskOrder()
+{
+    // As on the PC: Windows' 2 stands left of 1 (Settings > Display shows "2 1")
+    QVector<DisplayInfo> displays = { { QString(R"(\\.\DISPLAY1)"), 1920, 1080, true, 0, 0 },
+                                      { QString(R"(\\.\DISPLAY2)"), 1920, 1080, false, -1920, 0 } };
+    QVector<ToolbarButton> monitors;
+    for (const ToolbarButton& x : toolbarButtons(displays, 0)) {
+        if (x.kind == ToolbarButton::Kind::Action && x.action == StreamAction::SwitchDisplay) monitors << x;
+    }
+    QCOMPARE(monitors.size(), 2);
+    QCOMPARE(monitors[0].label, QString("2"));
+    QCOMPARE(monitors[0].param, 1);
+    QCOMPARE(monitors[1].label, QString("1"));
+    QCOMPARE(monitors[1].param, 0);
+    QCOMPARE(monitors[1].selected, true);
+}
+
 void TestToolbarLayout::windowsNumberFromName()
 {
     QCOMPARE(windowsDisplayNumber(QString(R"(\\.\DISPLAY3)"), 0), 3);

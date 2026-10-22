@@ -34,14 +34,8 @@ QVector<ToolbarButton> toolbarButtons(const QVector<DisplayInfo>& displays, int 
 
     // Monitors after the sections, so the sections' positions never change
     if (displays.size() >= 2) {
-        QVector<int> order;
-        for (int i = 0; i < qMin(displays.size(), 12); i++) {
-            order << i;
-        }
-        std::stable_sort(order.begin(), order.end(), [&displays](int a, int b) {
-            return windowsDisplayNumber(displays[a].name, a) < windowsDisplayNumber(displays[b].name, b);
-        });
-        for (int i : order) {
+        // In the order they stand on the PC's desk (as in Settings > Display)
+        for (int i : displaysInWindowsOrder(displays)) {
             ToolbarButton b{ K::Action };
             b.action = StreamAction::SwitchDisplay;
             b.param = i;

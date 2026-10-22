@@ -33,6 +33,39 @@ void TestHostDisplays::roundTrip()
     QVERIFY(*decoded == twoDisplays());
 }
 
+void TestHostDisplays::positionsSent()
+{
+    DisplayList l = twoDisplays();
+    l.displays[1].x = -1920; // left of the primary monitor
+    l.displays[1].y = 180;
+    const auto decoded = decodeDisplayList(encodeDisplayList(l));
+    QVERIFY(decoded);
+    QCOMPARE(decoded->displays[1].x, -1920);
+    QCOMPARE(decoded->displays[1].y, 180);
+    QCOMPARE(decoded->displays[0].x, 0);
+}
+
+void TestHostDisplays::olderAgentWithoutPositions()
+{
+    // An agent from before positions were sent: still accepted, positions 0, 0
+    const auto decoded = decodeDisplayList(json(QJsonObject{ { "displays", QJsonArray{ entry("a", 1920, 1080) } } }));
+    QVERIFY(decoded);
+    QCOMPARE(decoded->displays[0].x, 0);
+    QCOMPARE(decoded->displays[0].y, 0);
+}
+
+void TestHostDisplays::positionOutOfRangeRejected()
+{
+    QJsonObject e = entry("a", 1920, 1080);
+    e["x"] = 10000000;
+    QVERIFY(!decodeDisplayList(json(QJsonObject{ { "displays", QJsonArray{ e } } })));
+    e["x"] = 0;
+    e["y"] = -10000000;
+    QVERIFY(!decodeDisplayList(json(QJsonObject{ { "displays", QJsonArray{ e } } })));
+    e["y"] = -1080;
+    QVERIFY(decodeDisplayList(json(QJsonObject{ { "displays", QJsonArray{ e } } })));
+}
+
 void TestHostDisplays::emptyList()
 {
     const auto decoded = decodeDisplayList(encodeDisplayList(DisplayList()));

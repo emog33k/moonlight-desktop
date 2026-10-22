@@ -62,6 +62,8 @@ struct DisplayInfo {
     int width = 0;
     int height = 0;
     bool primary = false;
+    int x = 0; // where it stands on the PC's desktop (see HostDisplay)
+    int y = 0;
 };
 
 struct StreamState {

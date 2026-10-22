@@ -2,7 +2,7 @@
 
 // The PC's monitors as Sunshine numbers them (Ctrl+Alt+Shift+F1 = the first),
 // sent by the agent in a DisplayList message:
-//     {"displays":[{"name":"\\\\.\\DISPLAY1","width":1920,"height":1080,"primary":true}, ...],
+//     {"displays":[{"name":"\\\\.\\DISPLAY1","width":1920,"height":1080,"primary":true,"x":0,"y":0}, ...],
 //      "initial": 0}
 // "initial" is the monitor Sunshine starts a stream on (-1 if unknown).
 
@@ -20,10 +20,15 @@ struct HostDisplay {
     int width = 0;
     int height = 0;
     bool primary = false;
+    // Top-left corner on the desktop, as arranged in Settings > Display
+    // (left of the primary monitor: negative x). 0, 0 from an older agent.
+    int x = 0;
+    int y = 0;
 
     bool operator==(const HostDisplay& o) const
     {
-        return name == o.name && width == o.width && height == o.height && primary == o.primary;
+        return name == o.name && width == o.width && height == o.height && primary == o.primary &&
+               x == o.x && y == o.y;
     }
 };
 
