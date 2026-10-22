@@ -39,6 +39,9 @@ public:
     // agent, empty if unknown (then nothing is toggled).
     void update(bool enabled, bool absoluteMouse, bool agentConnected, const QString& sunshineInstance);
     void setPcCursor(const Proto::CursorState& cursor);
+    // The user still sees Sunshine's cursor next to ours (it was toggled by hand
+    // before, so our record is the wrong way round): toggle once, keep the record.
+    void fixDoubleCursor();
 
     bool isActive() const { return m_Active; }
 

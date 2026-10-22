@@ -60,6 +60,13 @@ void CursorSync::update(bool enabled, bool absoluteMouse, bool agentConnected, c
     m_Started = true;
 }
 
+void CursorSync::fixDoubleCursor()
+{
+    if (m_Active) {
+        m_Host->toggleSunshineCursor();
+    }
+}
+
 void CursorSync::setPcCursor(const Proto::CursorState& cursor)
 {
     m_PcCursor = cursor;

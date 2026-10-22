@@ -899,15 +899,17 @@ void D3D11VARenderer::bindVideoVertexBuffer(bool frameChanged, AVFrame* frame)
         src.x = src.y = 0;
         src.w = frame->width;
         src.h = frame->height;
-        // LocalRDP: below the toolbar, aspect ratio kept
+        // LocalRDP: below the toolbar, aspect ratio kept. Direct3D counts y from
+        // the bottom of the window, the toolbar strip is at the top.
         const LocalRdp::VideoRect area = LocalRdp::videoArea(m_DisplayWidth, m_DisplayHeight, src.w, src.h, topInset);
-        dst.x = area.x;
-        dst.y = area.y;
-        dst.w = area.w;
-        dst.h = area.h;
+        const LocalRdp::VideoRect up = LocalRdp::toBottomUp(area, m_DisplayHeight);
+        dst.x = up.x;
+        dst.y = up.y;
+        dst.w = up.w;
+        dst.h = up.h;
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                    "LocalRDP: video %dx%d at (%d,%d) in %dx%d, toolbar strip %d",
-                    dst.w, dst.h, dst.x, dst.y, m_DisplayWidth, m_DisplayHeight, topInset);
+                    "LocalRDP: video %dx%d at (%d,%d) from the top in %dx%d, toolbar strip %d",
+                    area.w, area.h, area.x, area.y, m_DisplayWidth, m_DisplayHeight, topInset);
 
         // Convert screen space to normalized device coordinates
         SDL_FRect renderRect;

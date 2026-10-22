@@ -190,3 +190,27 @@ void TestCursorSync::pcCursorForwardedWhileActive()
     sync.setPcCursor(hidden());
     QCOMPARE(host.shown.size(), 2);
 }
+
+void TestCursorSync::fixDoubleCursorTogglesOnce()
+{
+    // Sunshine's cursor was toggled by hand before: we hid... i.e. showed it. The
+    // user sees two cursors and asks to fix: one toggle, our record stays.
+    {
+        FakeCursorHost host;
+        CursorSync sync(&host, "pc");
+        sync.update(true, true, true, "1");
+        QCOMPARE(host.toggles, 1);
+        sync.fixDoubleCursor();
+        QCOMPARE(host.toggles, 2);
+        sync.update(true, true, true, "1");
+        QCOMPARE(host.toggles, 2);
+    }
+    FakeCursorHost host;
+    CursorSync sync(&host, "pc");
+    sync.update(true, true, true, "1");
+    QCOMPARE(host.toggles, 0); // still recorded as hidden
+    // Not active: nothing to fix
+    CursorSync idle(&host, "other");
+    idle.fixDoubleCursor();
+    QCOMPARE(host.toggles, 0);
+}

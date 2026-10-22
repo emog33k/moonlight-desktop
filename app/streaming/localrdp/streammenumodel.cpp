@@ -84,13 +84,19 @@ QVector<MenuItem> buildSectionMenu(MenuSection section, const StreamState& s)
 
     switch (section) {
     case MenuSection::Mouse:
-        return {
+    {
+        QVector<MenuItem> items = {
             header(QStringLiteral("Мышь")),
             item(K::Radio, QStringLiteral("Режим рабочего стола"), QString(), A::SetDesktopMouseMode, s.absoluteMouse),
             item(K::Radio, QStringLiteral("Игровой режим"), QStringLiteral("Ctrl+Alt+Shift+M"), A::SetGameMouseMode, !s.absoluteMouse),
             item(K::Check, QStringLiteral("Курсор как в AnyDesk"), QString(), A::ToggleLocalCursorShapes, s.localCursorShapes),
             item(K::Check, QStringLiteral("Не выпускать курсор из окна"), QStringLiteral("Ctrl+Alt+Shift+L"), A::TogglePointerLock, s.pointerLocked),
         };
+        if (s.cursorSyncActive) {
+            items << item(K::Command, QStringLiteral("Видно два курсора — убрать лишний"), QString(), A::FixDoubleCursor);
+        }
+        return items;
+    }
     case MenuSection::Keyboard:
         return {
             header(QStringLiteral("Клавиатура")),

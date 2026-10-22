@@ -37,6 +37,7 @@ private slots:
     void actionsSection();
     void screenshotsNeedClipboardSync();
     void quickKeyCombos();
+    void doubleCursorFixOnlyWhenActive();
 };
 
 class TestMenuLayout : public QObject
@@ -156,6 +157,7 @@ private slots:
     void switchDisplayForwardedAndRemembered();
     void toggleCursorShapesPersists();
     void quickActions();
+    void doubleCursorFixForwarded();
 };
 
 class TestClipMessages : public QObject
@@ -256,6 +258,7 @@ private slots:
     void toolbarInsetKeepsVideoBelow();
     void tinyOrBrokenInputs();
     void insetSetting();
+    void bottomUpForDirect3D();
 };
 
 class TestToolbarLayout : public QObject
@@ -307,6 +310,7 @@ private slots:
     void agentLostKeepsLocalArrow();
     void recordsArePerPc();
     void notStartedWithoutAgent();
+    void fixDoubleCursorTogglesOnce();
     void settingOffNeverToggles();
     void unknownSunshineNoToggle();
     void pcCursorForwardedWhileActive();

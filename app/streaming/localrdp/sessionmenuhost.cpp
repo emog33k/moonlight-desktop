@@ -20,6 +20,7 @@ StreamState SessionMenuHost::queryState()
     state.lockOnDisconnect = m_Prefs->lockOnDisconnect;
     state.clipboardSync = m_Prefs->clipboardSync;
     state.localCursorShapes = m_Prefs->localCursorShapes;
+    state.cursorSyncActive = m_CursorSyncActive ? m_CursorSyncActive() : false;
     state.currentDisplay = m_CurrentDisplay;
     if (m_Agent) {
         state.displays = m_Agent->displays();
@@ -66,6 +67,11 @@ void SessionMenuHost::performAction(StreamAction action, int param)
         // Sunshine shows the new monitor only once something on it changes
         if (m_Agent) {
             m_Agent->refreshScreens();
+        }
+        break;
+    case StreamAction::FixDoubleCursor:
+        if (m_FixDoubleCursor) {
+            m_FixDoubleCursor();
         }
         break;
     case StreamAction::SnipLaptop:

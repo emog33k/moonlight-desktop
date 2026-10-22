@@ -2035,6 +2035,12 @@ void Session::exec()
     m_CursorSync = new LocalRdp::CursorSync(m_CursorHost, m_Computer->uuid);
     m_InputHandler->setMouseModeChangedHandler([this]() { localRdpUpdateCursor(); });
     m_MenuHost->setCursorShapesChangedHandler([this](bool) { localRdpUpdateCursor(); });
+    m_MenuHost->setCursorSyncActiveProvider([this]() { return m_CursorSync != nullptr && m_CursorSync->isActive(); });
+    m_MenuHost->setFixDoubleCursorHandler([this]() {
+        if (m_CursorSync != nullptr) {
+            m_CursorSync->fixDoubleCursor();
+        }
+    });
     m_AgentClient->setChangeHandler([this]() {
         // Agent thread: hand over to the stream loop, at most one event queued
         if (!m_AgentEventPending.exchange(true)) {

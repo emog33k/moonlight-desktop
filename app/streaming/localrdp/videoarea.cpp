@@ -17,6 +17,13 @@ int videoTopInset()
     return s_TopInset;
 }
 
+VideoRect toBottomUp(const VideoRect& rect, int windowH)
+{
+    VideoRect r = rect;
+    r.y = windowH - (rect.y + rect.h);
+    return r;
+}
+
 VideoRect videoArea(int windowW, int windowH, int streamW, int streamH, int topInset)
 {
     VideoRect area;

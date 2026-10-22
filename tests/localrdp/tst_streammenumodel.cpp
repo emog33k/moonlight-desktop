@@ -100,7 +100,8 @@ void TestStreamMenuModel::everyActionAppearsOnce()
 {
     // Hotkey-only actions are not in the menu; SwitchDisplay appears once per
     // monitor, SendKeys once per quick key combination.
-    const QSet<StreamAction> notInMenu = { StreamAction::ToggleLocalCursor };
+    const QSet<StreamAction> notInMenu = { StreamAction::ToggleLocalCursor,
+                                           StreamAction::FixDoubleCursor }; // only while the AnyDesk cursor is on
     QVector<int> counts(static_cast<int>(StreamAction::Count), 0);
     for (const MenuItem& item : buildStreamMenu(StreamState())) {
         if (item.action) {
@@ -311,4 +312,12 @@ void TestStreamMenuModel::quickKeyCombos()
     QCOMPARE(quickKeyCombo(QuickKeys::Start), V({ 0x5B }));
     QCOMPARE(quickKeyCombo(QuickKeys::AltTab), V({ 0xA4, 0x09 }));
     QVERIFY(quickKeyCombo((QuickKeys)99).isEmpty());
+}
+
+void TestStreamMenuModel::doubleCursorFixOnlyWhenActive()
+{
+    StreamState s;
+    QVERIFY(!findByAction(buildSectionMenu(MenuSection::Mouse, s), StreamAction::FixDoubleCursor));
+    s.cursorSyncActive = true;
+    QVERIFY(findByAction(buildSectionMenu(MenuSection::Mouse, s), StreamAction::FixDoubleCursor));
 }

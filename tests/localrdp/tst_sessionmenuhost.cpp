@@ -156,3 +156,19 @@ void TestSessionMenuHost::quickActions()
     host.performAction(StreamAction::SendKeys, (int)QuickKeys::TaskManager);
     QCOMPARE(toasts.size(), 2); // plain keys: no notice
 }
+
+void TestSessionMenuHost::doubleCursorFixForwarded()
+{
+    FakeInput input;
+    SessionMenuHost host(&input, StreamingPreferences::get(), nullptr);
+    int fixes = 0;
+    bool active = false;
+    host.setFixDoubleCursorHandler([&fixes]() { fixes++; });
+    host.setCursorSyncActiveProvider([&active]() { return active; });
+    QCOMPARE(host.queryState().cursorSyncActive, false);
+    active = true;
+    QCOMPARE(host.queryState().cursorSyncActive, true);
+    host.performAction(StreamAction::FixDoubleCursor);
+    QCOMPARE(fixes, 1);
+    QVERIFY(input.performed.isEmpty());
+}

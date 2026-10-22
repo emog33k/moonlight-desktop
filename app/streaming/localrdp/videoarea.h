@@ -18,4 +18,8 @@ int videoTopInset();
 // its aspect ratio and centered (same rounding as StreamUtils::scaleSourceToDestinationSurface).
 VideoRect videoArea(int windowW, int windowH, int streamW, int streamH, int topInset);
 
+// The same rectangle with y counted from the bottom of the window (Direct3D's
+// screen space, see StreamUtils::screenSpaceToNormalizedDeviceCoords).
+VideoRect toBottomUp(const VideoRect& rect, int windowH);
+
 }

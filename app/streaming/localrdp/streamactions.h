@@ -28,6 +28,7 @@ enum class StreamAction {
     SendFilesToPc,
     SnipLaptop,              // laptop's "snip an area" (the picture syncs to the PC's clipboard)
     SendKeys,                // param = QuickKeys: a key combination on the PC
+    FixDoubleCursor,         // Sunshine's cursor still shows next to ours: toggle it once
     Count // not an action: number of actions
 };
 
@@ -59,6 +60,7 @@ struct StreamState {
     bool absoluteMouse = true;
     bool localCursorVisible = false;
     bool localCursorShapes = true;
+    bool cursorSyncActive = false; // the AnyDesk-style cursor is on right now
     bool pointerLocked = false;
     bool systemKeyCapture = true;
     bool fullscreen = false;

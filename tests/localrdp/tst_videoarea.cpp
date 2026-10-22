@@ -50,3 +50,20 @@ void TestVideoArea::insetSetting()
     QCOMPARE(videoTopInset(), 0);
     setVideoTopInset(0);
 }
+
+void TestVideoArea::bottomUpForDirect3D()
+{
+    // Direct3D's screen space starts at the bottom: the toolbar strip at the top
+    // must stay free there too (the D3D11 renderer drew the video under it)
+    const VideoRect top = videoArea(1920, 1114, 1920, 1080, 34);
+    QCOMPARE(top.y, 34);
+    const VideoRect up = toBottomUp(top, 1114);
+    QCOMPARE(up.y, 0);       // touches the bottom edge...
+    QCOMPARE(up.y + up.h, 1080); // ...and ends right below the 34 px strip
+    QCOMPARE(up.x, top.x);
+    QCOMPARE(up.w, top.w);
+    QCOMPARE(up.h, top.h);
+    // Letterboxed: the same gap below and above
+    const VideoRect lb = toBottomUp(videoArea(1000, 800, 1920, 1080, 0), 800);
+    QCOMPARE(lb.y, (800 - lb.h) / 2 + ((800 - lb.h) % 2));
+}
