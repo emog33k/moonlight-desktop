@@ -5,6 +5,7 @@
 #include "agentserver.h"
 #include "cursorwatch_win32.h"
 #include "displays_win32.h"
+#include "screennudge_win32.h"
 #include "localrdp-shared/agentidentity.h"
 #include "localrdp-shared/trust.h"
 
@@ -245,6 +246,7 @@ int main(int argc, char* argv[])
     };
     config.lockWorkstation = []() { LockWorkStation(); };
     config.isSessionLocked = &sessionLocked;
+    config.refreshScreens = &nudgeScreens;
     CursorWatcher cursorWatcher;
     config.readCursor = [&cursorWatcher]() { return cursorWatcher.read(); };
     config.sunshineInstance = &sunshineInstance;

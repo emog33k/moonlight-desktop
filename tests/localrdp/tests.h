@@ -109,6 +109,7 @@ private slots:
     void displayListAfterHelloAndOnChange();
     void noClipboardWhilePcLocked();
     void replacedThenSilentDropStillLocks();
+    void refreshScreensAfterSwitch();
     void cursorAndSunshineAfterHello();
 };
 
@@ -134,6 +135,7 @@ private slots:
     void agentIdentityFromOtherKeyRejected();
     void silentServerRetried();
     void laptopClipboardAgeAcrossStreams();
+    void switchingMonitorRefreshesPcScreens();
 };
 
 class TestSessionMenuHost : public QObject
@@ -316,4 +318,11 @@ private slots:
     void agentSignedByOtherKeyRejected();
     void otherCertificatesRejected();
     void garbageInputFails();
+};
+
+class TestScreenNudge : public QObject
+{
+    Q_OBJECT
+private slots:
+    void captureGetsNewFrame();
 };

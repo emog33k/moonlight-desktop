@@ -417,3 +417,34 @@ void TestAgentServer::replacedThenSilentDropStillLocks()
     first.reset();
     QTRY_COMPARE_WITH_TIMEOUT(f.locks, 1, 3000);
 }
+
+void TestAgentServer::refreshScreensAfterSwitch()
+{
+    // After a monitor switch Sunshine only sends a frame once something on the
+    // screen changes: the agent nudges the screens a few times
+    std::atomic<int> nudges { 0 };
+    AgentConfig config;
+    config.useSystemClipboard = false;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.refreshScreens = [&nudges]() { nudges++; };
+    config.refreshDelaysMs = { 10, 60, 120 };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+
+    QSslSocket* socket = connectPinned("127.0.0.1", server.port(), testCert("client1"), testKey("client1"), testCert("server"));
+    QSignalSpy encrypted(socket, &QSslSocket::encrypted);
+    QVERIFY(encrypted.wait(5000));
+    PeerConnection conn(socket);
+    QSignalSpy frames(&conn, &PeerConnection::frameReceived);
+    conn.send(MsgType::RefreshScreens); // before Hello: ignored
+    QTest::qWait(200);
+    QCOMPARE(nudges.load(), 0);
+    conn.send(MsgType::Hello, jsonPayload(hello()));
+    QVERIFY(waitForType(frames, MsgType::HelloAck));
+    conn.send(MsgType::RefreshScreens);
+    QTRY_COMPARE_WITH_TIMEOUT(nudges.load(), 3, 3000);
+}

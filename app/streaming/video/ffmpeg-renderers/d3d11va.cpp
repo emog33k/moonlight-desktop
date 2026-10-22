@@ -888,19 +888,26 @@ void D3D11VARenderer::renderOverlay(Overlay::OverlayType type)
 
 void D3D11VARenderer::bindVideoVertexBuffer(bool frameChanged, AVFrame* frame)
 {
-    if (frameChanged || !m_VideoVertexBuffer) {
+    // LocalRDP: also rebuilt when the toolbar strip changes (window <-> full
+    // screen, DPI), so the picture and the mouse always use the same area
+    const int topInset = LocalRdp::videoTopInset();
+    if (frameChanged || !m_VideoVertexBuffer || topInset != m_VideoTopInset) {
+        m_VideoTopInset = topInset;
+
         // Scale video to the window size while preserving aspect ratio
         SDL_Rect src, dst;
         src.x = src.y = 0;
         src.w = frame->width;
         src.h = frame->height;
         // LocalRDP: below the toolbar, aspect ratio kept
-        const LocalRdp::VideoRect area = LocalRdp::videoArea(m_DisplayWidth, m_DisplayHeight, src.w, src.h,
-                                                             LocalRdp::videoTopInset());
+        const LocalRdp::VideoRect area = LocalRdp::videoArea(m_DisplayWidth, m_DisplayHeight, src.w, src.h, topInset);
         dst.x = area.x;
         dst.y = area.y;
         dst.w = area.w;
         dst.h = area.h;
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "LocalRDP: video %dx%d at (%d,%d) in %dx%d, toolbar strip %d",
+                    dst.w, dst.h, dst.x, dst.y, m_DisplayWidth, m_DisplayHeight, topInset);
 
         // Convert screen space to normalized device coordinates
         SDL_FRect renderRect;

@@ -22,6 +22,7 @@ enum class MsgType : quint8 {
 
     LockNow = 10,
     SetLockOnDisconnect = 11,
+    RefreshScreens = 12,   // laptop -> agent: after a monitor switch, make Sunshine send a new frame
 
     ClipOffer = 20,
     ClipRequest = 21,

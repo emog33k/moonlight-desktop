@@ -47,6 +47,11 @@ struct AgentConfig {
     // nothing from the laptop lands on it. Polled every lockPollMs.
     std::function<bool()> isSessionLocked;
     int lockPollMs = 1000;
+    // Touches every monitor so the screen capture gets a new frame (Sunshine,
+    // after switching to another monitor, waits for something to change).
+    // Done at each of refreshDelaysMs after the laptop asks.
+    std::function<void()> refreshScreens;
+    QVector<int> refreshDelaysMs { 300, 800, 1500 };
 };
 
 // TLS server for the paired laptop. Only a client whose certificate is paired and
@@ -92,6 +97,7 @@ private:
     QTimer m_LockTimer;
     bool m_PcLocked = false;
     qint64 m_LastRejectLog = 0;
+    qint64 m_LastRefresh = 0;
     int m_RejectsNotLogged = 0;
     QTimer m_CursorTimer;
     Proto::CursorKind m_SentCursorKind = Proto::CursorKind::Default;

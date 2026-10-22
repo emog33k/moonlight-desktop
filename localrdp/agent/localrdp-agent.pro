@@ -15,6 +15,7 @@ SOURCES += \
     main.cpp \
     agentserver.cpp \
     displays_win32.cpp \
+    screennudge_win32.cpp \
     cursorwatch_win32.cpp \
     ../../app/localrdp-shared/agentidentity.cpp \
     ../../app/localrdp-shared/cursorshape.cpp \
@@ -36,6 +37,7 @@ HEADERS += \
     ../../app/localrdp-shared/clip/remotedataobject_win32.h \
     agentserver.h \
     displays_win32.h \
+    screennudge_win32.h \
     cursorwatch_win32.h \
     ../../app/localrdp-shared/agentidentity.h \
     ../../app/localrdp-shared/cursorshape.h \

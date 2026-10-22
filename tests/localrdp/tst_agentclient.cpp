@@ -406,3 +406,27 @@ void TestAgentClient::laptopClipboardAgeAcrossStreams()
     // Never streamed before
     QCOMPARE(laptopClipboardCopyTime(43, 0, 0, 5000), qint64(5000));
 }
+
+void TestAgentClient::switchingMonitorRefreshesPcScreens()
+{
+    std::atomic<int> nudges { 0 };
+    AgentConfig config;
+    config.useSystemClipboard = false;
+    config.serverCert = testCert("server");
+    config.serverKey = testKey("server");
+    config.readSunshineState = []() { return sunshineState({ { testCert("client1"), "true" } }); };
+    config.port = 0;
+    config.bindAddress = QHostAddress::LocalHost;
+    config.refreshScreens = [&nudges]() { nudges++; };
+    config.refreshDelaysMs = { 10, 60, 120 };
+    AgentServer server(config);
+    QVERIFY(server.listen());
+    auto client = makeClient(server.port());
+    QTRY_COMPARE_WITH_TIMEOUT(client->status(), AgentStatus::Connected, 5000);
+
+    MenuInput input;
+    SessionMenuHost host(&input, StreamingPreferences::get(), client.get());
+    host.performAction(StreamAction::SwitchDisplay, 1);
+    QCOMPARE(input.params, QVector<int>({ 1 })); // Ctrl+Alt+Shift+F2 still goes to Sunshine
+    QTRY_COMPARE_WITH_TIMEOUT(nudges.load(), 3, 3000);
+}

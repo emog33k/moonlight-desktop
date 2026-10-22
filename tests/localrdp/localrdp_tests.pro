@@ -3,7 +3,7 @@
 #   cd tests\localrdp && qmake && nmake release && release\localrdp_tests.exe
 QT += testlib qml network
 RESOURCES += data/testdata.qrc
-LIBS += crypt32.lib ole32.lib shell32.lib user32.lib psapi.lib gdi32.lib
+LIBS += crypt32.lib ole32.lib shell32.lib user32.lib psapi.lib gdi32.lib d3d11.lib dxgi.lib
 # OpenSSL (agent identity): the same copy Moonlight builds with
 INCLUDEPATH += $$PWD/../../libs/windows/include/x64
 LIBS += -L$$PWD/../../libs/windows/lib/x64 -llibcrypto
@@ -35,6 +35,8 @@ SOURCES += \
     tst_videoarea.cpp \
     tst_toolbarlayout.cpp \
     tst_agentidentity.cpp \
+    tst_screennudge.cpp \
+    ../../localrdp/agent/screennudge_win32.cpp \
     ../../app/localrdp-shared/agentidentity.cpp \
     tst_hostdisplays.cpp \
     tst_cursorshape.cpp \

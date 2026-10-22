@@ -113,6 +113,10 @@ int main(int argc, char* argv[])
         TestAgentIdentity t;
         failures += runTest(&t);
     }
+    {
+        TestScreenNudge t;
+        failures += runTest(&t);
+    }
     std::printf("LOCALRDP TESTS: %s\n", failures == 0 ? "ALL PASSED" : "FAILED");
     return failures == 0 ? 0 : 1;
 }

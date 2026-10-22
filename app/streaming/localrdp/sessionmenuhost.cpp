@@ -63,6 +63,10 @@ void SessionMenuHost::performAction(StreamAction action, int param)
     case StreamAction::SwitchDisplay:
         m_CurrentDisplay = param;
         m_Input->performAction(action, param);
+        // Sunshine shows the new monitor only once something on it changes
+        if (m_Agent) {
+            m_Agent->refreshScreens();
+        }
         break;
     case StreamAction::SendFilesToPc:
         if (m_PickFilesToSend) {

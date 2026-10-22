@@ -205,6 +205,18 @@ void AgentServer::onFrame(PeerConnection* conn, const Frame& frame)
     case MsgType::LockNow:
         lockNow("requested from the laptop");
         break;
+    case MsgType::RefreshScreens:
+        if (conn == m_Session && m_SessionReady && m_Config.refreshScreens) {
+            // At most one round at a time, whatever the laptop sends
+            const qint64 now = QDateTime::currentMSecsSinceEpoch();
+            if (now - m_LastRefresh >= 250) {
+                m_LastRefresh = now;
+                for (int delay : m_Config.refreshDelaysMs) {
+                    QTimer::singleShot(delay, this, [this]() { m_Config.refreshScreens(); });
+                }
+            }
+        }
+        break;
     case MsgType::SetLockOnDisconnect:
         if (auto o = parseJsonPayload(frame.payload)) {
             m_LockOnDisconnect = o->value("enabled").toBool();

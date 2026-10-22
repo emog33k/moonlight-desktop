@@ -45,6 +45,8 @@ public:
     AgentStatus status() const { return (AgentStatus)m_Status.load(); }
 
     void lockNow();
+    // After a monitor switch: the agent makes Sunshine send a fresh frame
+    void refreshScreens();
     void setLockOnDisconnect(bool enabled);
     // Tell the agent the user is ending the stream on purpose (before destroying).
     void sayGoodbye();
