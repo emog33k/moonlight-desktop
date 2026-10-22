@@ -3,7 +3,10 @@
 #include <QThreadPool>
 
 ComputerModel::ComputerModel(QObject* object)
-    : QAbstractListModel(object) {}
+    : QAbstractListModel(object)
+{
+    m_Clock.start();
+}
 
 void ComputerModel::initialize(ComputerManager* computerManager)
 {
@@ -213,15 +216,34 @@ void ComputerModel::testConnectionForComputer(int)
     QThreadPool::globalInstance()->start(testConnectionTask);
 }
 
+static QString uuidOf(NvComputer* computer)
+{
+    QReadLocker lock(&computer->lock);
+    return computer->uuid;
+}
+
 void ComputerModel::pairComputer(int computerIndex, QString pin)
 {
     Q_ASSERT(computerIndex < m_Computers.count());
 
-    m_ComputerManager->pairHost(m_Computers[computerIndex], pin);
+    NvComputer* computer = m_Computers[computerIndex];
+    m_PairingPins.started(uuidOf(computer), pin, m_Clock.elapsed());
+    m_ComputerManager->pairHost(computer, pin);
 }
 
-void ComputerModel::handlePairingCompleted(NvComputer*, QString error)
+QString ComputerModel::runningPairingPin(int computerIndex)
 {
+    if (computerIndex < 0 || computerIndex >= m_Computers.count()) {
+        return QString();
+    }
+    return m_PairingPins.pinFor(uuidOf(m_Computers[computerIndex]), m_Clock.elapsed());
+}
+
+void ComputerModel::handlePairingCompleted(NvComputer* computer, QString error)
+{
+    if (computer != nullptr) {
+        m_PairingPins.finished(uuidOf(computer));
+    }
     emit pairingCompleted(error.isEmpty() ? QVariant() : error);
 }
 

@@ -233,10 +233,15 @@ CenteredGridView {
                     stackView.push(appView)
                 }
                 else {
-                    var pin = computerModel.generatePinString()
+                    // LocalRDP: pairing already running (the PIN dialog was
+                    // closed): show its PIN again; Sunshine would refuse a new one
+                    var pin = computerModel.runningPairingPin(index)
+                    if (pin === "") {
+                        pin = computerModel.generatePinString()
 
-                    // Kick off pairing in the background
-                    computerModel.pairComputer(index, pin)
+                        // Kick off pairing in the background
+                        computerModel.pairComputer(index, pin)
+                    }
 
                     // Display the pairing dialog
                     pairDialog.pin = pin

@@ -40,6 +40,8 @@ SOURCES += \
     tst_agentnotices.cpp \
     tst_windowmemory.cpp \
     tst_reconnect.cpp \
+    tst_pairingpins.cpp \
+    ../../app/streaming/localrdp/pairingpins.cpp \
     ../../app/streaming/localrdp/reconnect.cpp \
     ../../app/streaming/localrdp/windowmemory.cpp \
     ../../app/streaming/localrdp/agentnotices.cpp \

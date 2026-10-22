@@ -196,6 +196,7 @@ SOURCES += \
     streaming/localrdp/videoarea.cpp \
     streaming/localrdp/streamvolume.cpp \
     streaming/localrdp/reconnect.cpp \
+    streaming/localrdp/pairingpins.cpp \
     streaming/localrdp/streammenumodel.cpp \
     streaming/session.cpp \
     streaming/audio/audio.cpp \
@@ -239,6 +240,7 @@ HEADERS += \
     streaming/localrdp/videoarea.h \
     streaming/localrdp/streamvolume.h \
     streaming/localrdp/reconnect.h \
+    streaming/localrdp/pairingpins.h \
     streaming/localrdp/streammenuhost.h \
     streaming/localrdp/streamactions.h \
     streaming/localrdp/streammenumodel.h \

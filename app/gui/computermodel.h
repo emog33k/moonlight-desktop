@@ -1,7 +1,10 @@
 #include "backend/computermanager.h"
 #include "streaming/session.h"
 
+#include "streaming/localrdp/pairingpins.h"
+
 #include <QAbstractListModel>
+#include <QElapsedTimer>
 
 class ComputerModel : public QAbstractListModel
 {
@@ -37,6 +40,10 @@ public:
 
     Q_INVOKABLE void pairComputer(int computerIndex, QString pin);
 
+    // LocalRDP: the PIN of a pairing with this PC that is still running (empty
+    // if none). A second click shows it again: a new request would get 409.
+    Q_INVOKABLE QString runningPairingPin(int computerIndex);
+
     Q_INVOKABLE void testConnectionForComputer(int computerIndex);
 
     Q_INVOKABLE void wakeComputer(int computerIndex);
@@ -57,4 +64,6 @@ private slots:
 private:
     QVector<NvComputer*> m_Computers;
     ComputerManager* m_ComputerManager;
+    LocalRdp::PairingPins m_PairingPins;
+    QElapsedTimer m_Clock;
 };

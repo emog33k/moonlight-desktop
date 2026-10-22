@@ -622,7 +622,16 @@ private:
                break;
            }
         } catch (const GfeHttpResponseException& e) {
-            emit pairingCompleted(m_Computer, tr("GeForce Experience returned error: %1").arg(e.toQString()));
+            if (e.getStatusCode() == 409) {
+                // LocalRDP: Sunshine still waits for the PIN of an earlier request (it
+                // forgets one after 5 minutes)
+                emit pairingCompleted(m_Computer, QStringLiteral(
+                    "ПК ещё ждёт PIN от предыдущего запроса на привязку. Введите тот PIN в Sunshine "
+                    "или подождите до 5 минут и попробуйте снова."));
+            }
+            else {
+                emit pairingCompleted(m_Computer, tr("GeForce Experience returned error: %1").arg(e.toQString()));
+            }
         } catch (const QtNetworkReplyException& e) {
             emit pairingCompleted(m_Computer, e.toQString());
         }

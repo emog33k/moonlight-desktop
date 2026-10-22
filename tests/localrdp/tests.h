@@ -389,3 +389,13 @@ private slots:
     void hostSideEndsDoNot();
     void onlyAfterItWasRunning();
 };
+
+class TestPairingPins : public QObject
+{
+    Q_OBJECT
+private slots:
+    void secondClickShowsSamePin();
+    void finishedAllowsNewPairing();
+    void sunshineForgetsAfterTimeout();
+    void perComputer();
+};
